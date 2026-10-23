@@ -220,6 +220,18 @@ const PAIRS: readonly Pair[] = [
   // The meter and ring track at 45 % and the pending stage-track segment at 55 %, on the card and
   // the page.
   ...TRACK_ALPHAS.flatMap((alpha) => TRACK_SURFACES.map((surface) => ({ tone: "--track", surface, min: MARK_MIN, alpha }))),
+  // spec 072: the pressed filter chip's text, `--color-base-content` on its `--color-base-300` fill. The chip's other
+  // pairs on the page (`--muted-ink` and `--track` on `--color-base-200`) are measured above already.
+  { tone: "--color-base-content", surface: "--color-base-300", min: TEXT_MIN },
+];
+
+// spec 072 (design.md § Desktop, Kontrast): the status widget puts `ui-filter-chips` on the page (`--color-base-200`),
+// where the other chip users sit on the card. Each pair must be in `PAIRS`, so the exception list governs it, and must
+// reach its line without an exception: none of them is an exception on the card.
+const FILTER_CHIP_PAIRS: readonly Pair[] = [
+  { tone: "--muted-ink", surface: "--color-base-200", min: TEXT_MIN },
+  { tone: "--track", surface: "--color-base-200", min: MARK_MIN },
+  { tone: "--color-base-content", surface: "--color-base-300", min: TEXT_MIN },
 ];
 
 type Line = { tone: string; theme: string; surface: string; fg: string; bg: string; ratio: number; min: number; alpha?: number };
@@ -352,7 +364,20 @@ describe("contrast (WCAG 2.x, ISC-65 with the DS-APP-32/33 adaptation)", () => {
     expect(measuredBelow()).toEqual(CONTRAST_EXCEPTIONS.map(pairLine).sort());
   });
 
+  test("the filter chips' pairs on the page are measured (spec 072)", () => {
+    const key = (p: Pair) => `${p.tone} on ${p.surface} ${String(p.min)}${p.alpha === undefined ? "" : ` at ${String(p.alpha)}`}`;
+    expect(FILTER_CHIP_PAIRS.map(key).filter((k) => !PAIRS.map(key).includes(k))).toEqual([]);
+  });
+
   for (const theme of THEMES) {
+    test(`the filter chips on the page pass without exception · ${theme}`, () => {
+      const failing = FILTER_CHIP_PAIRS.flatMap(({ tone, surface, min }) => {
+        const ratio = worstContrast(resolve(theme, tone), resolve(theme, surface));
+        return ratio < min ? [`${theme} ${tone} on ${surface}: ${ratio.toFixed(2)} < ${String(min)}`] : [];
+      });
+      expect(failing).toEqual([]);
+    });
+
     test(`--muted-ink, --track and --badge-ink pass without exception · ${theme}`, () => {
       expect([...below(theme, "--muted-ink", TEXT_MIN), ...below(theme, "--track", MARK_MIN)]).toEqual([]);
       const ratio = worstContrast(resolve(theme, "--badge-ink"), resolve(theme, "--badge-fill"));

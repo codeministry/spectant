@@ -1,25 +1,25 @@
 <main class="widget">
   <div class="column">
     <h1 class="visually-hidden">{{ 'statusWidget.title' | transloco }}</h1>
-    <section class="kpis">
-      @if (status(); as body) {
-        <ui-kpi-tile variant="sm" [label]="'statusWidget.kpi.repos' | transloco" [value]="body.kpis.repos" />
-        <ui-kpi-tile
-          variant="sm"
-          accent="success"
-          [glow]="false"
-          [label]="'statusWidget.kpi.closed' | transloco"
-          [value]="body.kpis.closed"
-          [denominator]="body.kpis.listed"
-        />
-        <ui-kpi-tile
-          variant="sm"
-          [label]="'statusWidget.kpi.claims' | transloco"
-          [value]="body.kpis.claimsClosed"
-          [denominator]="body.kpis.claimsTotal"
-        />
+    <header class="head">
+      <ui-brand-mark [size]="28" />
+      @if (kpis(); as k) {
+        <dl class="kpis">
+          <div class="kpi">
+            <dt>{{ 'statusWidget.kpi.repos' | transloco }}</dt>
+            <dd>{{ k.repos }}</dd>
+          </div>
+          <div class="kpi">
+            <dt>{{ 'statusWidget.kpi.closed' | transloco }}</dt>
+            <dd>{{ k.closed }}<span class="den">/{{ k.listed }}</span></dd>
+          </div>
+          <div class="kpi">
+            <dt>{{ 'statusWidget.kpi.claims' | transloco }}</dt>
+            <dd>{{ k.claimsClosed }}<span class="den">/{{ k.claimsTotal }}</span></dd>
+          </div>
+        </dl>
       }
-    </section>
+    </header>
     <section class="groups">
       @if (status()) {
         @for (ws of groups(); track ws.slug) {

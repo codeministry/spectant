@@ -4,8 +4,9 @@ import { STAGE_ORDER } from '../../shared/ui/stage-tone';
 
 /**
  * The status widget's filter (spec 072, T17, ISC-603): two multi-selections over the listed specs, workspace and
- * stage, held as pure functions over the status body. No Angular, no translation, no storage: the page renders the
- * options with their words and feeds `visibleGroups` into its list and its KPIs.
+ * stage, held as pure functions over the status body. No Angular, no translation: the page renders the options with
+ * their words and feeds `visibleGroups` into its list and its KPIs; it loads, saves and prunes the selection through
+ * the storage helpers below (T27, ISC-606).
  *
  * The options always come from the unfiltered body, so a toggle never removes the chip under the focus (design.md §
  * Desktop "Stabile Optionen"): workspaces in the body's (the picker's) order, stages in workflow order
@@ -30,6 +31,57 @@ export interface WorkspaceOption {
 
 /** Whether a workspace has a group in the unfiltered list: it lists a spec, or it is unreadable (ISC-584, ISC-588). */
 const hasGroup = (ws: StatusWorkspace): boolean => !ws.readable || ws.specs.length > 0;
+
+/**
+ * The `localStorage` key of the filter selection (spec 072, T27, ISC-606), next to the window's
+ * `spectant.statusWidget.bounds`: a per-viewer convenience (web/CLAUDE.md § State), so every access is wrapped and a
+ * missing, unreadable or throwing store starts the filter without a selection.
+ */
+export const WIDGET_FILTER_KEY = 'spectant.statusWidget.filter';
+
+const isStage = (value: unknown): value is Stage =>
+  typeof value === 'string' && (STAGE_ORDER as readonly string[]).includes(value);
+
+const isStringList = (value: unknown): value is readonly string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
+
+/** The stored selection, or `EMPTY_FILTER` when none is stored, it is not two lists of words, or the store throws. */
+export function loadWidgetFilter(win: Window = window): WidgetFilter {
+  try {
+    const raw = win.localStorage.getItem(WIDGET_FILTER_KEY);
+    if (raw === null) return EMPTY_FILTER;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return EMPTY_FILTER;
+    const { workspaces, stages } = parsed as Partial<Record<keyof WidgetFilter, unknown>>;
+    if (!isStringList(workspaces) || !Array.isArray(stages) || !stages.every(isStage)) return EMPTY_FILTER;
+    return { workspaces: [...workspaces], stages: [...stages] };
+  } catch {
+    return EMPTY_FILTER;
+  }
+}
+
+/** Stores the selection; a full or blocked store only loses the convenience. */
+export function saveWidgetFilter(filter: WidgetFilter, win: Window = window): void {
+  try {
+    win.localStorage.setItem(WIDGET_FILTER_KEY, JSON.stringify({ workspaces: filter.workspaces, stages: filter.stages }));
+  } catch {
+    // Nothing to do: the next load starts without a selection.
+  }
+}
+
+/**
+ * The selection limited to the options the body still offers (a live update, ISC-587): a vanished workspace or a
+ * stage no listed spec has anymore falls out. Returns the same object when nothing fell out, so a caller can skip
+ * the write.
+ */
+export function pruneFilter(filter: WidgetFilter, body: StatusResponse): WidgetFilter {
+  const keys = new Set(workspaceOptions(body).map((option) => option.key));
+  const occurring = new Set(stageOptions(body));
+  const workspaces = filter.workspaces.filter((slug) => keys.has(slug));
+  const stages = filter.stages.filter((stage) => occurring.has(stage));
+  if (workspaces.length === filter.workspaces.length && stages.length === filter.stages.length) return filter;
+  return { workspaces, stages };
+}
 
 /** The workspace options: each that lists a spec and each unreadable one, in body (picker) order. */
 export function workspaceOptions(body: StatusResponse): readonly WorkspaceOption[] {

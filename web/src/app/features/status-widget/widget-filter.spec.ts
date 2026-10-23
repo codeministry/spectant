@@ -1,6 +1,16 @@
 import type { Stage } from '../../../../../core/src/stage';
 import type { StatusResponse, StatusSpec, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
-import { EMPTY_FILTER, stageOptions, visibleGroups, workspaceOptions, type WidgetFilter } from './widget-filter';
+import {
+  EMPTY_FILTER,
+  loadWidgetFilter,
+  pruneFilter,
+  saveWidgetFilter,
+  stageOptions,
+  visibleGroups,
+  WIDGET_FILTER_KEY,
+  workspaceOptions,
+  type WidgetFilter,
+} from './widget-filter';
 
 // Spec 072 (T18, ISC-603): the widget filter's options come from the unfiltered body (workspaces in picker order,
 // stages in workflow order limited to the ones that occur), the visible rows are the intersection of both selections,
@@ -88,5 +98,130 @@ describe('widget filter (spec 072, T17, ISC-603)', () => {
     expect(shape(filter(['broken'], ['done']))).toEqual(['broken:']);
     expect(shape(filter(['broken', 'atlas'], ['build']))).toEqual(['atlas: 011', 'broken:']);
     expect(shape(filter(['harbor'], [])).some((g) => g.startsWith('broken'))).toBe(false);
+  });
+});
+
+// Spec 072 (T27, ISC-606): the selection survives a reload through `localStorage` and a live update through
+// `pruneFilter`; a selected option that no longer occurs falls out, and a missing, unreadable or throwing store starts
+// the filter without a selection.
+
+/** A `Storage` over a map. */
+function fakeStorage(initial: Record<string, string> = {}): Storage {
+  const items = new Map(Object.entries(initial));
+  return {
+    get length() {
+      return items.size;
+    },
+    clear: () => items.clear(),
+    getItem: (key: string) => items.get(key) ?? null,
+    key: (index: number) => [...items.keys()][index] ?? null,
+    removeItem: (key: string) => items.delete(key),
+    setItem: (key: string, value: string) => items.set(key, value),
+  };
+}
+
+/** A window over the given store; `'throws'` makes the `localStorage` accessor itself throw, as in a blocked window. */
+function fakeWindow(storage: Storage | 'throws' = fakeStorage()): Window {
+  const target = {} as Record<string, unknown>;
+  Object.defineProperty(target, 'localStorage', {
+    get: () => {
+      if (storage === 'throws') throw new DOMException('denied', 'SecurityError');
+      return storage;
+    },
+  });
+  return target as unknown as Window;
+}
+
+const stored = (value: string): Window => fakeWindow(fakeStorage({ [WIDGET_FILTER_KEY]: value }));
+
+describe('widget filter storage (spec 072, T27, ISC-606)', () => {
+  it('uses the key next to the window bounds', () => {
+    expect(WIDGET_FILTER_KEY).toBe('spectant.statusWidget.filter');
+  });
+
+  it('round-trips a selection through save and load, as after a reload', () => {
+    const win = fakeWindow();
+    saveWidgetFilter(filter(['atlas', 'broken'], ['review', 'done']), win);
+    expect(JSON.parse(win.localStorage.getItem(WIDGET_FILTER_KEY) ?? 'null')).toEqual({
+      workspaces: ['atlas', 'broken'],
+      stages: ['review', 'done'],
+    });
+    expect(loadWidgetFilter(win)).toEqual(filter(['atlas', 'broken'], ['review', 'done']));
+  });
+
+  it('starts without a selection when nothing is stored', () => {
+    expect(loadWidgetFilter(fakeWindow())).toEqual(EMPTY_FILTER);
+  });
+
+  it('starts without a selection when the stored value does not parse', () => {
+    expect(loadWidgetFilter(stored('{not json'))).toEqual(EMPTY_FILTER);
+    expect(loadWidgetFilter(stored(''))).toEqual(EMPTY_FILTER);
+  });
+
+  it.each([
+    ['null', 'null'],
+    ['a number', '42'],
+    ['an array', '[]'],
+    ['missing lists', '{}'],
+    ['a string for workspaces', '{"workspaces":"atlas","stages":[]}'],
+    ['an object for stages', '{"workspaces":[],"stages":{"0":"plan"}}'],
+    ['a non-string workspace', '{"workspaces":["atlas",7],"stages":[]}'],
+    ['a non-string stage', '{"workspaces":[],"stages":[null]}'],
+    ['an unknown stage word', '{"workspaces":[],"stages":["shipping"]}'],
+  ])('starts without a selection when the stored value has %s', (_label, value) => {
+    expect(loadWidgetFilter(stored(value))).toEqual(EMPTY_FILTER);
+  });
+
+  it('starts without a selection when the localStorage accessor throws', () => {
+    expect(loadWidgetFilter(fakeWindow('throws'))).toEqual(EMPTY_FILTER);
+  });
+
+  it('starts without a selection when getItem throws', () => {
+    const storage = fakeStorage();
+    storage.getItem = () => {
+      throw new DOMException('denied', 'SecurityError');
+    };
+    expect(loadWidgetFilter(fakeWindow(storage))).toEqual(EMPTY_FILTER);
+  });
+
+  it('swallows a throwing setItem and a throwing accessor on save', () => {
+    const full = fakeStorage();
+    full.setItem = () => {
+      throw new DOMException('full', 'QuotaExceededError');
+    };
+    expect(() => saveWidgetFilter(filter(['atlas'], ['plan']), fakeWindow(full))).not.toThrow();
+    expect(() => saveWidgetFilter(filter(['atlas'], ['plan']), fakeWindow('throws'))).not.toThrow();
+  });
+});
+
+describe('widget filter pruning on live updates (spec 072, T27, ISC-606)', () => {
+  it('keeps the selection when a new spec appears', () => {
+    const selected = filter(['atlas', 'broken'], ['review']);
+    const grown: StatusResponse = {
+      ...BODY,
+      workspaces: BODY.workspaces.map((w) => (w.slug === 'atlas' ? ws('atlas', [...w.specs, spec('012', 'tasks')]) : w)),
+    };
+    expect(pruneFilter(selected, grown)).toBe(selected);
+  });
+
+  it('drops a selected workspace that vanished and a stage nobody has anymore', () => {
+    const selected = filter(['harbor', 'atlas', 'quarry'], ['plan', 'done', 'build']);
+    // harbor disappears (with the only `done`), quarry lists nothing anymore; atlas stays.
+    const shrunk: StatusResponse = {
+      ...BODY,
+      workspaces: [ws('atlas', [spec('010', 'review'), spec('011', 'build')]), ws('quarry', []), ws('broken', [], false)],
+    };
+    expect(pruneFilter(selected, shrunk)).toEqual(filter(['atlas'], ['build']));
+  });
+
+  it('keeps an unreadable workspace, which still has a group, in the selection', () => {
+    const selected = filter(['broken'], []);
+    expect(pruneFilter(selected, BODY)).toBe(selected);
+  });
+
+  it('returns the same object when nothing changed, the empty filter included', () => {
+    const selected = filter(['harbor', 'quarry'], ['plan', 'review']);
+    expect(pruneFilter(selected, BODY)).toBe(selected);
+    expect(pruneFilter(EMPTY_FILTER, BODY)).toBe(EMPTY_FILTER);
   });
 });

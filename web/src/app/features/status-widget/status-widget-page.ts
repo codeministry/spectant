@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, inject, resource } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { StatusResponse, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
+import type { StatusKpis, StatusResponse, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
 import { ApiClient } from '../../core/api.service';
 import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 import { isTabMode, saveWidgetBounds } from '../../layout/shell/widget-window';
-import { UiKpiTile } from '../../shared/ui/kpi-tile/kpi-tile';
+import { UiBrandMark } from '../../shared/ui/brand-mark/brand-mark';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { StatusWidgetRow } from './status-widget-row';
 
@@ -16,8 +16,9 @@ export const BOUNDS_SETTLE_MS = 400;
  * like `/__ui`; theme and language come from the root providers that run for every route (the pre-paint script, the
  * settings initializer). The page is its own size container `widget`, a centred column up to 720 px on `--color-base-200`.
  *
- * It loads `GET /api/status` through `ApiClient`. Above the list stand three KPI tiles whose numbers the body
- * carries, computed by core over exactly the listed specs (T26, ISC-583), never recomputed here. Below, one group per
+ * It loads `GET /api/status` through `ApiClient`. Above the list stands the flat head (spec 072, T8, ISC-602): the
+ * brand mark, then one `dl` row of three KPIs whose numbers the body carries, computed by core over exactly the
+ * listed specs (T26, ISC-583), never recomputed here. Below, one group per
  * workspace that lists a spec, headed by its path tail (T27, ISC-584); an unreadable workspace keeps its head with a
  * warning notice, and with no group at all one empty line stands instead (T30, ISC-588). Each listed spec is one
  * `app-status-widget-row` (T28, ISC-585).
@@ -31,7 +32,7 @@ export const BOUNDS_SETTLE_MS = 400;
  */
 @Component({
   selector: 'app-status-widget-page',
-  imports: [TranslocoPipe, UiKpiTile, UiNotice, StatusWidgetRow],
+  imports: [TranslocoPipe, UiBrandMark, UiNotice, StatusWidgetRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-widget-page.html',
   styleUrl: './status-widget-page.css',
@@ -47,6 +48,9 @@ export class StatusWidgetPage {
     const result = this.load.hasValue() ? this.load.value() : undefined;
     return result?.kind === 'ok' ? result.body : null;
   });
+
+  /** The head's three figures (ISC-602); null before the first `ok` body, when the head shows the mark alone. */
+  readonly kpis = computed<StatusKpis | null>(() => this.status()?.kpis ?? null);
 
   /**
    * The workspaces that get a group, in the body's (the picker's) order: each that lists a spec (ISC-584) and each

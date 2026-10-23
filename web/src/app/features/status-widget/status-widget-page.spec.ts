@@ -68,7 +68,7 @@ const BODY: StatusResponse = {
 describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
   let calls: number;
 
-  async function land(body: StatusResponse = BODY): Promise<RouterTestingHarness> {
+  async function land(body: StatusResponse = BODY, lang: (typeof LANGS)[number] = 'en'): Promise<RouterTestingHarness> {
     calls = 0;
     const api: Partial<ApiClient> = {
       status: (): Promise<ApiResult<StatusResponse>> => {
@@ -77,7 +77,7 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
       },
     };
     TestBed.configureTestingModule({
-      imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' }, preloadLangs: true })],
+      imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: lang }, preloadLangs: true })],
       providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
     });
     const harness = await RouterTestingHarness.create();
@@ -100,11 +100,11 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
     expect(components).toEqual([StatusWidgetPage]);
   });
 
-  it('renders outside the shell: no app-shell, no header, no nav', async () => {
+  it('renders outside the shell: no app-shell, no header but its own head, no nav', async () => {
     const rendered = (await land()).fixture.nativeElement as HTMLElement;
     expect(rendered.querySelector('app-status-widget-page main.widget')).not.toBeNull();
     expect(rendered.querySelector('app-shell')).toBeNull();
-    expect(rendered.querySelector('header')).toBeNull();
+    expect([...rendered.querySelectorAll('header')].map((head) => head.closest('main.widget') !== null && head.matches('.head'))).toEqual([true]);
     expect(rendered.querySelector('nav')).toBeNull();
   });
 
@@ -115,16 +115,34 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
     expect(groups.map((group) => group.dataset['workspace'])).toEqual(['harbor', 'lantern']);
     const ids = groups.map((group) => [...group.querySelectorAll<HTMLElement>('[data-spec]')].map((row) => row.dataset['spec']));
     expect(ids).toEqual([['002', '005'], ['001']]);
-    expect(root.querySelector('section.kpis')).not.toBeNull();
+    expect(root.querySelector('header.head dl.kpis')).not.toBeNull();
   });
 
-  /** Each tile as label, value and denominator, in band order. */
+  /** Each figure of the head's flat row (spec 072, T9, ISC-602) as label, value and denominator, in row order. */
   const tiles = (root: HTMLElement): Array<{ label: string; value: string; den: string | null }> =>
-    [...root.querySelectorAll<HTMLElement>('section.kpis ui-kpi-tile')].map((tile) => ({
-      label: tile.querySelector('.eyebrow-text')?.textContent.trim() ?? '',
-      value: tile.querySelector('.value')?.textContent.trim() ?? '',
-      den: tile.querySelector('.den')?.textContent.trim().replace(/^\//, '') ?? null,
+    [...root.querySelectorAll<HTMLElement>('header.head dl.kpis > div.kpi')].map((kpi) => ({
+      label: [...kpi.children].map((el) => el.tagName).join() === 'DT,DD' ? (kpi.querySelector('dt')?.textContent.trim() ?? '') : '!order',
+      value: kpi.querySelector('dd')?.firstChild?.textContent?.trim() ?? '',
+      den: kpi.querySelector('dd .den')?.textContent.trim().replace(/^\//, '') ?? null,
     }));
+
+  it('heads the page with the brand mark first, then the flat KPI row, no tiles and no accent (spec 072, T9, ISC-602)', async () => {
+    const root = (await land(MIXED)).routeNativeElement as HTMLElement;
+    const head = root.querySelector<HTMLElement>('main.widget header.head');
+    expect([...(head?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-brand-mark', 'dl']);
+    expect(head?.querySelector<HTMLElement>('ui-brand-mark')?.style.getPropertyValue('--brand-mark-size')).toBe('28px');
+    expect(root.querySelectorAll('ui-kpi-tile, ui-card, header.head [data-accent], header.head [aria-live]')).toHaveLength(0);
+    expect(head?.querySelectorAll('dl.kpis > div.kpi')).toHaveLength(3);
+  });
+
+  it('labels the KPI row in German too (spec 072, T9, ISC-602)', async () => {
+    const root = (await land(MIXED, 'de')).routeNativeElement as HTMLElement;
+    expect(tiles(root)).toEqual([
+      { label: 'Repos', value: '1', den: null },
+      { label: 'Geschlossen', value: '1', den: '3' },
+      { label: 'Claims', value: '6', den: '10' },
+    ]);
+  });
 
   it('shows the three KPIs of the body, which sum the listed rows (T26, ISC-583)', async () => {
     const root = (await land(MIXED)).routeNativeElement as HTMLElement;
@@ -145,11 +163,6 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
       listed.reduce((sum, row) => sum + row.claims.closed, 0),
       listed.reduce((sum, row) => sum + row.claims.total, 0),
     ]);
-    const cards = [...root.querySelectorAll<HTMLElement>('section.kpis ui-kpi-tile')].map((tile) => tile.querySelector<HTMLElement>('ui-card'));
-    expect(cards.map((card) => card?.dataset['accent'] ?? null)).toEqual([null, 'success', null]);
-    expect(cards[1]?.hasAttribute('data-edge')).toBe(true);
-    expect(cards[1]?.hasAttribute('data-glow')).toBe(false);
-    expect(root.querySelectorAll('section.kpis ui-kpi-tile[data-variant="sm"]')).toHaveLength(3);
   });
 
   it('heads each workspace that lists a spec with its path tail, in body order, none for an empty one (T27, ISC-584)', async () => {
@@ -259,9 +272,7 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
   }
 
   const kpis = (root: HTMLElement): string[] =>
-    [...root.querySelectorAll<HTMLElement>('section.kpis ui-kpi-tile')].map(
-      (tile) => `${tile.querySelector('.value')?.textContent.trim() ?? ''}${tile.querySelector('.den')?.textContent.trim() ?? ''}`,
-    );
+    [...root.querySelectorAll<HTMLElement>('header.head dl.kpis dd')].map((dd) => dd.textContent.replace(/\s+/g, ''));
   const row = (root: HTMLElement, id: string): { count: string; stage: string } => {
     const entry = root.querySelector<HTMLElement>(`[data-workspace="harbor"] [data-spec="${id}"]`);
     return {
@@ -305,9 +316,10 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
     expect(row(root, '005').stage).toBe('Done');
   });
 
-  it('announces no tick: no aria-live anywhere on the page', async () => {
+  it('announces no tick: no aria-live outside the copy chips (only a copy is announced, spec 072)', async () => {
     const root = (await render()).nativeElement as HTMLElement;
-    expect(root.querySelectorAll('[aria-live]')).toHaveLength(0);
+    expect([...root.querySelectorAll('[aria-live]')].filter((el) => el.closest('ui-command-chip') === null)).toHaveLength(0);
+    expect(root.querySelectorAll('header.head [aria-live], section.groups > .group > [aria-live], ul.rows > [aria-live]')).toHaveLength(0);
   });
 
   /** Sets the window's outer size and position and the screen's available width as own, configurable properties. */
