@@ -229,10 +229,10 @@ for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
 
 /*
  * Harbor's list ends within the reference screens (844, 1180 and 900 px tall), so the sticky probe runs in shorter ones
- * (a short window or panel): 640 px at 390, 360 at 820 and 1440. The page is then at least one screen height longer
+ * (a short window or panel): 600 px at 390, 360 at 820 and 1440. The page is then at least one screen height longer
  * than the screen, and after a scroll by that height the list still runs on under the header row.
  */
-const STICKY_HEIGHT: Readonly<Record<number, number>> = { [WIDTHS.phone]: 640, [WIDTHS.tablet]: 360, [WIDTHS.desktop]: 360 };
+const STICKY_HEIGHT: Readonly<Record<number, number>> = { [WIDTHS.phone]: 600, [WIDTHS.tablet]: 360, [WIDTHS.desktop]: 360 };
 
 for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
   test.describe(`spec list head at ${String(width)}`, () => {

@@ -64,6 +64,22 @@
       </button>
     }
   }
+  <!--
+    The spec crumb (spec 069 T22, ISC-555): the open spec's id and short name, after the page and before the area, on
+    every width; no menu, no chevron, no `data-control`. A link to the spec's dashboard rather than plain text, so a tab
+    keeps a way back to it; `aria-current="page"` on the dashboard itself. The full title is its tooltip.
+  -->
+  @if (specOpen() && row(); as open) {
+    <span class="pill-divider" aria-hidden="true"></span>
+    <a class="pick crumb" data-crumb="spec" [routerLink]="specLink()" [attr.title]="open.title" [attr.aria-current]="specDashboard() ? 'page' : null">
+      <span class="crumb-text">
+        <span class="crumb-id" data-crumb-id>{{ state.specId() }}</span>
+        @if (specName(); as name) {
+          <span class="crumb-title" data-crumb-title>{{ name }}</span>
+        }
+      </span>
+    </a>
+  }
   <!-- Only a spec page has an Area select: the six spec areas (spec 024 T80, ISC-150.2); the Spec select left the nav in spec 069 (ISC-554). -->
   <!-- Below 1120 px the area switch is an entry of the overflow menu `⋯` instead (spec 024 T76). -->
   @if (specRoute() && wide()) {
@@ -102,22 +118,6 @@
         <ui-icon class="chevron" name="chevron-down" [size]="14" />
       </button>
     }
-  }
-  <!--
-    The spec crumb (spec 069 T22, ISC-555): the open spec's id and short name, after the area, on every width; no menu,
-    no chevron, no `data-control`. A link to the spec's dashboard rather than plain text, so a tab keeps a way back to it;
-    `aria-current="page"` on the dashboard itself. The full title is its tooltip.
-  -->
-  @if (specOpen() && row(); as open) {
-    <span class="pill-divider" aria-hidden="true"></span>
-    <a class="pick crumb" data-crumb="spec" [routerLink]="specLink()" [attr.title]="open.title" [attr.aria-current]="specDashboard() ? 'page' : null">
-      <span class="crumb-text">
-        <span class="crumb-id" data-crumb-id>{{ state.specId() }}</span>
-        @if (specName(); as name) {
-          <span class="crumb-title" data-crumb-title>{{ name }}</span>
-        }
-      </span>
-    </a>
   }
 </div>
 

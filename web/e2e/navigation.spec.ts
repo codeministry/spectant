@@ -182,9 +182,9 @@ test.describe('navigation', () => {
     });
 
     // Spec 048 (ISC-280, refines ISC-150.2): from 1120 px the Area select stands after Workspace and Page, in DOM, tab
-    // and screen order. Spec 069 (ISC-554): the Spec select left the row; the open spec follows as a crumb with its
-    // ID, and the favourites trigger stands outside the nav, directly before the palette.
-    test('the header selects run Workspace · Page · Area, then the spec crumb, the Area select only on a spec page', async ({ page }) => {
+    // and screen order. Spec 069 (ISC-554): the Spec select left the row; the open spec stands as a crumb with its
+    // ID between Page and Area, and the favourites trigger stands outside the nav, directly before the palette.
+    test('the header selects run Workspace · Page, then the spec crumb, then Area, the Area select only on a spec page', async ({ page }) => {
       const order = (): Promise<Array<string | null>> =>
         page.locator('app-shell-nav [data-control]').evaluateAll((els) => els.map((el) => el.getAttribute('data-control')));
       await page.goto('/w/harbor/s/002');
@@ -195,8 +195,8 @@ test.describe('navigation', () => {
       const crumb = page.locator('app-shell-nav [data-crumb="spec"]');
       await expect(crumb.locator('[data-crumb-id]')).toHaveText('002');
       const xs: number[] = [];
-      for (const name of ['workspace', 'page', 'area']) xs.push((await page.locator(`app-shell-nav [data-control="${name}"]`).boundingBox())?.x ?? -1);
-      xs.push((await crumb.boundingBox())?.x ?? -1);
+      const x = async (name: string): Promise<number> => (await page.locator(`app-shell-nav [data-control="${name}"]`).boundingBox())?.x ?? -1;
+      xs.push(await x('workspace'), await x('page'), (await crumb.boundingBox())?.x ?? -1, await x('area'));
       expect(xs).toEqual([...xs].sort((a, b) => a - b));
       await expect(page.locator('header [data-control="spec"]')).toHaveCount(0);
       const tools = await page.locator('header [data-control]').evaluateAll((els) => els.map((el) => el.getAttribute('data-control')));
