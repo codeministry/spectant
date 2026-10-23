@@ -3714,8 +3714,8 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
   test('each listed spec carries its dashboard row\'s nextCommand in the plugin form, null without one and for an archived spec (spec 072, T4, ISC-599)', async () => {
     // The path guard stays strict: only `/spec <words>` passes; a path, a drive letter, a home path or a slash inside fails.
     expect(absolutePaths(['/spec implement 072', '/spec review 004 code', '/spec 011'])).toEqual([]);
-    expect(absolutePaths(['/Users/x/harbor', '/spec/../etc', '/spec implement 072/x', 'C:\\harbor', '~/harbor', '/spec'])).toEqual([
-      '/Users/x/harbor', '/spec/../etc', '/spec implement 072/x', 'C:\\harbor', '~/harbor', '/spec',
+    expect(absolutePaths(['/Users/x/harbor', '/spec/../etc', '/spec implement 072/x', 'C:\\harbor', '~/harbor', '/spec'])).toEqual([ // leak:allow synthetic test input
+      '/Users/x/harbor', '/spec/../etc', '/spec implement 072/x', 'C:\\harbor', '~/harbor', '/spec', // leak:allow synthetic test input
     ]);
     for (const state of STUB_STATES) {
       const body = (await (await ask(STATUS_PATH, { state })).json()) as StatusResponse;
