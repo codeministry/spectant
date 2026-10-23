@@ -777,7 +777,9 @@
     },
     "tabBar": "{{area}} tabs",
     "favorites": {
-      "trigger": "Favorites"
+      "trigger": "Favorites",
+      "menu": "Favorites of all workspaces",
+      "empty": "No favorites yet. Star a spec or an idea on its page to see it here."
     },
     "palette": {
       "pending": "The command palette comes with a later task",

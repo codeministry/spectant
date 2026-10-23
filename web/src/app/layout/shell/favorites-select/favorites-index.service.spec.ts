@@ -1,7 +1,11 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Favorites } from '../../../../../../server/src/contracts/spec-routes.contract';
-import { ApiClient, type ApiResult, type DashboardBody } from '../../../core/api.service';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
+import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { ApiClient, type ApiResult, type DashboardBody, type PutResult } from '../../../core/api.service';
+import { LockSourceService } from '../../../core/lock-source.service';
+import { ToastService } from '../../../shared/ui/toast/toast';
 import { ShellData } from '../shell-data.service';
 import { ShellState } from '../shell-state.service';
 import { favoriteIdeaLink, FavoritesIndex, favoriteSpecLink, type FavoriteGroup } from './favorites-index.service';
@@ -37,6 +41,8 @@ interface Options {
   readonly list?: ReadonlyArray<{ slug: string; name: string; readable?: boolean }>;
   readonly favorites?: Readonly<Record<string, ApiResult<Favorites>>>;
   readonly dashboards?: Readonly<Record<string, ApiResult<DashboardBody>>>;
+  /** A DELETE's answer by workspace; absent, it is ok. */
+  readonly deletes?: Readonly<Record<string, () => Promise<PutResult<Favorites>>>>;
 }
 
 const LIST = [
@@ -48,7 +54,15 @@ const LIST = [
 function setUp(options: Options = {}) {
   const ws = signal<string | null>(options.open === undefined ? 'harbor' : options.open);
   const calls: string[] = [];
+  const toggles: string[] = [];
+  const toasts: string[] = [];
+  const remove = (call: string, slug: string): Promise<PutResult<Favorites>> => {
+    calls.push(call);
+    return options.deletes?.[slug]?.() ?? Promise.resolve({ kind: 'ok', body: { specs: [], ideas: [] } });
+  };
   const api = {
+    deleteFavorite: (slug: string, spec: string) => remove(`delete spec ${slug} ${spec}`, slug),
+    deleteIdeaFavorite: (slug: string, idea: string) => remove(`delete idea ${slug} ${idea}`, slug),
     favorites: (slug: string): Promise<ApiResult<Favorites>> => {
       calls.push(`favorites ${slug}`);
       return Promise.resolve(options.favorites?.[slug] ?? ok(FAVORITES[slug] ?? { specs: [], ideas: [] }));
@@ -68,15 +82,29 @@ function setUp(options: Options = {}) {
     workspaceList: signal((options.list ?? LIST).map((entry) => ({ readable: true, ...entry }))),
     favoriteRows: computed(() => (ws() === 'harbor' ? openRows() : [])),
     favoriteIdeas: computed(() => (ws() === 'harbor' ? openIdeas() : [])),
+    isFavorite: (spec: string) => openRows().some((entry) => entry.slug === spec),
+    isIdeaFavorite: (slug: string) => openIdeas().some((idea) => idea.slug === slug),
+    toggleFavorite: (spec: string) => {
+      toggles.push(`spec ${spec}`);
+      openRows.update((rows) => rows.filter((entry) => entry.slug !== spec));
+      return Promise.resolve(true);
+    },
+    toggleIdeaFavorite: (slug: string) => {
+      toggles.push(`idea ${slug}`);
+      openIdeas.update((ideas) => ideas.filter((idea) => idea.slug !== slug));
+      return Promise.resolve(true);
+    },
   };
   TestBed.configureTestingModule({
     providers: [
       { provide: ApiClient, useValue: api },
       { provide: ShellData, useValue: data },
       { provide: ShellState, useValue: { ws } },
+      { provide: ToastService, useValue: { show: (message: string) => toasts.push(message) } },
+      { provide: TranslocoService, useValue: { translate: (key: string) => key } },
     ],
   });
-  return { index: TestBed.inject(FavoritesIndex), calls, ws, openRows };
+  return { index: TestBed.inject(FavoritesIndex), calls, toggles, toasts, ws, openRows };
 }
 
 /** Every pending answer lands (the fakes resolve on the microtask queue). */
@@ -182,5 +210,109 @@ describe('FavoritesIndex stale and unreadable (spec 069, ISC-561)', () => {
     await index.load();
     await settle();
     expect(shown(index.groups())).toEqual([HARBOR]);
+  });
+});
+
+/** The spec ids and story slugs a workspace's group lists; null when it has no group. */
+const rowsIn = (index: FavoritesIndex, ws: string) => {
+  const group = index.groups().find((entry) => entry.ws === ws);
+  return group ? [...group.specs.map((spec) => spec.id), ...group.ideas.map((idea) => idea.slug)] : null;
+};
+
+describe('FavoritesIndex.unstar (spec 069, ISC-559)', () => {
+  it('sends one DELETE to the row’s own workspace and takes the row out at once; the open set stays', async () => {
+    const { index, calls, toggles } = setUp();
+    await index.load();
+    await settle();
+    calls.length = 0;
+    const done = index.unstar('lantern', 'specs', '003-index');
+    expect(rowsIn(index, 'lantern')).toEqual(['004', 'fuzzy']);
+    expect(await done).toBe(true);
+    expect(calls).toEqual(['delete spec lantern 003-index']);
+    expect(toggles).toEqual([]);
+    expect(shown(index.groups())[1]).toEqual(HARBOR);
+  });
+
+  it('drops a group with its last favourite and is the empty state after the very last, the open one via ShellData', async () => {
+    const { index, calls, toggles } = setUp({ list: [{ slug: 'lantern', name: 'Lantern' }, { slug: 'harbor', name: 'Harbor' }] });
+    await index.load();
+    await settle();
+    calls.length = 0;
+    await index.unstar('lantern', 'specs', '004-search');
+    await index.unstar('lantern', 'specs', '003-index');
+    expect(rowsIn(index, 'lantern')).toEqual(['fuzzy']);
+    await index.unstar('lantern', 'ideas', 'fuzzy');
+    expect(index.groups().map((group) => group.ws)).toEqual(['harbor']);
+    for (const spec of ['002-web-console', '009-audit']) await index.unstar('harbor', 'specs', spec);
+    for (const idea of ['dark-mode', 'csv-export']) await index.unstar('harbor', 'ideas', idea);
+    expect(index.groups()).toEqual([]);
+    expect(calls).toEqual(['delete spec lantern 004-search', 'delete spec lantern 003-index', 'delete idea lantern fuzzy']);
+    expect(toggles).toEqual(['spec 002-web-console', 'spec 009-audit', 'idea dark-mode', 'idea csv-export']);
+  });
+
+  it('never stars: an open-workspace row that is no favourite any more sends nothing', async () => {
+    const { index, toggles } = setUp();
+    expect(await index.unstar('harbor', 'specs', '005-alerts')).toBe(false);
+    expect(toggles).toEqual([]);
+  });
+
+  it('puts the row back at its place and toasts when the DELETE fails or rejects', async () => {
+    const failures = [
+      () => Promise.resolve<PutResult<Favorites>>({ kind: 'error', status: 500, error: null }),
+      () => Promise.reject(new Error('offline')),
+    ];
+    for (const failure of failures) {
+      TestBed.resetTestingModule();
+      const { index, toasts } = setUp({ deletes: { lantern: failure } });
+      await index.load();
+      await settle();
+      const done = index.unstar('lantern', 'specs', '004-search');
+      expect(rowsIn(index, 'lantern')).toEqual(['003', 'fuzzy']);
+      expect(await done).toBe(false);
+      expect(shown(index.groups())).toEqual([LANTERN, HARBOR]);
+      expect(toasts).toEqual(['favorites.failed']);
+    }
+  });
+});
+
+describe('FavoritesIndex and ShellData share the open set (spec 069, ISC-560)', () => {
+  it('lists a star set elsewhere without a reload, and an unstar in the select flips every star', async () => {
+    const writes: string[] = [];
+    const stored = (specs: string[]) => Promise.resolve<PutResult<Favorites>>({ kind: 'ok', body: { specs, ideas: [] } });
+    const api = {
+      workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'Harbor', readable: true }])),
+      dashboard: () => Promise.resolve(ok(DASHBOARDS['harbor'])),
+      spec: () => Promise.resolve({ kind: 'not-found', served: false } as const),
+      planning: () => Promise.resolve({ kind: 'error', status: 0 } as const),
+      actors: () => Promise.resolve(ok([])),
+      boardQuery: () => Promise.resolve(ok({ query: '' })),
+      favorites: () => Promise.resolve(ok<Favorites>({ specs: ['002-web-console'], ideas: [] })),
+      tech: () => Promise.resolve(ok({ pages: null, specs: [] })),
+      putFavorite: (ws: string, spec: string) => (writes.push(`put ${ws} ${spec}`), stored(['002-web-console', '005-alerts'])),
+      deleteFavorite: (ws: string, spec: string) => (writes.push(`delete ${ws} ${spec}`), stored(['005-alerts'])),
+    };
+    TestBed.configureTestingModule({
+      imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' } })],
+      providers: [
+        { provide: ApiClient, useValue: api },
+        { provide: ToastService, useValue: { show: () => undefined } },
+        { provide: ShellState, useValue: { ws: signal('harbor'), wsPage: signal(null), specId: signal(null) } },
+        { provide: LockSourceService, useValue: { connect: () => undefined } },
+      ],
+    });
+    const data = TestBed.inject(ShellData);
+    const index = TestBed.inject(FavoritesIndex);
+    for (let i = 0; i < 3; i++) {
+      TestBed.tick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(rowsIn(index, 'harbor')).toEqual(['002']);
+    const star = data.toggleFavorite('005-alerts');
+    expect(rowsIn(index, 'harbor')).toEqual(['005', '002']);
+    await star;
+    expect(await index.unstar('harbor', 'specs', '002-web-console')).toBe(true);
+    expect(data.isFavorite('002-web-console')).toBe(false);
+    expect(rowsIn(index, 'harbor')).toEqual(['005']);
+    expect(writes).toEqual(['put harbor 005-alerts', 'delete harbor 002-web-console']);
   });
 });

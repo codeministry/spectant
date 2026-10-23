@@ -777,7 +777,9 @@
     },
     "tabBar": "Tabs: {{area}}",
     "favorites": {
-      "trigger": "Favoriten"
+      "trigger": "Favoriten",
+      "menu": "Favoriten aller Workspaces",
+      "empty": "Noch keine Favoriten. Markieren Sie eine Spec oder eine Idee auf ihrer Seite mit dem Stern, dann erscheint sie hier."
     },
     "palette": {
       "pending": "Die Befehlspalette kommt mit einem späteren Task",

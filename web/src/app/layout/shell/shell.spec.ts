@@ -185,7 +185,8 @@ describe('ShellComponent', () => {
       const controls = [...root.querySelectorAll('header [data-control]')].map((el) => el.getAttribute('data-control'));
       // spec 024: PAGE select (principal 2026-10-13); spec 048 (ISC-280): the Area select, only on a spec route, before the Spec select
       const pills = url.startsWith('/w/') ? ['workspace', 'page', ...(url.includes('/s/') ? ['area'] : []), 'spec'] : ['workspace'];
-      expect(controls, url).toEqual(['brand', ...pills, 'palette', 'live', 'zen', 'settings']);
+      // spec 069 (ISC-552): the favourites select on every page, directly before the palette
+      expect(controls, url).toEqual(['brand', ...pills, 'favorites', 'palette', 'live', 'zen', 'settings']);
     }
   });
 

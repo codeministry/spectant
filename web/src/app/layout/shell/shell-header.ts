@@ -8,6 +8,7 @@ import { AssistantPanel } from '../assistant/assistant-panel';
 import { AssistantDot } from '../assistant/assistant.service';
 import { Mascot } from '../assistant/mascot';
 import { areaById, areaPath, specLink } from './areas';
+import { FavoritesSelect } from './favorites-select/favorites-select';
 import { ShellBrand } from './shell-brand';
 import { ShellData } from './shell-data.service';
 import { ShellLive } from './shell-live';
@@ -19,7 +20,8 @@ import { ShellState } from './shell-state.service';
  * design.md § Across viewports), every element in it 40 px tall (44 px at `pointer: coarse`).
  *
  * From 1120 px (the wide tier) the full header: the brand rail (logo, wordmark, Workspace · Page · Spec ·
- * Area rail-selects with their labels; spec 024 T80), the palette (a field, or the 40 px icon on spec pages below 1560 px), then status
+ * Area rail-selects with their labels; spec 024 T80), the favourites star (`FavoritesSelect`, spec 069, on every width
+ * directly left of the palette), the palette (a field, or the 40 px icon on spec pages below 1560 px), then status
  * group, zen, the assistant dot (`AssistantPanel`, T53), settings (the settings popover, T40) and help. Below 1120 px the row is shortened: the
  * logo rail (ring only below 640 px) with the Workspace, Page and Spec selects without visible labels, the palette icon, the
  * status group and the overflow menu `⋯` with Area, Zen, Assistant, Settings and Help (`ShellMenus`). The bottom
@@ -32,7 +34,7 @@ import { ShellState } from './shell-state.service';
  */
 @Component({
   selector: 'app-shell-header',
-  imports: [TranslocoPipe, UiIcon, UiIconButton, UiKbd, ShellBrand, ShellNav, ShellLive, Mascot, AssistantPanel],
+  imports: [TranslocoPipe, UiIcon, UiIconButton, UiKbd, ShellBrand, ShellNav, FavoritesSelect, ShellLive, Mascot, AssistantPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-header.html',
   styleUrl: './shell-header.css',
