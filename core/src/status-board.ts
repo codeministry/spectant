@@ -2,7 +2,8 @@
 // model per registered workspace. It lists the open specs (stage not `done`) and those closed at most 24 hours before
 // the caller's clock, archived ones included (ISC-584), grouped by workspace in the caller's order, which is the
 // workspace picker's (ISC-593); its KPIs count exactly the listed specs (ISC-583), and each spec carries its item state
-// for the running pulse (ISC-594). No field names an absolute path: a workspace carries its slug and path tail only.
+// for the running pulse (ISC-594) and the row's next command for the copy button (spec 072, ISC-599). No field names an
+// absolute path: a workspace carries its slug and path tail only.
 //
 // Pure and browser-safe (type-only imports, no clock read): the server route and the web e2e stub both build their
 // answer here, so the two cannot drift. It reads a dashboard model through `StatusModel`, the slice it uses, never
@@ -24,6 +25,7 @@ interface StatusRow {
   readonly progress: Progress;
   readonly closedAt: string | null;
   readonly state?: { readonly state: ItemState };
+  readonly nextCommand: string | null;
 }
 
 /** The fields of an `ArchivedSpec` (`archive.ts`) the board reads. */
@@ -66,6 +68,11 @@ export interface StatusSpec {
   readonly state: ItemState | null;
   /** Whether the spec comes from `specs/archive/`. */
   readonly archived: boolean;
+  /**
+   * The row's next command in the plugin form, as the dashboard row shows it (e.g. `/spec implement 072`), taken from
+   * the row and never recomputed; null for a row without one and for an archived spec (ISC-599).
+   */
+  readonly nextCommand: string | null;
 }
 
 /** One registered workspace on the board; a readable workspace with nothing listed stays, with no specs. */
@@ -114,6 +121,7 @@ const fromRow = (row: StatusRow): StatusSpec => ({
   closedAt: row.closedAt,
   state: row.state?.state ?? null,
   archived: false,
+  nextCommand: row.nextCommand,
 });
 
 const fromArchive = (entry: StatusArchived): StatusSpec => ({
@@ -125,6 +133,7 @@ const fromArchive = (entry: StatusArchived): StatusSpec => ({
   closedAt: entry.closedAt,
   state: 'done',
   archived: true,
+  nextCommand: null,
 });
 
 /** The listed specs of one model: open rows and recently closed rows in row order, then recently closed archived specs. */

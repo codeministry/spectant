@@ -1,0 +1,42 @@
+/*
+ * The ring mark (spec 072): a fixed box from `--brand-mark-size` (27 or 28 px), the svg filling it. No animation here;
+ * the header's spin rotates the host (shell-brand.css).
+ */
+:host {
+  display: block;
+  flex: none;
+  inline-size: var(--brand-mark-size, 27px);
+  block-size: var(--brand-mark-size, 27px);
+}
+
+.mark {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  fill: none;
+  stroke-width: 3;
+}
+
+/* The ring has no track: the gap stays open around the dot. */
+.mark-track {
+  stroke: none;
+}
+
+.mark-arc {
+  stroke-linecap: round;
+}
+
+/* The logo's fixed brand colours on both themes (ring #a6e22e → #78dce8, dot #ab9df2). */
+.mark-arc-a {
+  stroke: oklch(84.1% 0.2044 127.3);
+  stroke-dasharray: 40 60;
+}
+
+.mark-arc-b {
+  stroke: oklch(83.8% 0.095 205.7);
+  stroke-dasharray: 0 40 40 20;
+}
+
+.mark-dot {
+  fill: oklch(74.1% 0.121 290.7);
+}

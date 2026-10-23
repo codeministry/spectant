@@ -49,4 +49,81 @@ describe('UiFilterChips', () => {
     await fixture.whenStable();
     expect(host.hasAttribute('data-wrap')).toBe(true);
   });
+
+  describe('multiple (spec 072, ISC-603)', () => {
+    const options = [
+      { key: 'alpha', label: 'alpha', count: 3 },
+      { key: 'beta', label: 'a-very-long-workspace-path-ending', count: 1 },
+      { key: 'gamma', label: 'gamma', count: 0, tone: 'warning' as const },
+    ];
+
+    async function setup(selected: readonly string[] = []) {
+      const fixture = TestBed.createComponent(UiFilterChips);
+      fixture.componentRef.setInput('options', options);
+      fixture.componentRef.setInput('multiple', true);
+      fixture.componentRef.setInput('selected', selected);
+      await fixture.whenStable();
+      const host = fixture.nativeElement as HTMLElement;
+      return { fixture, host, buttons: host.querySelectorAll('button') };
+    }
+
+    function pressed(buttons: NodeListOf<HTMLButtonElement>): Array<string | null> {
+      return [...buttons].map((button) => button.getAttribute('aria-pressed'));
+    }
+
+    it('marks the host data-multiple only with `multiple`', async () => {
+      const single = TestBed.createComponent(UiFilterChips);
+      single.componentRef.setInput('options', options);
+      await single.whenStable();
+      expect((single.nativeElement as HTMLElement).hasAttribute('data-multiple')).toBe(false);
+      const { host } = await setup();
+      expect(host.hasAttribute('data-multiple')).toBe(true);
+    });
+
+    it('gives each chip its own aria-pressed, all false on an empty selection', async () => {
+      const { buttons } = await setup();
+      expect(pressed(buttons)).toEqual(['false', 'false', 'false']);
+    });
+
+    it('toggles a chip on and off in `selected` and leaves `value` alone', async () => {
+      const { fixture, buttons } = await setup();
+      buttons[1].click();
+      await fixture.whenStable();
+      expect(fixture.componentInstance.selected()).toEqual(['beta']);
+      expect(pressed(buttons)).toEqual(['false', 'true', 'false']);
+      expect(fixture.componentInstance.value()).toBeUndefined();
+
+      buttons[1].click();
+      await fixture.whenStable();
+      expect(fixture.componentInstance.selected()).toEqual([]);
+      expect(pressed(buttons)).toEqual(['false', 'false', 'false']);
+    });
+
+    it('keeps two chips pressed at once', async () => {
+      const { fixture, buttons } = await setup(['alpha']);
+      buttons[2].click();
+      await fixture.whenStable();
+      expect(fixture.componentInstance.selected()).toEqual(['alpha', 'gamma']);
+      expect(pressed(buttons)).toEqual(['true', 'false', 'true']);
+    });
+
+    it('carries the full label in `title`, and no title in the single mode', async () => {
+      const { buttons } = await setup();
+      expect(buttons[1].getAttribute('title')).toBe('a-very-long-workspace-path-ending');
+      const single = TestBed.createComponent(UiFilterChips);
+      single.componentRef.setInput('options', options);
+      await single.whenStable();
+      expect((single.nativeElement as HTMLElement).querySelector('button')?.hasAttribute('title')).toBe(false);
+    });
+
+    it('renders no All chip and no check glyph when a chip is pressed', async () => {
+      const { fixture, host, buttons } = await setup();
+      buttons[0].click();
+      await fixture.whenStable();
+      expect(host.querySelectorAll('button')).toHaveLength(3);
+      expect(host.querySelector('svg, ui-icon')).toBeNull();
+      expect(buttons[0].querySelector('.text')?.textContent).toBe('alpha');
+      expect(buttons[0].textContent.trim()).toBe('alpha3');
+    });
+  });
 });

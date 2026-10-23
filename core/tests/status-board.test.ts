@@ -1,6 +1,7 @@
 // The status board (spec 071, ISC-593, ISC-584, ISC-583, ISC-594): `statusBoard` turns one dashboard model per
 // registered workspace into the status widget's answer: the open specs and those closed at most 24 hours before `now`,
 // archived ones included, grouped by workspace in the caller's order, with the KPIs over exactly the listed specs.
+// Spec 072 (ISC-599): each listed spec carries the dashboard row's next command, null for an archived spec.
 // The fixture is synthetic: three workspaces, one unreadable, with specs closed 2 h and 30 h before a fixed clock.
 import { describe, expect, test } from 'bun:test';
 
@@ -18,7 +19,7 @@ const H30 = '2026-03-09T06:00:00Z';
 const H24 = '2026-03-09T12:00:00Z';
 
 /** A dashboard row with only the fields the board reads; the rest of the row is irrelevant to it. */
-function row(id: string, stage: Stage, closedAt: string | null, closed: number, total: number, state?: ItemState): DashboardSpecRow {
+function row(id: string, stage: Stage, closedAt: string | null, closed: number, total: number, state?: ItemState, nextCommand: string | null = null): DashboardSpecRow {
   return {
     id,
     slug: `${id}-spec-${id}`,
@@ -26,6 +27,7 @@ function row(id: string, stage: Stage, closedAt: string | null, closed: number, 
     stage,
     closedAt,
     progress: { closed, total },
+    nextCommand,
     ...(state === undefined ? {} : { state: { kind: 'spec', id, state } }),
   } as unknown as DashboardSpecRow;
 }
@@ -42,7 +44,7 @@ const INPUT: StatusInput[] = [
     pathTail: 'lantern',
     readable: true,
     model: model(
-      [row('001', 'build', null, 2, 5, 'running'), row('002', 'done', H2, 4, 4, 'done'), row('003', 'done', H30, 3, 3, 'done'), row('004', 'done', null, 1, 1)],
+      [row('001', 'build', null, 2, 5, 'running', '/spec implement 001'), row('002', 'done', H2, 4, 4, 'done'), row('003', 'done', H30, 3, 3, 'done'), row('004', 'done', null, 1, 1)],
       [archived('005', H2, 6, 6), archived('006', H30, 2, 2)],
     ),
   },
@@ -71,8 +73,8 @@ describe('the types and the barrel (ISC-593)', () => {
     expect(board.workspaces.find((w) => w.slug === 'gone')?.specs).toEqual([]);
   });
 
-  test('a spec carries id, slug, title, stage, claims, closedAt, state and archived, and nothing else', () => {
-    expect(spec('lantern', '002')).toEqual({ id: '002', slug: '002-spec-002', title: 'Spec 002', stage: 'done', claims: { closed: 4, total: 4 }, closedAt: H2, state: 'done', archived: false });
+  test('a spec carries id, slug, title, stage, claims, closedAt, state, archived and nextCommand, and nothing else', () => {
+    expect(spec('lantern', '002')).toEqual({ id: '002', slug: '002-spec-002', title: 'Spec 002', stage: 'done', claims: { closed: 4, total: 4 }, closedAt: H2, state: 'done', archived: false, nextCommand: null });
   });
 
   test('no field names an absolute path', () => {
@@ -83,7 +85,10 @@ describe('the types and the barrel (ISC-593)', () => {
       else if (v !== null && typeof v === 'object') Object.values(v).forEach(walk);
     };
     walk(board);
-    expect(strings.filter((s) => s.startsWith('/') || /^[A-Za-z]:[\\/]/.test(s))).toEqual([]);
+    // A plugin command (`/spec implement 001`) starts with a slash but is no path: one slash, then the command words.
+    const command = (s: string): boolean => /^\/spec [^/\\]+$/.test(s);
+    expect(strings.filter((s) => (s.startsWith('/') && !command(s)) || /^[A-Za-z]:[\\/]/.test(s))).toEqual([]);
+    expect(strings.filter(command)).toEqual(['/spec implement 001']);
   });
 });
 
@@ -94,7 +99,7 @@ describe('statusBoard lists open and recently closed specs (ISC-584)', () => {
   });
 
   test('archived specs closed within the window come after the active rows', () => {
-    expect(spec('lantern', '005')).toEqual({ id: '005', slug: '005-old-005', title: 'Old 005', stage: 'done', claims: { closed: 6, total: 6 }, closedAt: H2, state: 'done', archived: true });
+    expect(spec('lantern', '005')).toEqual({ id: '005', slug: '005-old-005', title: 'Old 005', stage: 'done', claims: { closed: 6, total: 6 }, closedAt: H2, state: 'done', archived: true, nextCommand: null });
     expect(spec('lantern', '006')).toBeUndefined();
   });
 
@@ -132,5 +137,26 @@ describe('the run state of a listed spec (ISC-594)', () => {
     expect(spec('lantern', '001')?.state).toBe('running');
     expect(spec('lantern', '005')?.state).toBe('done');
     expect(spec('harbor', '010')?.state).toBeNull();
+  });
+});
+
+describe('the next command of a listed spec (ISC-599)', () => {
+  test('an open row carries its dashboard command in the plugin form', () => {
+    expect(spec('lantern', '001')?.nextCommand).toBe('/spec implement 001');
+  });
+
+  test('a row without a next command carries null', () => {
+    expect(spec('harbor', '010')?.nextCommand).toBeNull();
+    expect(spec('lantern', '002')?.nextCommand).toBeNull();
+  });
+
+  test('an archived spec carries null', () => {
+    expect(spec('lantern', '005')?.archived).toBe(true);
+    expect(spec('lantern', '005')?.nextCommand).toBeNull();
+  });
+
+  test('the command comes from the row as it stands, never recomputed', () => {
+    const own = statusBoard([{ slug: 'c', pathTail: 'c', readable: true, model: model([row('050', 'plan', null, 0, 2, undefined, '/spec review 050 code')]) }], NOW);
+    expect(own.workspaces[0]?.specs[0]?.nextCommand).toBe('/spec review 050 code');
   });
 });
