@@ -108,10 +108,9 @@
 }
 
 /*
- * The filter (spec 072, T19, ISC-603): a grid of two labelled chip rows, workspace then stage. Below a 400 px
- * container each eyebrow label sits above its row (16 px line, 4 px gap); from 400 px the labels take a column of
- * their own, on the first chip line even when the chips wrap. The labels are `aria-hidden`; the group names repeat
- * them. Nothing is sticky.
+ * The filter (spec 072, T19, ISC-603): a grid of two labelled chip rows, workspace then stage. At every width each
+ * eyebrow label is a line of its own above its row (16 px line, 4 px gap), so the chips start at the column's edge.
+ * The labels are `aria-hidden`; the group names repeat them. Nothing is sticky.
  */
 .widget-filter {
   display: grid;
@@ -131,22 +130,6 @@
 
 .widget-filter ui-filter-chips:not(:last-child) {
   margin-block-end: 8px;
-}
-
-@container widget (width >= 400px) {
-  .widget-filter {
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: 8px 12px;
-  }
-
-  .filter-label {
-    align-self: start;
-    line-height: 28px;
-  }
-
-  .widget-filter ui-filter-chips:not(:last-child) {
-    margin-block-end: 0;
-  }
 }
 
 .groups {
