@@ -12,7 +12,7 @@ import type { Db } from "../infra/db/db.ts";
 import type { Registry } from "../infra/db/registry.ts";
 import type { LifeosDetection } from "../infra/lifeos.ts";
 import { type DashboardLoad, type ServicesProbe, type StateClock, loadDashboard } from "./load.ts";
-import { type WorkspaceReading, readWorkspaceInput } from "./reading.ts";
+import { type ReadingOptions, type WorkspaceReading, readWorkspaceInput } from "./reading.ts";
 import { listServices } from "./services.ts";
 import { type ImagesOf, noImages } from "./summary.ts";
 
@@ -26,8 +26,17 @@ export type CatalogLoad =
   | { readable: true; catalog: LibraryCatalog; copies?: Readonly<Record<string, string>>; repoFiles?: Readonly<Record<string, RepoFileCopy>> }
   | { readable: false; error: UnreadableCode };
 
-/** Reads one workspace into its dashboard model (`loadDashboard`'s signature). */
-export type WorkspaceLoader = (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null, clock?: StateClock) => Promise<DashboardLoad>;
+/**
+ * Reads one workspace into its dashboard model (`loadDashboard`'s signature). `options.archive: false` reads no file
+ * under `specs/archive/` (the status board, spec 073, ISC-614); absent, the archive is read.
+ */
+export type WorkspaceLoader = (
+  root: string,
+  probe: ServicesProbe | null,
+  lifeosStateDir?: string | null,
+  clock?: StateClock,
+  options?: ReadingOptions,
+) => Promise<DashboardLoad>;
 
 export type DashboardApiOptions = {
   registry: Pick<Registry, "list" | "get">;

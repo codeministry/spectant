@@ -64,6 +64,10 @@
       <ui-chip variant="plain" data-head-chip="type" [icon]="typeIcon()">{{ 'types.' + type | transloco }}</ui-chip>
     }
     <ui-chip data-head-chip="stage" [tone]="stageLook().tone" [icon]="stageLook().icon">{{ 'stages.' + stage() | transloco }}</ui-chip>
+    <!-- Spec 073 C1 (ISC-612): an archived spec says so in the chip row, icon and word, right after its stage. -->
+    @if (archived()) {
+      <ui-chip variant="plain" data-head-chip="archived" icon="archive">{{ 'specs.archivedChip' | transloco }}</ui-chip>
+    }
     <ui-priority data-head-chip="priority" [mark]="true" [value]="priority()" />
     @if (waits(); as wait) {
       <ui-waits-chip data-head-chip="waits" [wait]="wait" [ws]="state.ws() ?? ''" [titles]="blockerTitles()" [meta]="true" />

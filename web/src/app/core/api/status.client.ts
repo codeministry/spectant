@@ -1,7 +1,7 @@
 import { STATUS_PATH, type StatusResponse } from '../../../../../server/src/contracts/status.contract';
 import type { ApiResult, HttpCore } from './http-core';
 
-/** The status widget's read (spec 071, T16, ISC-593): the open and recently closed specs of every workspace. */
+/** The status widget's read (spec 071, T16, ISC-593): the open specs of every workspace (spec 073, ISC-613). */
 export class StatusClient {
   constructor(private readonly core: HttpCore) {}
 

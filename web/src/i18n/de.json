@@ -2953,11 +2953,11 @@
     "title": "Spectant-Status",
     "kpi": {
       "repos": "Repos",
-      "closed": "Geschlossen",
+      "specs": "Specs",
       "claims": "Claims"
     },
     "unreadable": "Dieser Workspace konnte nicht gelesen werden.",
-    "empty": "Keine offenen oder kürzlich geschlossenen Specs.",
+    "empty": "Keine offenen Specs.",
     "agentRunning": "Agent läuft"
   }
 }

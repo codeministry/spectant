@@ -101,17 +101,29 @@ export function mergeStateOf(specs: readonly SpecFiles[], archived: readonly Spe
 }
 
 /**
+ * How much of the workspace a reading takes. `archive: false` (the status board, spec 073, ISC-614) reads no file under
+ * `specs/archive/`: the archived folders are known by their listed names alone, `input.archived` stays empty, and each
+ * still gives its merge-state row (`archived: true`, its branch from git), so an edge on an archived spec stays met as
+ * on the dashboard. Every other caller reads the archive (the default).
+ */
+export type ReadingOptions = { readonly archive?: boolean };
+
+/**
  * Reads the workspace at `root` into the model's input, without services. The lock sources come from `core/`'s
  * `readLockSources`: the repository's `.spectant/activity.jsonl` always, the LifeOS frontier locks only with a
- * `lifeosStateDir` (T51, ISC-37). Without one, no path outside `root` is read.
+ * `lifeosStateDir` (T51, ISC-37). Without one, no path outside `root` is read. With `options.archive` false, no path
+ * under `specs/archive/` is read either (ISC-614).
  */
-export async function readWorkspaceInput(root: string, lifeosStateDir: string | null = null): Promise<WorkspaceReading> {
+export async function readWorkspaceInput(root: string, lifeosStateDir: string | null = null, options: ReadingOptions = {}): Promise<WorkspaceReading> {
+  const readArchive = options.archive ?? true;
   try {
     // A missing root, a file or a directory without read permission fails here, not as an empty workspace.
     const unreadable = workspaceUnreadable(root);
     if (unreadable !== null) throw new Unreadable(unreadable);
     const specs: SpecFiles[] = [];
     const archived: SpecFiles[] = [];
+    // The archived folders by name alone when the archive is not read: no text, only their merge-state rows (ISC-614).
+    const archivedNames: SpecFiles[] = [];
     const perSpec: Record<string, SpecRead> = {};
     const copies: Record<string, string> = {};
     const listed = listSpecs(root);
@@ -120,11 +132,12 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     const refs = withWorktreeOnly(listed, worktreeOnly);
     const worktrees = view.live.length === 0 ? undefined : { ...view.assignment, worktrees: view.live };
     for (const ref of refs) {
-      const main = specFiles(ref.dir, ref.slug);
       if (ref.archived) {
-        archived.push(main);
+        if (readArchive) archived.push(specFiles(ref.dir, ref.slug));
+        else archivedNames.push({ folder: ref.slug, texts: {} });
         continue;
       }
+      const main = specFiles(ref.dir, ref.slug);
       const source = await specSourceFor(root, ref, main, view);
       specs.push(source.files);
       if (source.read !== null) perSpec[ref.slug] = source.read;
@@ -141,7 +154,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
       readIdeaSources(root, worktreeReading),
     ]);
     const workflow = parseWorkflow(workflowFile.text);
-    const mergeState = mergeStateOf(specs, archived, branches);
+    const mergeState = mergeStateOf(specs, readArchive ? archived : archivedNames, branches);
     // Each file's conflict once (ISC-209.1): every repository file is read once in this reading.
     const sourceDiagnostics = sourceFindings([master, constitution, tldr, workflowFile, ...ideas.reads]);
     return {
