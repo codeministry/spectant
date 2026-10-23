@@ -87,6 +87,12 @@ export const API_PREFIX = "/api/";
  */
 export const SPA_FALLBACK_PREFIXES: readonly string[] = ["/w/"];
 
+/**
+ * Client-side routes matched exactly: the root and `/widget`, the status widget that `window.open` loads as a fresh
+ * document in its own window (spec 071), so it must get `index.html` from the server, not a 404.
+ */
+export const SPA_EXACT_PATHS: readonly string[] = ["/", "/widget"];
+
 /** One embedded file of the web build. */
 export type EmbeddedAsset = {
   /** URL path the server answers on, always starting with `/`, POSIX separators: `/main-2GZVUD4R.js`. */
@@ -196,14 +202,15 @@ export function cacheControlFor(immutable: boolean): string {
  * Whether a request path is a client-side route that gets `index.html` (the SPA fallback). Takes
  * `URL.pathname`, so no query string or fragment.
  *
- * True for exactly `/` and for paths under `SPA_FALLBACK_PREFIXES` (`/w/…`). Never for `API_PREFIX`: a missing
+ * True for exactly the paths in `SPA_EXACT_PATHS` (`/`, `/widget`) and for paths under `SPA_FALLBACK_PREFIXES`
+ * (`/w/…`). Never for `API_PREFIX`: a missing
  * API route must be a JSON 404, not an HTML 200. Never when the last segment ends in an extension from
  * `CONTENT_TYPES`: a missing `main-….js` must 404, because an HTML body under a script URL fails as an opaque
  * MIME error. Only known asset extensions count, because workspace slugs are repository basenames and a repository
  * named `example.com` must still open at `/w/example.com`.
  */
 export function isSpaRoute(path: string): boolean {
-  if (path === "/") return true;
+  if (SPA_EXACT_PATHS.includes(path)) return true;
   if (path.startsWith(API_PREFIX)) return false;
   if (!SPA_FALLBACK_PREFIXES.some((prefix) => path.startsWith(prefix))) return false;
   return !(extensionOf(path) in CONTENT_TYPES);

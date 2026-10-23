@@ -103,6 +103,9 @@ export const routes: Routes = [
   // The primitives gallery the browser tier measures (T29 to T31). Lazy, so it ships as a separate chunk that only
   // `/__ui` loads and never weighs on the initial bundle; outside the shell on purpose (see ui-gallery.ts).
   { path: '__ui', loadComponent: () => import('./dev/ui-gallery/ui-gallery').then((m) => m.UiGallery) },
+  // Spec 071 (ISC-582): the status widget, its own browser window; outside the shell like `/__ui` and a lazy chunk of
+  // its own. The root providers (theme, language, settings) run for it as for every route.
+  { path: 'widget', loadComponent: () => import('./features/status-widget/status-widget-page').then((m) => m.StatusWidgetPage) },
   // Every other route renders inside the one shell (ISC-73); an unknown path is the not-found page, never a redirect.
   {
     path: '',

@@ -14,12 +14,14 @@ import type {
 } from '../../../../server/src/contracts/spec-routes.contract';
 import type { Note, NoteCounts, NoteDraft, NotesQuery } from '../../../../server/src/contracts/note-routes.contract';
 import type { AddWorkspaceRequest, ImageKind } from '../../../../server/src/contracts/workspace-admin.contract';
+import type { StatusResponse } from '../../../../server/src/contracts/status.contract';
 import { ActorsClient } from './api/actors.client';
 import { type ApiResult, HttpCore, type PutResult, type WriteResult } from './api/http-core';
 import { LibraryClient, libraryAssetUrl, prototypeUrl } from './api/library.client';
 import { type NoteDeleteResult, NotesClient, type NoteWriteResult } from './api/notes.client';
 import { type BacklogOp, type PlanningBody, PlanningClient } from './api/planning.client';
 import { RunsClient } from './api/runs.client';
+import { StatusClient } from './api/status.client';
 import { type EvidenceTextResult, SpecReadsClient, type TasksResult } from './api/spec-reads.client';
 import { type GateWriteResult, SpecWritesClient, type TaskCheckResult } from './api/spec-writes.client';
 import { WorkspaceAdminClient, type WorkspaceAdminResult, workspaceImageUrl } from './api/workspace-admin.client';
@@ -55,6 +57,7 @@ export class ApiClient {
   private readonly specReadsApi = new SpecReadsClient(this.core);
   private readonly specWritesApi = new SpecWritesClient(this.core);
   private readonly notesApi = new NotesClient(this.core);
+  private readonly statusApi = new StatusClient(this.core);
 
   /** A GET through the ETag cache (`HttpCore.get`). */
   get<T>(url: string, onHeaders?: (headers: HttpHeaders) => void, notModified = false): Promise<ApiResult<T>> {
@@ -160,6 +163,11 @@ export class ApiClient {
 
   putActors(list: ActorsRequest): Promise<PutResult<readonly ActorMapping[]>> {
     return this.actorsApi.putActors(list);
+  }
+
+  /** Spec 071 (T16, ISC-593): the status widget's body over every workspace. */
+  status(): Promise<ApiResult<StatusResponse>> {
+    return this.statusApi.status();
   }
 
   boardQuery(ws: string): Promise<ApiResult<BoardQuery>> {

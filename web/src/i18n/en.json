@@ -2935,5 +2935,8 @@
     "actions": {
       "label": "Actions"
     }
+  },
+  "statusWidget": {
+    "title": "Spectant status"
   }
 }

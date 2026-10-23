@@ -9,6 +9,7 @@ import {
   EMBED_MANIFEST_PATH,
   HASHED_FILENAME,
   MANIFEST_TO_WEB_OUTPUT,
+  SPA_EXACT_PATHS,
   SPA_FALLBACK_PREFIXES,
   WEB_BASE_HREF,
   WEB_INDEX,
@@ -120,7 +121,14 @@ describe("isSpaRoute", () => {
   });
 
   test("anything outside the fallback prefixes is not an SPA route", () => {
-    for (const p of ["", "/w", "/x", "/index.html", "/main-2GZVUD4R.js", "/settings"]) expect(isSpaRoute(p)).toBe(false);
+    for (const p of ["", "/w", "/x", "/index.html", "/main-2GZVUD4R.js", "/settings", "/widget/x", "/widgets"]) {
+      expect(isSpaRoute(p)).toBe(false);
+    }
+  });
+
+  test("the status widget's own window loads /widget exactly (spec 071)", () => {
+    expect(SPA_EXACT_PATHS).toEqual(["/", "/widget"]);
+    expect(isSpaRoute("/widget")).toBe(true);
   });
 });
 

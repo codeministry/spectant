@@ -1,0 +1,20 @@
+<main class="widget">
+  <div class="column">
+    <h1 class="visually-hidden">{{ 'statusWidget.title' | transloco }}</h1>
+    <section class="kpis"></section>
+    <section class="groups">
+      @if (status(); as body) {
+        @for (ws of body.workspaces; track ws.slug) {
+          <div class="group" [attr.data-workspace]="ws.slug">
+            <h2 class="group-head">{{ ws.slug }}</h2>
+            <ul class="rows">
+              @for (spec of ws.specs; track spec.slug) {
+                <li class="row" [attr.data-spec]="spec.id">{{ spec.id }}</li>
+              }
+            </ul>
+          </div>
+        }
+      }
+    </section>
+  </div>
+</main>
