@@ -5,9 +5,9 @@
 // for the running pulse (ISC-594). No field names an absolute path: a workspace carries its slug and path tail only.
 //
 // Pure and browser-safe (type-only imports, no clock read): the server route and the web e2e stub both build their
-// answer here, so the two cannot drift.
-import type { ArchivedSpec } from './archive.ts';
-import type { DashboardModel, DashboardSpecRow } from './dashboard.ts';
+// answer here, so the two cannot drift. It reads a dashboard model through `StatusModel`, the slice it uses, never
+// through `dashboard.ts` or `archive.ts`: a type import of those type-checks their whole module graph, which fails the
+// web tsconfigs (`noPropertyAccessFromIndexSignature`) that import the status contract.
 import type { ItemState } from './files.ts';
 import type { Progress } from './frontmatter.ts';
 import type { Stage } from './stage.ts';
@@ -15,12 +15,38 @@ import type { Stage } from './stage.ts';
 /** How long a closed spec stays on the board: 24 hours after its `closedAt`, inclusive (ISC-584). */
 export const STATUS_CLOSED_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/** The fields of a `DashboardSpecRow` (`dashboard.ts`) the board reads. */
+interface StatusRow {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly stage: Stage;
+  readonly progress: Progress;
+  readonly closedAt: string | null;
+  readonly state?: { readonly state: ItemState };
+}
+
+/** The fields of an `ArchivedSpec` (`archive.ts`) the board reads. */
+interface StatusArchived {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly claims: Progress;
+  readonly closedAt: string | null;
+}
+
+/** The slice of a `DashboardModel` (`dashboard.ts`) the board reads; every dashboard model is one. */
+export interface StatusModel {
+  readonly specs: readonly StatusRow[];
+  readonly archive: readonly StatusArchived[];
+}
+
 /**
  * One registered workspace as the caller read it, in the workspace picker's order: its dashboard model when readable,
  * else the reason it is not (the server's unreadable code, e.g. `missing`).
  */
 export type StatusInput =
-  | { readonly slug: string; readonly pathTail: string; readonly readable: true; readonly model: DashboardModel }
+  | { readonly slug: string; readonly pathTail: string; readonly readable: true; readonly model: StatusModel }
   | { readonly slug: string; readonly pathTail: string; readonly readable: false; readonly error: string };
 
 /** One listed spec of a workspace (ISC-593). */
@@ -79,7 +105,7 @@ function closedRecently(closedAt: string | null, now: number): boolean {
   return !Number.isNaN(at) && now - at <= STATUS_CLOSED_WINDOW_MS;
 }
 
-const fromRow = (row: DashboardSpecRow): StatusSpec => ({
+const fromRow = (row: StatusRow): StatusSpec => ({
   id: row.id,
   slug: row.slug,
   title: row.title,
@@ -90,7 +116,7 @@ const fromRow = (row: DashboardSpecRow): StatusSpec => ({
   archived: false,
 });
 
-const fromArchive = (entry: ArchivedSpec): StatusSpec => ({
+const fromArchive = (entry: StatusArchived): StatusSpec => ({
   id: entry.id,
   slug: entry.slug,
   title: entry.title,
@@ -102,7 +128,7 @@ const fromArchive = (entry: ArchivedSpec): StatusSpec => ({
 });
 
 /** The listed specs of one model: open rows and recently closed rows in row order, then recently closed archived specs. */
-function listedSpecs(model: DashboardModel, now: number): StatusSpec[] {
+function listedSpecs(model: StatusModel, now: number): StatusSpec[] {
   const active = model.specs.filter((r) => r.stage !== 'done' || closedRecently(r.closedAt, now)).map(fromRow);
   const archived = model.archive.filter((a) => closedRecently(a.closedAt, now)).map(fromArchive);
   return [...active, ...archived];

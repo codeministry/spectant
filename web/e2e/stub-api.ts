@@ -10,6 +10,8 @@
  *
  * - `GET|HEAD /api/workspaces` → `[{slug, name, pathTail, readable, error?, counts}]` in list order, `counts` = the
  *   golden's `kpis`, `null` when unreadable.
+ * - `GET|HEAD /api/status` (spec 071, ISC-593) → core's `statusBoard` at `STUB_NOW` over that list in its order, each
+ *   readable workspace with the dashboard body its own `GET` gets in that session; 403, 405 with `STATUS_ALLOW`.
  * - `GET|HEAD /api/workspaces/:slug/dashboard` → the golden model, serialized as the server does (`JSON.stringify`);
  *   404 `{error: "not-found"}` for an unknown slug; 409 with the list entry for the unreadable workspace.
  * - Every route of `WORKSPACE_ROUTE_TABLE` with a golden family (`GET|HEAD /api/workspaces/:ws/planning`, spec 003
@@ -136,8 +138,8 @@
  * - `POST /api/__stub/bump?ws=<slug>` changes that workspace's dashboard for that session between two polls (T68,
  *   ISC-62): each call raises `kpis.claims.closed` by one, so the body and its ETag change as a file on disk would.
  *   Before its 204 it also pushes one `update` frame to every open `/api/events` stream of that session (spec 030,
- *   T17), as the real stream does after a change on disk: `{ws, views}` with the workspace's dashboard, planning tree
- *   and every spec page (`specs/NNN`), each view's `etag` and `body` the stub's own `GET` of that path with the
+ *   T17), as the real stream does after a change on disk: `{ws, views}` with the workspace's dashboard, planning tree,
+ *   every spec page (`specs/NNN`) and last `/api/status` (spec 071, ISC-587), each view's `etag` and `body` the stub's own `GET` of that path with the
  *   stream's headers, so a page that primes its cache with them gets a 304 on its next poll; a path that does not
  *   answer 200 under those headers is left out. 404 for a workspace the stub does not hold; 405 with `Allow: POST`
  *   for another method.
@@ -226,6 +228,8 @@ import type {
 } from '../../core/src/files';
 import { parseActor } from '../../core/src/actor';
 import type { PlanningHolder, PlanningModel } from '../../core/src/planning';
+import { type StatusInput, type StatusModel, statusBoard } from '../../core/src/status-board';
+import { STATUS_ALLOW, STATUS_PATH } from '../../server/src/contracts/status.contract';
 import {
   ACTIVITY_HASH_HEADER,
   ACTORS_ALLOW,
@@ -2843,7 +2847,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const state = stream.headers.get(STATE_HEADER) ?? defaultState;
     const found = isOneOf(STUB_STATES, state) ? viewOf(read(workspaceRoutes.planning(ws)), state).workspaces.get(ws) : undefined;
     const ids = found && 'tree' in found ? [...new Set(found.tree.specs.map((spec) => spec.spec.head.id))] : [];
-    const paths = [`${WORKSPACES_PATH}/${encodeURIComponent(ws)}/dashboard`, workspaceRoutes.planning(ws), ...ids.map((id) => specRoutes.spec(ws, id))];
+    // Last the status widget's view across all workspaces, in every frame (spec 071, ISC-587).
+    const paths = [`${WORKSPACES_PATH}/${encodeURIComponent(ws)}/dashboard`, workspaceRoutes.planning(ws), ...ids.map((id) => specRoutes.spec(ws, id)), STATUS_PATH];
     const views: LiveView[] = [];
     for (const path of paths) {
       const req = read(path);
@@ -3021,18 +3026,37 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    const variant = denseViewOf(req) ?? sidebarViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req);
-    const source = variant?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
     // The hash a run release sends back (spec 040, ISC-226), as `api.ts` sends it: the log the request's variant reads.
     const activityHash = { [ACTIVITY_HASH_HEADER]: rawSha256(activityTextOf(req, slug, found.tree.root)) };
+    return workspaceJson(req, 200, dashboardBodyOf(req, slug), activityHash);
+  };
+  /** The dashboard body this request reads for a readable workspace slug: the variant's or golden, moved, taken, bumped. */
+  const dashboardBodyOf = (req: Request, slug: string): unknown => {
+    const variant = denseViewOf(req) ?? sidebarViewOf(req) ?? waitsViewOf(req) ?? runViewOf(req) ?? edgeViewOf(req);
+    const source = variant?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
     const added = addedOf(req, slug);
     // After a 200 stage move the session's dashboard is core's over the moved files (spec 067, T29); a variant or the
     // worktree overlay keeps its own body, which the move does not reach.
     const moved = variant || worktreesOn(req) ? undefined : boards.get(sessionOf(req))?.dashboards.get(slug);
     const model = added ? adminGoldenOf(added.golden).dashboard.model : (moved ?? source.get(slug)?.model);
     const fixture = req.headers.get(LOCKS_HEADER) === 'working' && slug === STUB_WORKING.workspace ? workingEdits : [];
-    const body = takenDashboard(bumpDashboard(takenDashboard(model, fixture), bumpsOf(req, slug)), lockEditsOf(req, slug));
-    return workspaceJson(req, 200, body, activityHash);
+    return takenDashboard(bumpDashboard(takenDashboard(model, fixture), bumpsOf(req, slug)), lockEditsOf(req, slug));
+  };
+  /**
+   * `GET|HEAD /api/status` (spec 071, ISC-593; `status.contract.ts`): core's `statusBoard` at `STUB_NOW` over the
+   * request's workspace list in its order, each readable entry with the dashboard body its own `GET …/dashboard` gets
+   * (so a session's move, bump or lock shows here too), each unreadable one with its list `error`. 403 the guard, 405
+   * with `STATUS_ALLOW`.
+   */
+  const statusRoute = (req: Request, state: StubState): Response => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'GET' && req.method !== 'HEAD') return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: STATUS_ALLOW });
+    const inputs = viewOf(req, state).list.map(({ slug, pathTail, readable, error }): StatusInput =>
+      readable
+        ? { slug, pathTail, readable: true, model: dashboardBodyOf(req, slug) as StatusModel }
+        : { slug, pathTail, readable: false, error: error ?? 'missing' },
+    );
+    return workspaceJson(req, 200, statusBoard(inputs, LIVE_NOW));
   };
 
   /**
@@ -3868,6 +3892,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
     // After the header checks: a stream's headers are the ones its synthetic reads go out with.
     if (pathname === EVENTS_PATH) return eventsRoute(req);
+    if (pathname === STATUS_PATH) {
+      const state = req.headers.get(STATE_HEADER) ?? defaultState;
+      if (!isOneOf(STUB_STATES, state)) return settingsError(400, { error: 'unknown-stub-state', state, states: [...STUB_STATES] });
+      return statusRoute(req, state);
+    }
 
     if (noteAllowFor(pathname) !== null) {
       const state = req.headers.get(STATE_HEADER) ?? defaultState;

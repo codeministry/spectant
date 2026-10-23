@@ -793,6 +793,7 @@
         "other": "Liest {{count}} Workspaces"
       },
       "board": "Round-Board öffnen",
+      "widget": "Status-Widget öffnen",
       "services": "Dev-Dienste",
       "openService": "{{kind}} auf Port {{port}} in neuem Tab öffnen",
       "noServices": "In diesem Workspace läuft kein Dev-Dienst.",

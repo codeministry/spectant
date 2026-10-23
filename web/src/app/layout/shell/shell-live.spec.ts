@@ -5,6 +5,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import de from '../../../i18n/de.json';
 import en from '../../../i18n/en.json';
 import { LockSourceService } from '../../core/lock-source.service';
+import type { SheetTier } from '../../shared/ui/overlay/sheet';
 import { RefreshService } from './refresh.service';
 import { ShellData } from './shell-data.service';
 import { ShellLive } from './shell-live';
@@ -23,11 +24,20 @@ type Lang = 'en' | 'de';
 type Source = 'none' | 'activity';
 const CATALOGUES = { en, de } as const;
 
+/** Where the popover opens: the open workspace (null outside one), the open spec's board link (null without one), the tier. */
+interface Place {
+  readonly ws: string | null;
+  readonly link: readonly string[] | null;
+  readonly tier: SheetTier;
+}
+const SPEC_PAGE: Place = { ws: 'harbor', link: ['/w', 'harbor', 's', '002', 'board'], tier: 'medium' };
+
 /**
- * Opens the header's status popover alone in `lang` under lock source `source`: a route-only `ShellState` on harbor,
- * a `ShellData` without services, a stub `RefreshService`; the popover's `showPopover` is stubbed, as the DOM has none.
+ * Opens the header's status popover alone in `lang` under lock source `source` at `place` (harbor's spec page by
+ * default): a route-only `ShellState`, a `ShellData` with two workspaces and no services, a stub `RefreshService`; the
+ * popover's `showPopover` and the sheet's `showModal` are stubbed by the caller, as the DOM has neither.
  */
-async function openPopover(lang: Lang, source: Source): Promise<HTMLElement> {
+async function openPopover(lang: Lang, source: Source, place: Place = SPEC_PAGE): Promise<HTMLElement> {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -38,15 +48,18 @@ async function openPopover(lang: Lang, source: Source): Promise<HTMLElement> {
     ],
     providers: [
       provideRouter([]),
-      { provide: ShellState, useValue: { ws: signal('harbor') } },
-      { provide: ShellData, useValue: { workspaceList: signal([{ slug: 'harbor' }]), dashboard: { value: signal(undefined) } } },
+      { provide: ShellState, useValue: { ws: signal(place.ws), tier: signal(place.tier) } },
+      {
+        provide: ShellData,
+        useValue: { workspaceList: signal([{ slug: 'harbor' }, { slug: 'quay' }]), dashboard: { value: signal(undefined) } },
+      },
       { provide: RefreshService, useValue: { lastRefresh: signal(0), refresh: () => undefined } },
     ],
     deferBlockBehavior: DeferBlockBehavior.Playthrough,
   });
   TestBed.inject(LockSourceService).connect(signal({ lockSource: source, lock: null, agentsWorking: 0 }));
   const fixture = TestBed.createComponent(ShellLive);
-  fixture.componentRef.setInput('link', ['/w', 'harbor', 's', '002', 'board']);
+  fixture.componentRef.setInput('link', place.link);
   await fixture.whenStable();
   const root = fixture.nativeElement as HTMLElement;
   root.querySelector<HTMLButtonElement>('[data-control="live"]')?.click();
@@ -111,5 +124,89 @@ describe('ShellLive popover name (spec 071, ISC-595)', () => {
     // Nothing precedes the reading line: it is the panel's first element, and no heading sits anywhere in the panel.
     expect(panel?.firstElementChild?.hasAttribute('data-live-reading')).toBe(true);
     expect(panel?.querySelector('h1, h2, h3, h4, h5, h6, [role="heading"]')).toBeNull();
+  });
+});
+
+/** Each element child of the popover's (or the sheet's) content, named by what it is, in DOM order. */
+function rows(panel: Element | null): string[] {
+  return [...(panel?.children ?? [])].map((row) => {
+    if (row.hasAttribute('data-live-reading')) return 'reading';
+    if (row.hasAttribute('data-live-widget')) return 'widget';
+    if (row.hasAttribute('data-live-board')) return 'board';
+    if (row.classList.contains('pop-sep')) return 'sep';
+    if (row.classList.contains('pop-head')) return `head:${row.textContent.trim()}`;
+    if (row.hasAttribute('data-live-services-empty')) return 'no-services';
+    if (row.hasAttribute('data-live-service')) return 'service';
+    return row.tagName.toLowerCase();
+  });
+}
+
+/**
+ * Spec 071 T21/T22 (ISC-580): the open status popover lists, top to bottom, the reading line with its dot, the "Open
+ * status widget" button (the one autofocus target), the round-board link only while a spec is open, then Dev services;
+ * below 640 px (compact) the same rows in the same order sit in a bottom `ui-sheet` named "Status", without a heading.
+ */
+describe('ShellLive popover order (spec 071, ISC-580)', () => {
+  const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+  const dialogProto = HTMLDialogElement.prototype as unknown as Record<string, unknown>;
+  beforeEach(() => {
+    proto['showPopover'] = vi.fn();
+    proto['hidePopover'] = vi.fn();
+    dialogProto['showModal'] = vi.fn(function (this: HTMLDialogElement) {
+      this.setAttribute('open', '');
+    });
+    dialogProto['close'] = vi.fn(function (this: HTMLDialogElement) {
+      this.removeAttribute('open');
+    });
+  });
+  afterEach(() => {
+    delete proto['showPopover'];
+    delete proto['hidePopover'];
+    delete dialogProto['showModal'];
+    delete dialogProto['close'];
+  });
+
+  const ROUTES = [
+    ['/', null, null],
+    ['/w/harbor', 'harbor', null],
+    ['/w/harbor/s/002', 'harbor', SPEC_PAGE.link],
+  ] as const;
+  const CASES = (['medium', 'wide', 'compact'] as const).flatMap((tier) =>
+    (['en', 'de'] as const).flatMap((lang) => ROUTES.map(([route, ws, link]) => [tier, lang, route, { ws, link, tier }] as const)),
+  );
+
+  it.each(CASES)('at %s in %s on %s: reading, widget button, board link only on a spec, dev services', async (tier, lang, route, place) => {
+    const root = await openPopover(lang, 'activity', place);
+    const live = CATALOGUES[lang].shell.live;
+    const panel = tier === 'compact' ? root.querySelector('ui-sheet dialog .body') : root.querySelector('ui-popover.live-pop .panel');
+    expect(panel).not.toBeNull();
+    expect(root.querySelector('[data-control="live"]')?.getAttribute('aria-expanded')).toBe('true');
+    if (tier === 'compact') {
+      expect(root.querySelector('ui-popover')).toBeNull();
+      const dialog = root.querySelector('ui-sheet dialog');
+      expect(dialog?.hasAttribute('open')).toBe(true);
+      expect(dialog?.getAttribute('aria-label')).toBe('Status');
+      expect(dialog?.querySelector('h1, h2, h3, h4, h5, h6, [role="heading"]')).toBeNull();
+    } else {
+      expect(root.querySelector('ui-sheet')).toBeNull();
+    }
+
+    const board = route === '/w/harbor/s/002' ? ['board'] : [];
+    expect(rows(panel)).toEqual(['reading', 'widget', ...board, 'sep', `head:${live.services}`, 'no-services']);
+    const reading = panel?.querySelector('[data-live-reading]') ?? null;
+    expect(reading?.querySelector('.status-dot')).not.toBeNull();
+    const count = route === '/' ? 2 : 1;
+    expect(words(reading)).toBe((count === 1 ? live.reading.one : live.reading.other).replace('{{count}}', String(count)));
+
+    const widget = panel?.querySelector('[data-live-widget]') ?? null;
+    expect(widget?.tagName).toBe('BUTTON');
+    expect(widget?.getAttribute('type')).toBe('button');
+    expect(widget?.classList.contains('pop-item')).toBe(true);
+    expect(words(widget)).toBe(lang === 'en' ? 'Open status widget' : 'Status-Widget öffnen');
+    const icons = [...(widget?.querySelectorAll('ui-icon') ?? [])];
+    expect(icons.map((icon) => icon.getAttribute('data-icon'))).toEqual(['app-window', 'external-link']);
+    expect(icons.map((icon) => icon.classList.contains('go'))).toEqual([false, true]);
+    // The one autofocus target is the widget button, the first row always present; the board link follows by Tab.
+    expect([...(panel?.querySelectorAll('[data-autofocus]') ?? [])]).toEqual([widget]);
   });
 });

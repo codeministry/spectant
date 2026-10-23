@@ -793,6 +793,7 @@
         "other": "Reading {{count}} workspaces"
       },
       "board": "Open the round board",
+      "widget": "Open status widget",
       "services": "Dev services",
       "openService": "Open {{kind}} on port {{port}} in a new tab",
       "noServices": "No dev service is running in this workspace.",

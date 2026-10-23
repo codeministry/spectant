@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { DashboardBody } from '../../core/api.service';
@@ -6,6 +7,7 @@ import { LockSourceService } from '../../core/lock-source.service';
 import { RefreshService } from './refresh.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiPopover } from '../../shared/ui/overlay/popover';
+import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { readWorkspace } from '../command-palette/palette-index';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
@@ -16,13 +18,15 @@ import { ShellState } from './shell-state.service';
  * dot, lime while one of the workspace's dev services is up and the track colour otherwise, never colour alone, since
  * its name carries the agent source and the service count. It stays this narrow at every width. The live popover holds
  * what is read, the round board while a spec is open and the workspace's dev services or the empty line; since spec
- * 071 (ISC-579) it shows no "Live" heading, no "Updated … ago" line and no agent source text. Refresh calls
- * `RefreshService.refresh()` (as `r` and the palette do). Below 640 px only the indicator stays. The popover loads
- * after first render (`@defer`), like the header's menus.
+ * 071 (ISC-579) it shows no "Live" heading, no "Updated … ago" line and no agent source text. Since ISC-580 its rows
+ * run: the reading line, "Open status widget" (`[data-live-widget]`, the autofocus target), the round board only
+ * while a spec is open, then Dev services; at the compact tier the same template opens in a bottom `ui-sheet` named
+ * "Status". Refresh calls `RefreshService.refresh()` (as `r` and the palette do). Below 640 px only the indicator
+ * stays. The overlay loads after first render (`@defer`), like the header's menus.
  */
 @Component({
   selector: 'app-shell-live',
-  imports: [RouterLink, TranslocoPipe, UiIcon, UiPopover],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiIcon, UiPopover, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-live.html',
   styleUrl: './shell-live.css',
@@ -46,6 +50,11 @@ export class ShellLive {
     return readWorkspace(ws, ws, result.body).services;
   });
 
+  /** Below 640 px the status opens as a bottom sheet instead of the popover (web/CLAUDE.md § Shell). */
+  protected readonly compact = computed(() => this.state.tier() === 'compact');
+  /** The compact sheet's open state; the modal sheet makes the page inert, so only its own dismissals close it. */
+  protected readonly sheetOpen = signal(false);
+
   protected readonly livePop = viewChild<UiPopover>('livePop');
   private openAtPress: boolean | null = null;
 
@@ -57,16 +66,22 @@ export class ShellLive {
   protected toggle(trigger: HTMLElement): void {
     const wasOpen = this.openAtPress ?? this.livePop()?.open() ?? false;
     this.openAtPress = null;
+    // WebKit does not focus a clicked button; the overlay returns focus to whatever had it on open.
+    if (this.compact()) {
+      trigger.focus();
+      this.sheetOpen.set(true);
+      return;
+    }
     if (wasOpen) {
       this.close();
       return;
     }
-    // WebKit does not focus a clicked button; the popover returns focus to whatever had it on open.
     trigger.focus();
     this.livePop()?.show(trigger);
   }
 
   protected close(): void {
     this.livePop()?.close();
+    this.sheetOpen.set(false);
   }
 }

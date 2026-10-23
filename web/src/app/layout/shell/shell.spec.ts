@@ -831,9 +831,11 @@ describe('ShellComponent', () => {
       setUp(TWO);
       const { root, harness } = await open('/w/harbor/s/002', 390);
       // The workspace and spec pickers, the page menu (spec 024 T80), the area menu (T37), the overflow menu and the
-      // settings panel (spec 024 T76, T40): all six are bottom sheets at compact. // spec 024: PAGE select (principal 2026-10-13)
-      expect(root.querySelectorAll('ui-sheet')).toHaveLength(6);
-      expect(root.querySelectorAll('ui-popover.picker-popover, ui-popover.area-popover')).toHaveLength(0);
+      // settings panel (spec 024 T76, T40) and the status popover (spec 071, ISC-580): all seven are bottom sheets at
+      // compact. // spec 024: PAGE select (principal 2026-10-13)
+      expect(root.querySelectorAll('ui-sheet')).toHaveLength(7);
+      expect(root.querySelectorAll('ui-sheet.live-sheet')).toHaveLength(1);
+      expect(root.querySelectorAll('ui-popover.picker-popover, ui-popover.area-popover, ui-popover.live-pop')).toHaveLength(0);
       expect(root.querySelectorAll('header')).toHaveLength(1);
 
       const picker = control(root, 'spec');

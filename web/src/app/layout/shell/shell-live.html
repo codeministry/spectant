@@ -13,7 +13,7 @@
         aria-haspopup="dialog"
         [attr.data-source]="source()"
         [attr.data-services]="services().length === 0 ? 'down' : 'up'"
-        [attr.aria-expanded]="livePop()?.open() ?? false"
+        [attr.aria-expanded]="compact() ? sheetOpen() : (livePop()?.open() ?? false)"
         [attr.aria-label]="'shell.live.status' | transloco: { source: sourceText, services: servicesText }"
         [attr.title]="sourceText + ' · ' + servicesText"
         (pointerdown)="press()"
@@ -34,39 +34,55 @@
       </button>
     </div>
 
+    <!-- One content for both forms, so the popover and the compact sheet list the same rows in the same order. -->
+    <ng-template #content>
+      <div class="service" data-live-reading>
+        <span class="status-dot" [attr.data-source]="source()" aria-hidden="true"></span>
+        <span class="grow">{{ (workspaceCount() === 1 ? 'shell.live.reading.one' : 'shell.live.reading.other') | transloco: { count: workspaceCount() } }}</span>
+      </div>
+      <button type="button" class="pop-item" data-live-widget data-autofocus>
+        <ui-icon name="app-window" [size]="16" />
+        <span class="grow">{{ 'shell.live.widget' | transloco }}</span>
+        <ui-icon class="go" name="external-link" [size]="14" />
+      </button>
+      @if (link(); as target) {
+        <a class="pop-item" data-live-board [routerLink]="target" (click)="close()">
+          <ui-icon name="workflow" [size]="16" />
+          <span class="grow">{{ 'shell.live.board' | transloco }}</span>
+          <ui-icon class="go" name="arrow-right" [size]="14" />
+        </a>
+      }
+      <div class="pop-sep"></div>
+      <div class="pop-head">{{ 'shell.live.services' | transloco }}</div>
+      @for (service of services(); track service.port) {
+        @let kind = service.label ?? service.process;
+        <a
+          class="service service-link"
+          data-live-service
+          target="_blank"
+          rel="noopener noreferrer"
+          [href]="service.url"
+          [attr.aria-label]="'shell.live.openService' | transloco: { kind, port: service.port }"
+        >
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="mono">{{ service.port }}</span>
+          <span class="meta grow">{{ kind }}</span>
+          <ui-icon class="go" name="arrow-right" [size]="13" />
+        </a>
+      } @empty {
+        <div class="service meta" data-live-services-empty>{{ 'shell.live.noServices' | transloco }}</div>
+      }
+    </ng-template>
+
     @defer (on immediate) {
-      <ui-popover #livePop class="live-pop" placement="end" [label]="'shell.live.label' | transloco">
-        <div class="service" data-live-reading>
-          <span class="status-dot" [attr.data-source]="source()" aria-hidden="true"></span>
-          <span class="grow">{{ (workspaceCount() === 1 ? 'shell.live.reading.one' : 'shell.live.reading.other') | transloco: { count: workspaceCount() } }}</span>
-        </div>
-        @if (link(); as target) {
-          <a class="pop-item" data-live-board data-autofocus [routerLink]="target" (click)="close()">
-            <ui-icon name="workflow" [size]="16" />
-            <span class="grow">{{ 'shell.live.board' | transloco }}</span>
-            <ui-icon class="go" name="arrow-right" [size]="14" />
-          </a>
-        }
-        <div class="pop-sep"></div>
-        <div class="pop-head">{{ 'shell.live.services' | transloco }}</div>
-        @for (service of services(); track service.port) {
-          @let kind = service.label ?? service.process;
-          <a
-            class="service service-link"
-            data-live-service
-            target="_blank"
-            rel="noopener noreferrer"
-            [href]="service.url"
-            [attr.aria-label]="'shell.live.openService' | transloco: { kind, port: service.port }"
-          >
-            <span class="status-dot" aria-hidden="true"></span>
-            <span class="mono">{{ service.port }}</span>
-            <span class="meta grow">{{ kind }}</span>
-            <ui-icon class="go" name="arrow-right" [size]="13" />
-          </a>
-        } @empty {
-          <div class="service meta" data-live-services-empty>{{ 'shell.live.noServices' | transloco }}</div>
-        }
-      </ui-popover>
+      @if (compact()) {
+        <ui-sheet class="live-sheet" tier="compact" [(open)]="sheetOpen" [label]="'shell.live.label' | transloco">
+          <ng-container [ngTemplateOutlet]="content" />
+        </ui-sheet>
+      } @else {
+        <ui-popover #livePop class="live-pop" placement="end" [label]="'shell.live.label' | transloco">
+          <ng-container [ngTemplateOutlet]="content" />
+        </ui-popover>
+      }
     }
   
