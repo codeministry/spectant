@@ -1,43 +1,7 @@
 @if (count() > 0) {
   <div class="acts" role="group" [attr.aria-label]="'detailSidebar.actions.label' | transloco" [attr.data-single]="count() === 1 ? '' : null">
-    @if (item(); as it) {
-      <button
-        #toggle
-        ui-button
-        variant="outline"
-        class="stage-toggle"
-        data-stage-change
-        [attr.aria-expanded]="open()"
-        [attr.aria-controls]="listId"
-        [attr.aria-busy]="saving() ? 'true' : null"
-        (click)="flip()"
-      >
-        <ui-icon name="arrow-right" [size]="16" />
-        <span class="stage-word">{{ 'detailSidebar.actions.stage' | transloco }}</span>
-        <ui-icon class="chev" [attr.data-open]="open() ? '' : null" name="chevron-down" [size]="16" />
-      </button>
-    }
     @if (running(); as info) {
       <app-run-release class="release" [info]="info" />
     }
   </div>
-  @if (open() && item(); as it) {
-    <div class="targets" #list [id]="listId" data-stage-list>
-      @if (runRefusal(); as rr) {
-        <app-refusal-notice data-stage-run [refusal]="rr" [dismissible]="false" />
-      }
-      <ul
-        ui-stage-targets
-        [attr.aria-label]="'detailSidebar.actions.list' | transloco: { id: it.id }"
-        [stages]="stages()"
-        [from]="it.stage"
-        [targets]="it.targets"
-        [movable]="movable()"
-        [refusal]="refusal()"
-        [tall]="compact()"
-        (choose)="choose($event)"
-        (dismiss)="dismiss()"
-      ></ul>
-    </div>
-  }
 }

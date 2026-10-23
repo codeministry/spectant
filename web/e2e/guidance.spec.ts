@@ -5,8 +5,8 @@
  *
  * - `bun run --cwd web e2e -- -g "guidance board"` (T27, ISC-240): on the workspace board and the workspace dashboard,
  *   the "Waits on you" marker stands exactly on the cards and Specs-table rows (the Specs page since spec 058) whose spec's own entry (`item: 'spec'`)
- *   is in `guidance.waits`; every open card, every guided row and every Next up entry carries the entry's catalogue
- *   sentence, and no Next item carries the marker.
+ *   is in `guidance.waits`; every open card, every guided row and every Next up row carries the entry's catalogue
+ *   sentence (a Next up row as its link's description, spec 068), and no Next item carries the marker.
  */
 import type { APIRequestContext, Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
@@ -65,8 +65,8 @@ const text = (s: string | null | undefined): string => (s ?? '').replace(/\s+/gu
 type CardView = { key: string; id: string; state: string | null; marked: boolean; reason: string };
 /** One rendered Specs-table guide row. */
 type GuideView = { id: string; guide: string | null; marked: boolean; ring: boolean; hidden: boolean; described: boolean; sentence: string };
-/** One rendered Next up entry. */
-type NextView = { id: string; guided: boolean; sentence: string; marked: boolean };
+/** One rendered Next up row. */
+type NextView = { id: string; guided: boolean; sentence: string; marked: boolean; ring: boolean; hidden: boolean; described: boolean };
 
 async function boardCards(page: Page): Promise<CardView[]> {
   return page.locator('app-board-page app-board-card').evaluateAll((els) =>
@@ -105,14 +105,28 @@ async function guideRows(page: Page): Promise<GuideView[]> {
   );
 }
 
+/**
+ * Next up's rows (spec 068, T11, ISC-545): each entry is a spec-list row whose reason is the hidden `next-why-<id>`
+ * (with `data-next-guide` for a guidance entry), named in the row link's `aria-describedby` and ending its `title`.
+ */
 async function nextUp(page: Page): Promise<NextView[]> {
-  return page.locator('app-next-up-list app-next-up-entry').evaluateAll((els) =>
-    els.map((el) => ({
-      id: el.getAttribute('data-next-entry') ?? '',
-      guided: el.querySelector('[data-next-guide]') !== null,
-      sentence: el.querySelector('[data-next-guide] [data-next-sentence]')?.textContent ?? '',
-      marked: el.querySelector('[data-waits-mark], [data-card-marker]') !== null,
-    })),
+  return page.locator('app-next-up-list app-spec-row[data-next-row]').evaluateAll((els) =>
+    els.map((el) => {
+      const id = el.getAttribute('data-next-entry') ?? '';
+      const why = document.getElementById(`next-why-${id}`);
+      const link = el.querySelector('a[data-next-link]');
+      const sentence = why?.textContent ?? '';
+      const describedBy = (link?.getAttribute('aria-describedby') ?? '').split(' ');
+      return {
+        id,
+        guided: why?.hasAttribute('data-next-guide') === true,
+        sentence,
+        marked: (el.closest('li') ?? el).querySelector('[data-waits-mark], [data-card-marker]') !== null,
+        ring: el.querySelector('[data-cell="mark"] [data-next-mark]') !== null,
+        hidden: why?.hasAttribute('hidden') === true,
+        described: why !== null && describedBy.includes(why.id) && (link?.getAttribute('title') ?? '').endsWith(`\n${sentence}`),
+      };
+    }),
   );
 }
 
@@ -190,9 +204,10 @@ test.describe('guidance board', () => {
         expect(text(row.sentence), `${ws} ${row.id}: the row's sentence`).toBe(text(own ? sentenceOf(own.entry.reason) : '?'));
       }
 
-      // Next up: every entry of guidance.next, in order, each with its sentence and never the marker.
+      // Next up: every entry of guidance.next, in order, each with its sentence as the link's description, the ring
+      // and never the marker (spec 068, T11, ISC-545).
       await page.goto(`/w/${ws}`);
-      await expect(page.locator('app-next-up-list app-next-up-entry').first(), `${ws}: Next up renders`).toBeVisible();
+      await expect(page.locator('app-next-up-list app-spec-row[data-next-row]').first(), `${ws}: Next up renders`).toBeVisible();
       await expect(page.locator('app-spec-table'), `${ws}: no spec list on the dashboard`).toHaveCount(0);
       const fold = page.locator('app-next-up-list [data-show-all] button').first();
       if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
@@ -202,8 +217,11 @@ test.describe('guidance board', () => {
       expect(shown.map((n) => n.id), `${ws}: Next up entries`).toEqual(expected.map((e) => e.spec));
       for (const [i, entry] of expected.entries()) {
         const item = shown[i];
-        expect(item?.guided, `${ws} Next up ${entry.spec}: the guide line`).toBe(true);
+        expect(item?.guided, `${ws} Next up ${entry.spec}: the guidance reason`).toBe(true);
+        expect(item?.hidden, `${ws} Next up ${entry.spec}: the reason is no visible line`).toBe(true);
+        expect(item?.described, `${ws} Next up ${entry.spec}: the reason describes the row link and ends its title`).toBe(true);
         expect(text(item?.sentence), `${ws} Next up ${entry.spec}: the sentence`).toBe(text(sentenceOf(entry.reason)));
+        expect(item?.ring, `${ws} Next up ${entry.spec}: the Next ring`).toBe(true);
         expect(item?.marked, `${ws} Next up ${entry.spec}: no marker`).toBe(false);
       }
     });

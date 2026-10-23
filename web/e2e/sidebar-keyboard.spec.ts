@@ -2,13 +2,13 @@
  * Spec 067 · T37 · ISC-537 (`bun run e2e -- sidebar -g "keyboard"`): every action of the detail sidebar is reachable
  * with Tab and operable with Enter or Space, every target is a real box of at least 32 px (docked at 1440) or 44 px
  * (the compact sheet at 390, and under a coarse pointer at 820), measured with `getBoundingClientRect`, not a
- * `::before` hit area; and Escape closes in one order: an open dialog first, then the open stage list, then the
- * sidebar, which returns the focus to the selected row.
+ * `::before` hit area; and Escape closes in one order: an open dialog first, then the sidebar, which returns the focus
+ * to the selected row. The sidebar offers no stage change (spec 068, T18, ISC-549).
  *
  * harbor 002 is selected from the Specs list with the keyboard. Tab runs forward from the title (head before it:
  * Shift+Tab) and records each stop with its box; then each action is operated: the star (Enter, Space), the next-step
- * copy chip (Enter), the stage toggle (Enter opens the inline list, Escape closes it and leaves the sidebar open), the
- * first open task (Space ticks it through the tick route; the live refresh leaves the focus on its box) and a link row
+ * copy chip (Enter), the first open task (Space ticks it through the tick route; the live refresh leaves the focus on
+ * its box) and a link row
  * (Enter selects its object). The release case runs on beacon 003 under the `runs` fixture at 1440. The coarse-pointer
  * case measures without Tab, in a context of its own: Chromium's touch emulation changes the Tab order.
  *
@@ -48,8 +48,6 @@ async function stopAt(page: Page): Promise<Stop> {
       ['[data-close]', 'close'],
       ['.star', 'star'],
       ['ui-command-chip button', `copy:${section}`],
-      ['[data-stage-change]', 'stage'],
-      ['[data-stage-list] *', 'stage-entry'],
       ['[data-release]', 'release'],
       ['[data-task-check]', `task:${el.closest('[data-task]')?.getAttribute('data-task') ?? ''}`],
       ['[data-tasks-more]', 'tasks-more'],
@@ -126,7 +124,7 @@ for (const { width, presentation, min } of CASES) {
   test.describe(`sidebar keyboard at ${String(width)}`, () => {
     test.use({ ...atWidth(width), permissions: ['clipboard-read', 'clipboard-write'] });
 
-    test(`sidebar keyboard: every action of spec ${SPEC} is reachable and operable, ${String(min)} px boxes, Escape closes list then ${presentation} (T37, ISC-537)`, async ({ page }) => {
+    test(`sidebar keyboard: every action of spec ${SPEC} is reachable and operable, ${String(min)} px boxes, Escape closes the ${presentation} (T37, ISC-537)`, async ({ page }) => {
       await page.goto(`/w/${WS}/specs`);
       const panel = sidebar(page);
       const title = await chooseWithKeyboard(page, SPEC, presentation);
@@ -134,7 +132,7 @@ for (const { width, presentation, min } of CASES) {
       // Reachable: every action is a Tab stop in the panel, each a real box of the tier's size.
       const stops = await allStops(page, title);
       const keys = stops.map((stop) => stop.key);
-      for (const want of ['close', 'star', 'copy:facts', 'stage', `task:${TASK}`, 'link', 'foot']) expect(keys, `Tab reaches ${want}`).toContain(want);
+      for (const want of ['close', 'star', 'copy:facts', `task:${TASK}`, 'link', 'foot']) expect(keys, `Tab reaches ${want}`).toContain(want);
       expect(keys.filter((key) => key.startsWith('other:')), 'no unnamed stop').toEqual([]);
       expectBoxes(stops, min);
 
@@ -152,24 +150,6 @@ for (const { width, presentation, min } of CASES) {
       await copy.focus();
       await page.keyboard.press('Enter');
       await expect(copy).toHaveAttribute('data-copied', '');
-
-      // The stage toggle: Enter opens the inline list with the focus in it; Escape closes the list, not the sidebar.
-      const toggle = panel.locator('[data-stage-change]');
-      await toggle.focus();
-      await page.keyboard.press('Enter');
-      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      const list = panel.locator('[data-stage-list]');
-      await expect(list).toBeVisible();
-      await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[data-stage-list]') !== null)).toBe(true);
-      const entries = await list.locator('[data-move-to]').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
-      expect(entries.length).toBeGreaterThan(0);
-      for (const height of entries) expect(height, 'stage entry box height').toBeGreaterThanOrEqual(min - 0.5);
-      await page.keyboard.press('Escape');
-      await expect(list).toHaveCount(0);
-      await expect(toggle).toBeFocused();
-      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      await expect(panel).toHaveAttribute('data-presentation', presentation);
-      expect(new URL(page.url()).searchParams.get('sel')).toBe(`spec:${SPEC}`);
 
       // A task: Space ticks it through the tick route; the live refresh after the write leaves the focus on its box.
       const box = panel.locator(`[data-task="${TASK}"] input[data-task-check]`);
@@ -242,14 +222,12 @@ test.describe(`sidebar keyboard release at ${String(WIDTHS.desktop)}`, () => {
 test.describe(`sidebar keyboard targets under a coarse pointer at ${String(WIDTHS.tablet)}`, () => {
   test.use({ ...atWidth(WIDTHS.tablet), hasTouch: true });
 
-  test(`sidebar keyboard targets: under pointer: coarse every target of spec ${SPEC}, the open stage list included, is a 44 px box (T37, ISC-537)`, async ({ page }) => {
+  test(`sidebar keyboard targets: under pointer: coarse every target of spec ${SPEC} is a 44 px box (T37, ISC-537)`, async ({ page }) => {
     await page.goto(`/w/${WS}/specs?sel=spec:${SPEC}`);
     expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
     const panel = sidebar(page);
     await expect(panel).toHaveAttribute('data-presentation', 'overlay');
     await expect(panel.locator(`[data-task="${TASK}"]`)).toBeVisible();
-    await panel.locator('[data-stage-change]').click();
-    await expect(panel.locator('[data-stage-list]')).toBeVisible();
     await settle(page);
     const boxes = await panel.evaluate((host) =>
       [...host.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled])')]

@@ -200,13 +200,12 @@ export class DetailSidebar {
   });
 
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
-  private readonly actions = viewChild(SidebarActions);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
     // A new selection moves focus to the title in the non-modal presentations (the sheet's dialog focuses it itself),
     // unless the view holds the focus on the object's own element (the tree's arrival row, ISC-167.1). Only a ref
-    // change moves it: a live refresh after a write (a stage change, a ticked task, a release) re-renders the same
+    // change moves it: a live refresh after a write (a ticked task, a release) re-renders the same
     // ref and leaves the focus where the write left it (spec 067, T36, ISC-537).
     let focused: RelationRef | null = null;
     afterRenderEffect(() => {
@@ -225,19 +224,15 @@ export class DetailSidebar {
 
   /**
    * Escape in one order (spec 067, T36, ISC-537): an open dialog first (the release question stacks over every shell
-   * and closes itself), then the open stage list, wherever the focus sits in the panel, then the sidebar. The sheet's
-   * own dialog closes the compact presentation; the others close here, and any open popover wins. The panel listens
-   * itself, so an Escape inside the sheet arrives here before the sheet's dialog, which skips a prevented one
-   * (`modalDialog`); the document listener takes an Escape pressed on the page.
+   * and closes itself), then the sidebar, wherever the focus sits in the panel. The sheet's own dialog closes the
+   * compact presentation; the others close here, and any open popover wins. The panel listens itself, so an Escape
+   * inside the sheet arrives here before the sheet's dialog, which skips a prevented one (`modalDialog`); the document
+   * listener takes an Escape pressed on the page. Spec 068 (T15): the stage list that closed before the sidebar is gone.
    */
   protected escape(event: Event): void {
     if (!this.shown() || event.defaultPrevented) return;
     const sheet = this.host.nativeElement.querySelector('ui-sheet dialog');
     if ([...this.doc.querySelectorAll('dialog[open]')].some((dialog) => dialog !== sheet)) return;
-    if (this.actions()?.closeList()) {
-      event.preventDefault();
-      return;
-    }
     if (this.presentation() === 'sheet' || this.openPopover()) return;
     event.preventDefault();
     this.close();

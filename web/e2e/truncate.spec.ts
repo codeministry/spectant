@@ -2,14 +2,16 @@
  * Long text cut sensibly (ISC-111; the principal's cmux check, 2026-10-01).
  *
  *   bun run e2e -- truncate -g table     ISC-111    Specs list titles
+ *   bun run e2e -- truncate -g next      ISC-546    Next up titles, rows of the spec list (spec 068)
  *
  * In the Specs list a spec row shows its title alone, one line cut by a CSS ellipsis like an idea row's, with no
- * description and no "more…" toggle; 390 px is a width where harbor's longer titles are cut. Elsewhere a cut text stays
- * within its lines, ends at a whole word of the full text with "…", and its "more…" / "less" button sits outside the
- * link (a control inside a link is a nested interactive element).
+ * description and no "more…" toggle; 390 px is a width where harbor's longer titles are cut. Since spec 068 Next up
+ * renders the same rows, so its titles are cut the same way and have no "more…" / "less" (ISC-111.1 dropped). In the
+ * palette a cut text stays within its lines and ends at a whole word of the full text with "…".
  */
 import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
+import { SIDEBAR_HEADER, STUB_SIDEBAR } from './stub-api';
 
 const ELLIPSIS = '…';
 
@@ -80,82 +82,53 @@ test.describe('truncate table', () => {
 });
 
 /**
- * Since spec 020 (T25, ISC-240) Next up holds `guidance.next`, whose harbor titles fit their lines, and the entry's
- * sentence is never cut. So the dashboard body's first Next entry gets a longer title (its own title four times), the
- * one change to core's body, and the title clamp still has something to cut: since spec 058 Next up spans the one
- * column of the dashboard, about 1376 px at 1440, where the title twice still fits its line.
+ * Spec 068 (T4, ISC-546): each Next up entry is a row of the spec list (`app-spec-row[data-next-row]`) whose title is
+ * the row link `a[data-next-link]`, one line cut by a CSS ellipsis like a spec row's; there is no "more…" / "less"
+ * (ISC-111.1 dropped) and no visible reason line, the reason being only the link's hidden description. The sidebar
+ * fixture gives harbor 003 a 200-character title, which Next up's title column holds on one line at no width.
  */
-const LONG_TITLE_REPEATS = 4;
-async function longNextTitle(page: Page): Promise<void> {
-  await page.route('**/api/workspaces/harbor/dashboard', async (route) => {
-    const response = await route.fetch();
-    const body = (await response.json()) as { specs: Array<{ id: string; title: string }>; guidance?: { next: Array<{ spec: string }> } };
-    const id = body.guidance?.next[0]?.spec;
-    for (const spec of body.specs) {
-      if (spec.id === id) spec.title = [spec.title, ...Array.from({ length: LONG_TITLE_REPEATS - 1 }, () => spec.title.toLowerCase())].join(', then ');
-    }
-    await route.fulfill({ response, json: body });
+for (const width of [390, 820, 1440] as const) {
+  test.describe(`truncate next at ${String(width)}`, () => {
+    test.use(atWidth(width));
+
+    test(`next: a long Next up title is one line ending in an ellipsis like a spec row's, with no more… toggle at ${String(width)} px`, async ({
+      page,
+    }) => {
+      await page.setExtraHTTPHeaders({ [SIDEBAR_HEADER]: 'on' });
+      await openDashboard(page);
+      const links = page.locator('[data-next-card] app-spec-row[data-next-row] [data-cell="title"] a[data-next-link]');
+      const rows = await links.evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const style = getComputedStyle(node);
+          return {
+            id: node.closest('[data-next-entry]')?.getAttribute('data-next-entry') ?? '',
+            shown: node.textContent.trim(),
+            full: (node.getAttribute('title') ?? '').split('\n')[0] ?? '',
+            cut: node.scrollWidth > node.clientWidth,
+            height: node.getBoundingClientRect().height,
+            line: Number.parseFloat(style.lineHeight),
+            overflow: style.textOverflow,
+            wrap: style.whiteSpace,
+          };
+        }),
+      );
+      const long = rows.find((row) => row.id === STUB_SIDEBAR.spec);
+      // The whole 200-character title is in the link (CSS cuts it, not the text), and it overflows its one line.
+      expect(long?.shown, `Next up shows ${STUB_SIDEBAR.spec}'s whole title`).toBe(STUB_SIDEBAR.title);
+      expect(long?.cut, `${STUB_SIDEBAR.spec}: cut`).toBe(true);
+      for (const row of rows) {
+        // The tooltip's first line names the title in full, as a spec row's does.
+        expect(row.shown, row.id).toBe(row.full);
+        expect(row.overflow, row.id).toBe('ellipsis');
+        expect(row.wrap, row.id).toBe('nowrap');
+        expect(row.height, `${row.id}: one line`).toBeLessThanOrEqual(row.line + 1);
+      }
+      // No clamp and no toggle, no visible reason line, no entry component of its own.
+      await expect(page.locator('[data-next-card] :is([data-next-more], [data-next-sentence], [data-clamp], app-next-up-entry)')).toHaveCount(0);
+      await expect(page.locator('[data-next-card] [data-next-reason]:visible')).toHaveCount(0);
+    });
   });
 }
-
-/** The entry's guidance sentence stands whole: no ellipsis, nothing hidden. */
-async function expectWholeSentences(page: Page): Promise<void> {
-  const sentences = page.locator('[data-next-sentence]');
-  await expect(sentences.first()).toBeVisible();
-  for (const sentence of await sentences.all()) {
-    const m = await sentence.evaluate((node) => ({ text: node.textContent, fits: node.scrollHeight <= node.clientHeight + 1 && node.scrollWidth <= node.clientWidth + 1 }));
-    expect(m.text.endsWith(ELLIPSIS)).toBe(false);
-    expect(m.fits).toBe(true);
-  }
-}
-
-test.describe('truncate next', () => {
-  test.use(atWidth(1440));
-
-  test('next: a long title in the one-column Next up is cut after one line at a whole word, and more… / less outside the link toggle it', async ({
-    page,
-  }) => {
-    await longNextTitle(page);
-    await openDashboard(page);
-    await expectWholeSentences(page);
-    const cut = page.locator('[data-next-card] [data-next-link] .title[data-clamp="cut"]');
-    await expect(cut.first()).toBeVisible();
-    const id = (await cut.first().getAttribute('id')) ?? '';
-    const title = page.locator(`#${id}`);
-    // Spec 021 (T79): the title is clamped to one line, and `[data-next-card]` is the one card of every entry; since
-    // spec 058 the dashboard has no rail, so at 1440 the entry is a row of the one column's card.
-    expectCutAtWord(await measure(title), 1);
-
-    const entry = page.locator('app-next-up-entry').filter({ has: title });
-    const more = entry.locator('[data-next-more]');
-    await expect(more).toBeVisible();
-    await expect(more).toHaveAttribute('aria-controls', id);
-    await expect(page.locator('[data-next-link] [data-next-more]')).toHaveCount(0);
-
-    await more.click();
-    await expect(title).toHaveAttribute('data-clamp', 'open');
-    const open = await measure(title);
-    expect(open.shown).toBe(open.full);
-    await expect(more).toHaveAttribute('aria-expanded', 'true');
-    await more.click();
-    await expect(title).toHaveAttribute('data-clamp', 'cut');
-  });
-
-  test('next: below wide the one-line row title is cut at a whole word with its own more…', async ({ page }) => {
-    await page.setViewportSize({ width: 600, height: 900 });
-    await longNextTitle(page);
-    await openDashboard(page);
-    await expectWholeSentences(page);
-    const titles = page.locator('[data-next-row] [data-next-link] .title');
-    await expect(titles.first()).toBeVisible();
-    for (const t of await titles.all()) {
-      const m = await measure(t);
-      if ((await t.getAttribute('data-clamp')) === 'cut') expectCutAtWord(m, 1);
-      else expect(m.shown).toBe(m.full);
-    }
-    await expect(page.locator('[data-next-row] .title[data-clamp="cut"]').first()).toBeVisible();
-  });
-});
 
 test.describe('truncate palette', () => {
   test.use(atWidth(1440));
