@@ -13,10 +13,12 @@
   min-inline-size: 0;
 }
 
+/* The 1 px end inset keeps the last segment inside the rail's border (shell-header.css `.rail-field`). */
 .pickers {
   display: flex;
   align-items: center;
   min-inline-size: 0;
+  padding-inline-end: 1px;
 }
 
 /* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | page, page | area. */
@@ -46,6 +48,15 @@
   text-decoration: none;
   cursor: pointer;
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+/*
+ * The last segment meets the rail's inner edge: its end corners take the rail's inner radius (its radius + 2 px less
+ * the 1 px border), so neither the crumb's tint nor a hover runs over the border.
+ */
+.pick:last-child {
+  border-start-end-radius: calc(var(--radius) + 1px);
+  border-end-end-radius: calc(var(--radius) + 1px);
 }
 
 .pick[aria-disabled="true"] {
@@ -158,9 +169,10 @@
   color: var(--muted-ink);
 }
 
+/* The rail is 44 px on a coarse pointer (shell-header.css); a segment fills it inside its border, as the brand does. */
 @media (pointer: coarse) {
   .pick {
-    block-size: 44px;
+    block-size: 42px;
   }
 }
 

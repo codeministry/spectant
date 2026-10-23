@@ -283,6 +283,11 @@ code {
   :host([data-tier='medium']) .page {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* A half-width card stacks the ring above the rest again, as at wide; side by side its content ran over the border. */
+  :host([data-tier='medium']) .where-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* Wide: the bento. */
