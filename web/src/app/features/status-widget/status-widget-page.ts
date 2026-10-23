@@ -1,4 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  DOCUMENT,
+  effect,
+  ElementRef,
+  inject,
+  resource,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { StatusKpis, StatusResponse, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
@@ -12,7 +25,18 @@ import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/f
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { isToneStage, toneOfStage } from '../../shared/ui/stage-tone';
 import { StatusWidgetRow } from './status-widget-row';
-import { EMPTY_FILTER, stageOptions, visibleGroups, type WidgetFilter, workspaceOptions } from './widget-filter';
+import {
+  EMPTY_FILTER,
+  loadWidgetFilter,
+  pruneFilter,
+  saveWidgetFilter,
+  stageCounts,
+  stageOptions,
+  visibleGroups,
+  type WidgetFilter,
+  workspaceCounts,
+  workspaceOptions,
+} from './widget-filter';
 
 /** How long a resize must settle before the widget stores its bounds (T33, ISC-596). */
 export const BOUNDS_SETTLE_MS = 400;
@@ -70,8 +94,11 @@ export class StatusWidgetPage {
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-  /** The filter selection (ISC-603); empty in both dimensions shows every group. */
-  readonly filter = signal<WidgetFilter>(EMPTY_FILTER);
+  /**
+   * The filter selection (ISC-603); empty in both dimensions shows every group. It starts from the stored selection
+   * (ISC-606), and every change goes through `setFilter`, which stores it.
+   */
+  readonly filter = signal<WidgetFilter>(loadWidgetFilter());
 
   /**
    * The workspaces that get a group, in the body's (the picker's) order, narrowed by the filter: each with a matching
@@ -86,24 +113,37 @@ export class StatusWidgetPage {
   /** Whether the filter shows: only while the body lists a spec. */
   readonly hasFilter = computed(() => this.status()?.workspaces.some((ws) => ws.specs.length > 0) ?? false);
 
-  /** The workspace chips: the path tail, a warning dot and a "not readable" name on an unreadable one. */
+  /**
+   * The workspace chips: the path tail and its facet count under the stage selection (ISC-611), 0 included; an
+   * unreadable one carries a warning dot and a "not readable" name instead of a number.
+   */
   readonly workspaceChips = computed<readonly FilterOption[]>(() => {
     const body = this.status();
     this.lang();
     if (!body) return [];
+    const counts = workspaceCounts(body, this.filter());
     return workspaceOptions(body).map(({ key, pathTail, readable }) =>
       readable
-        ? { key, label: pathTail }
+        ? { key, label: pathTail, count: counts.get(key) ?? 0 }
         : { key, label: pathTail, tone: 'warning', name: this.transloco.translate('statusWidget.filter.unreadable', { name: pathTail }) },
     );
   });
 
-  /** The stage chips: the occurring stages in workflow order, with the rows' badge words and tones. */
+  /**
+   * The stage chips: the occurring stages in workflow order, with the rows' badge words and tones and each one's facet
+   * count under the workspace selection (ISC-611); a 0 chip stays and can be pressed.
+   */
   readonly stageChips = computed<readonly FilterOption[]>(() => {
     const body = this.status();
     this.lang();
     if (!body) return [];
-    return stageOptions(body).map((stage) => ({ key: stage, label: this.transloco.translate(`stages.${stage}`), tone: toneOfStage(stage) }));
+    const counts = stageCounts(body, this.filter());
+    return stageOptions(body).map((stage) => ({
+      key: stage,
+      label: this.transloco.translate(`stages.${stage}`),
+      tone: toneOfStage(stage),
+      count: counts.get(stage) ?? 0,
+    }));
   });
 
   /** Whether a selection leaves nothing to render: the no-match line with its reset button stands instead (ISC-605). */
@@ -114,23 +154,42 @@ export class StatusWidgetPage {
 
   /** Clears both selections from the no-match line and moves the focus to the first workspace chip (ISC-605). */
   resetFilter(): void {
-    this.filter.set(EMPTY_FILTER);
+    this.setFilter(EMPTY_FILTER);
     this.workspaceRow()?.nativeElement.querySelector<HTMLButtonElement>('button')?.focus();
   }
 
   /** Replaces the workspace selection. */
   selectWorkspaces(keys: readonly string[]): void {
-    this.filter.update((filter) => ({ ...filter, workspaces: [...keys] }));
+    this.setFilter({ ...this.filter(), workspaces: [...keys] });
   }
 
   /** Replaces the stage selection; a key that is no stage is ignored. */
   selectStages(keys: readonly string[]): void {
-    this.filter.update((filter) => ({ ...filter, stages: keys.filter(isToneStage) }));
+    this.setFilter({ ...this.filter(), stages: keys.filter(isToneStage) });
   }
 
   constructor() {
     reloadOnRefresh(() => this.load.reload());
+    this.pruneOnEachBody();
     this.keepBounds();
+  }
+
+  /**
+   * Sets and stores the selection (ISC-606), in tab mode too: the filter belongs to the viewer, not to the window. The
+   * same object is no change, so a prune that drops nothing writes nothing.
+   */
+  private setFilter(next: WidgetFilter): void {
+    if (next === this.filter()) return;
+    this.filter.set(next);
+    saveWidgetFilter(next);
+  }
+
+  /** On every new status body, the first one and each live reload, drops a selected option it no longer offers (ISC-606). */
+  private pruneOnEachBody(): void {
+    effect(() => {
+      const body = this.status();
+      if (body) untracked(() => this.setFilter(pruneFilter(this.filter(), body)));
+    });
   }
 
   /** Stores the window's bounds after each settled resize and on `pagehide`, unless it runs as a tab (ISC-596). */
