@@ -3,7 +3,8 @@
  * per test (the stub keeps idea favourites per session). `bun run e2e -- favorites-ideas -g "idea favorite"`.
  *
  * On `/w/harbor/specs` the star of an idea row presses in place: no `?sel=`, no navigation, no reload. The header's
- * spec select then lists the idea under the favourite spec, behind the hairline, with the lightbulb and the idea page's
+ * favourites select (spec 069) then lists the idea in harbor's group under the favourite spec, behind the hairline, with
+ * the lightbulb and the idea page's
  * link; after `page.reload()` it is still there. Unstarring it in the select drops it from the select and releases the
  * list row's star, and a reload keeps it gone.
  *
@@ -31,20 +32,25 @@ const ideaRow = (page: Page): Locator =>
   page.locator('ol.rows > li > app-idea-row').filter({ has: page.locator(`a.link[href="/w/${WS}/ideas/${IDEA.slug}"]`) });
 const rowStar = (page: Page): Locator => ideaRow(page).locator('span.rstar[data-cell="star"] button');
 
+/** The header favourites select (spec 069) that took over from the spec select. */
 async function openSelect(page: Page): Promise<Locator> {
-  await (await headerControl(page, 'spec')).click();
-  const picker = page.locator('nav[data-picker="spec"]');
+  await (await headerControl(page, 'favorites')).click();
+  const picker = page.locator('nav[data-picker="favorites"]');
   await expect(picker).toBeVisible();
   return picker;
 }
 
 async function closeSelect(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
-  await expect(page.locator('nav[data-picker="spec"]')).toBeHidden();
+  await expect(page.locator('nav[data-picker="favorites"]')).toBeHidden();
 }
 
-/** The idea entry of the open select: listed after every spec row, behind the hairline, lightbulb and idea link. */
-async function expectListed(picker: Locator): Promise<void> {
+/**
+ * The idea entry of the open select: in harbor's group, listed after every spec row, behind the hairline, lightbulb and
+ * idea link.
+ */
+async function expectListed(outer: Locator): Promise<void> {
+  const picker = outer.locator(`[data-favorites-group="${WS}"]`);
   const entry = picker.locator(`a[data-idea="${IDEA.slug}"]`);
   await expect(entry).toBeVisible();
   await expect(entry).toHaveAttribute('href', `/w/${WS}/ideas/${IDEA.slug}`);

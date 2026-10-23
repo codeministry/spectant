@@ -45,6 +45,21 @@
   </nav>
 
   <div class="chips" data-head-chips>
+    <!--
+      Spec 052 T16 (ISC-300), moved by spec 069 T34 (ISC-598): the favourite star opens the chip row, left of the type
+      chip (of the stage chip without a type), on every tier. It sits outside "Details of NNN" so it is never folded
+      away at compact: the chip row stays visible on every tier, and the star is the head's one-click way to favourite.
+    -->
+    @if (favoriteSlug(); as slug) {
+      <button
+        ui-star-toggle
+        class="head-star"
+        size="head"
+        [pressed]="data.isFavorite(slug)"
+        [label]="'favorites.toggle' | transloco: { id: id(), title: title() ?? '' }"
+        (toggled)="data.toggleFavorite(slug)"
+      ></button>
+    }
     @if (type(); as type) {
       <ui-chip variant="plain" data-head-chip="type" [icon]="typeIcon()">{{ 'types.' + type | transloco }}</ui-chip>
     }
@@ -105,16 +120,6 @@
       }
     </h1>
     <div class="actions" data-head-actions>
-      <!-- Spec 052 T16 (ISC-300): the favourite star first, on every tier, never folded into the details. -->
-      @if (favoriteSlug(); as slug) {
-        <button
-          ui-star-toggle
-          [size]="compact() ? 'head' : 'sm'"
-          [pressed]="data.isFavorite(slug)"
-          [label]="'favorites.toggle' | transloco: { id: id(), title: title() ?? '' }"
-          (toggled)="data.toggleFavorite(slug)"
-        ></button>
-      }
       @if (!compact()) {
         <ng-container [ngTemplateOutlet]="commandTpl" />
       }

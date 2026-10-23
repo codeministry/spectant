@@ -1,5 +1,6 @@
 /*
- * The rail-selects (spec 024 T34): Workspace · Page · Spec · Area (T80). They
+ * The rail-selects (spec 024 T34): Workspace · Page · Area (T80; the Spec select left in spec 069, the spec crumb
+ * after them names the open spec, T22). They
  * sit on the header's brand rail after the logo, on every width (spec 024 T76); below 1120 px without the Area select.
  *
  * Labelled selects (ISC-140.2): every segment is its 9 px mono label (`[data-pill-label]`) and its 13/650 value
@@ -18,7 +19,7 @@
   min-inline-size: 0;
 }
 
-/* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | page, page | area | spec (spec 048), page | spec. */
+/* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | page, page | area. */
 .pickers::before,
 .pill-divider {
   flex-shrink: 0;
@@ -104,21 +105,27 @@
   max-inline-size: none;
 }
 
-/* The spec's name in violet, the area's in cyan. */
-[data-control="spec"] .pill-value {
-  color: var(--ques-text);
-}
-
-.spec-title {
-  max-inline-size: 180px;
-}
-
+/* The page's and the area's names in cyan. */
 .area .pill-value,
 .page .pill-value {
   color: var(--disp-text);
 }
 
-.pick-id {
+/*
+ * The spec crumb (spec 069 T22, ISC-555): a plain link, no pill label, no chevron. The id in the mono id style of the
+ * former spec pill (`.pick-id`), never shortened; the short name in the value style, ellipsized (former `.spec-title`).
+ */
+.crumb-text {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  min-inline-size: 0;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.crumb-id {
+  flex-shrink: 0;
   color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -126,17 +133,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+.crumb-title {
+  overflow: hidden;
+  min-inline-size: 0;
+  max-inline-size: 180px;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+}
+
 /* The area select carries no dot; the closed PAGE select no icon (spec 024 T80, principal 2026-10-13). */
 .area-dot {
   display: none;
 }
 
-.pick-id,
 .chevron {
   flex-shrink: 0;
-}
-
-.chevron {
   align-self: center;
   color: var(--muted-ink);
 }
@@ -149,7 +161,7 @@
 
 /*
  * Below 1120 px (spec 024 T76, ISC-140.2 refined): one header row, so the visible labels go; each select keeps its label
- * in its accessible name (`aria-label`). The spec shows its id and short name, the name ellipsizing first.
+ * in its accessible name (`aria-label`); the workspace name ellipsizes.
  */
 @container header (width < 1120px) {
   .pill-label {
@@ -169,7 +181,7 @@
     max-inline-size: 160px;
   }
 
-  .spec-title {
+  .crumb-title {
     min-inline-size: 3ch;
     max-inline-size: 140px;
   }
@@ -190,7 +202,7 @@
     max-inline-size: 112px;
   }
 
-  .spec-title {
+  .crumb-title {
     max-inline-size: 96px;
   }
 }
