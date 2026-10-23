@@ -848,3 +848,33 @@ describe('SpecHead favourite star (T16, ISC-300; spec 069 T35, ISC-598)', () => 
     expect(root.querySelector('[ui-star-toggle]')).toBeNull();
   });
 });
+
+// Spec 073, C1 · ISC-612: an archived spec carries an "Archived" chip in the head's chip row, with the archive icon and
+// the word, so the state is never colour alone; an active spec shows none.
+describe('SpecHead archived chip (C1, ISC-612)', () => {
+  const CASES = [
+    ['en', en.specs.archivedChip],
+    ['de', de.specs.archivedChip],
+  ] as const;
+
+  for (const [lang, word] of CASES) {
+    it(`spec-head archived chip: once with icon and word, after the stage, on an archived spec (${lang})`, async () => {
+      setUp();
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const root = await open('/w/harbor/s/001/status');
+      const chips = root.querySelectorAll('[data-head-chips] [data-head-chip="archived"]');
+      expect(chips).toHaveLength(1);
+      expect(chips[0]?.querySelector('ui-icon[data-icon="archive"]')).not.toBeNull();
+      expect(text(chips[0] ?? null)).toBe(word);
+      expect(chipNames(root).slice(0, 3)).toEqual(['type', 'stage', 'archived']);
+    });
+
+    it(`spec-head archived chip: none on an active spec (${lang})`, async () => {
+      setUp();
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const root = await open('/w/harbor/s/002/status');
+      expect(root.querySelectorAll('[data-head-chip="archived"]')).toHaveLength(0);
+      expect(chipNames(root)).toEqual(['type', 'stage', 'priority', 'milestone', 'feature']);
+    });
+  }
+});
