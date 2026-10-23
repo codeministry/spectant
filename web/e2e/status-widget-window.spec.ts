@@ -14,7 +14,7 @@
  *   is one flat row at most 48 px high: the brand mark first, the three figures (`dl.kpis` > `div.kpi`) right of it on
  *   the same line, no `ui-kpi-tile` card, nothing wrapping or overflowing.
  * - `bun run e2e -- status-widget-window -g layout` (ISC-607): the layout tests above, in light and dark theme, with
- *   the head, the filter (`section.filter`, two `ui-filter-chips`) and the command lines (`div.entry-cmd` >
+ *   the head, the filter (`section.widget-filter`, two `ui-filter-chips`) and the command lines (`div.entry-cmd` >
  *   `ui-command-chip`): nothing scrolls sideways (page, filter, chip rows, rows), every row's title and copy chip stay
  *   inside its `div.entry` (1 px), and the stub's long row `STUB_STATUS_LONG` keeps its command chip inside the row
  *   and ends its title in an ellipsis at 360 px.
@@ -96,7 +96,7 @@ async function measureLayout(page: Page): Promise<LayoutGeometry> {
     };
     const overflowOf = (name: string, el: Element): Overflow => ({ name, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth });
     const overflow: Overflow[] = [overflowOf('html', document.documentElement)];
-    for (const filter of host.querySelectorAll('section.filter')) overflow.push(overflowOf('section.filter', filter));
+    for (const filter of host.querySelectorAll('section.widget-filter')) overflow.push(overflowOf('section.widget-filter', filter));
     for (const [i, chips] of [...host.querySelectorAll('ui-filter-chips')].entries()) {
       overflow.push(overflowOf(`ui-filter-chips ${String(i)}`, chips));
       for (const row of chips.querySelectorAll('.row')) overflow.push(overflowOf(`ui-filter-chips ${String(i)} .row`, row));
@@ -143,8 +143,8 @@ for (const width of [360, 480, 820] as const) {
         await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
         const widget = page.locator('app-status-widget-page');
         await expect(widget.locator('header.head .kpi')).toHaveCount(3);
-        await expect(widget.locator('section.filter')).toHaveCount(1);
-        await expect(widget.locator('section.filter ui-filter-chips')).toHaveCount(2);
+        await expect(widget.locator('section.widget-filter')).toHaveCount(1);
+        await expect(widget.locator('section.widget-filter ui-filter-chips')).toHaveCount(2);
         await expect(widget.locator('.group-head').first()).toBeVisible();
         await expect(widget.locator('li.row[data-spec]').first()).toBeVisible();
         await expect(widget.locator('li.row div.entry-cmd > ui-command-chip').first()).toBeVisible();

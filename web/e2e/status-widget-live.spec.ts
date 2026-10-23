@@ -37,9 +37,11 @@ async function moveThrough(page: Page, headers: Record<string, string>, id: stri
   }
 }
 
-const row = (page: Page, id: string) => page.locator(`[data-workspace="harbor"] [data-spec="${id}"] a.entry`);
-const kpi = (page: Page, index: number) => page.locator('section.kpis ui-kpi-tile').nth(index).locator('.value');
-const kpiValue = async (page: Page, index: number): Promise<number> => Number(await kpi(page, index).textContent());
+const row = (page: Page, id: string) => page.locator(`[data-workspace="harbor"] [data-spec="${id}"] div.entry`);
+// The flat head (spec 072, T8): each figure is a `dd`, its value first, then the denominator in `span.den`.
+const kpi = (page: Page, index: number) => page.locator('header.head dl.kpis > div.kpi > dd').nth(index);
+const kpiValue = async (page: Page, index: number): Promise<number> => Number(((await kpi(page, index).textContent()) ?? '').split('/')[0]);
+const kpiText = (value: number): RegExp => new RegExp(`^${String(value)}(/|$)`);
 
 test.describe('status widget live at 1440', () => {
   test.use({ ...atWidth(1440), clockAt: null });
@@ -81,8 +83,8 @@ test.describe('status widget live at 1440', () => {
 
     await expect(row(page, PROGRESS).locator('.entry-count')).toHaveText('1/13', { timeout: LIVE_BUDGET_MS });
     await expect(row(page, CLOSING).locator('.entry-stage')).toHaveText('Done', { timeout: LIVE_BUDGET_MS });
-    await expect(kpi(page, 1)).toHaveText(String(closed + 1), { timeout: LIVE_BUDGET_MS });
-    await expect(kpi(page, 2)).toHaveText(String(claims + 1), { timeout: LIVE_BUDGET_MS });
+    await expect(kpi(page, 1)).toHaveText(kpiText(closed + 1), { timeout: LIVE_BUDGET_MS });
+    await expect(kpi(page, 2)).toHaveText(kpiText(claims + 1), { timeout: LIVE_BUDGET_MS });
     expect(Date.now() - sent).toBeLessThanOrEqual(LIVE_BUDGET_MS);
 
     expect(documents, 'no document request').toEqual([]);

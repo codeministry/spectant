@@ -78,7 +78,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
 
   /** The chip buttons of one dimension: 0 workspace, 1 stage. */
   const chips = (root: HTMLElement, row: 0 | 1): HTMLButtonElement[] => {
-    const group = root.querySelectorAll('section.filter ui-filter-chips').item(row) as Element | null;
+    const group = root.querySelectorAll('section.widget-filter ui-filter-chips').item(row) as Element | null;
     return [...(group?.querySelectorAll<HTMLButtonElement>('button.chip') ?? [])];
   };
 
@@ -112,13 +112,13 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
   it('stands between the head and the list, a labelled row per dimension, the labels hidden and named on the group', async () => {
     const root = await land();
     const order = [...(root.querySelector('main.widget .column')?.querySelectorAll(':scope > header, :scope > section') ?? [])];
-    expect(order.map((el) => `${el.tagName.toLowerCase()}.${el.className}`)).toEqual(['header.head', 'section.filter', 'section.groups']);
-    const labels = [...root.querySelectorAll<HTMLElement>('section.filter span.filter-label')];
+    expect(order.map((el) => `${el.tagName.toLowerCase()}.${el.className}`)).toEqual(['header.head', 'section.widget-filter', 'section.groups']);
+    const labels = [...root.querySelectorAll<HTMLElement>('section.widget-filter span.filter-label')];
     expect(labels.map((label) => [label.textContent.trim(), label.getAttribute('aria-hidden')])).toEqual([
       ['Workspace', 'true'],
       ['Stage', 'true'],
     ]);
-    const rows = [...root.querySelectorAll<HTMLElement>('section.filter ui-filter-chips')];
+    const rows = [...root.querySelectorAll<HTMLElement>('section.widget-filter ui-filter-chips')];
     expect(rows.map((row) => [row.hasAttribute('data-multiple'), row.hasAttribute('data-wrap')])).toEqual([
       [true, true],
       [true, true],
@@ -185,7 +185,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
 
   it('has no filter without a listed spec, only the empty line', async () => {
     const root = await land(EMPTY);
-    expect(root.querySelector('section.filter')).toBeNull();
+    expect(root.querySelector('section.widget-filter')).toBeNull();
     expect(root.querySelectorAll('section.groups .meta')).toHaveLength(1);
   });
 
@@ -230,7 +230,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
       ['Reset filter', true, 'secondary', true],
     ]);
     expect(figures(root)).toEqual(['0', '0/0', '0/0']);
-    expect(root.querySelector('section.filter')).not.toBeNull();
+    expect(root.querySelector('section.widget-filter')).not.toBeNull();
     expect(chips(root, 0).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
   });
 
