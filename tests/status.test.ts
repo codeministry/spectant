@@ -1,15 +1,18 @@
-// The status board route (spec 071, ISC-593): `GET /api/status` answers one entry per registered workspace in the
-// workspace picker's order (the order `GET /api/workspaces` answers): slug, path tail, readability and the listed
-// specs (open, or closed at most 24 hours before the request's clock, archived ones included), each with id, title,
-// stage, claim progress, `closedAt` and item state. No field names an absolute path.
+// The status board route (spec 071, ISC-593; spec 073, ISC-613): `GET /api/status` answers one entry per registered
+// workspace in the workspace picker's order (the order `GET /api/workspaces` answers): slug, path tail, readability and
+// the listed specs, the open ones only (stage not `done`), never a closed or an archived spec however recently it
+// closed, each with id, title, stage, claim progress, `closedAt` and item state. No field names an absolute path.
 //
 // Three fixture repositories in a temp directory, registered out of alphabetical order: `lantern` with an open spec
 // and two closed ones (2 h and 30 h before the pinned request clock), `gone` whose folder is removed after it was
 // registered (unreadable, `missing`), and `harbor` with an open spec and two archived ones closed 2 h and 30 h before.
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+// The board reads no file under `specs/archive/` (ISC-614): a spy on the file-system reads proves it on `harbor`.
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
+import * as fs from "node:fs";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import * as fsp from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { STATUS_ALLOW, STATUS_PATH, type StatusResponse } from "../server/src/contracts/status.contract.ts";
 import { dashboardApi } from "../server/src/cli/dashboard-api.ts";
 import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
@@ -24,6 +27,7 @@ const HOST = { Host: "127.0.0.1:7717" };
 const hoursAgo = (hours: number): string => new Date(NOW.getTime() - hours * HOUR).toISOString();
 
 let root: string;
+let harborDir: string;
 let registry: Registry;
 let api: ApiHandler;
 const probed: string[] = [];
@@ -72,6 +76,24 @@ function strings(value: unknown, out: string[] = []): string[] {
   return out;
 }
 
+const SYNC_READS = ["readFileSync", "readdirSync", "statSync", "lstatSync", "existsSync", "accessSync", "realpathSync", "readlinkSync", "openSync", "opendirSync"] as const;
+const ASYNC_READS = ["readFile", "readdir", "stat", "lstat", "access", "realpath", "readlink", "open", "opendir"] as const;
+
+/** Every path handed to `node:fs`, `node:fs/promises` or `Bun.file` while `body` runs. */
+async function touched(body: () => Promise<unknown>): Promise<string[]> {
+  const spies = [
+    ...SYNC_READS.map((name) => spyOn(fs, name as "statSync")),
+    ...ASYNC_READS.map((name) => spyOn(fsp, name as "stat")),
+    spyOn(Bun, "file"),
+  ];
+  try {
+    await body();
+    return spies.flatMap((spy) => spy.mock.calls.map((call) => String(call[0])));
+  } finally {
+    spies.forEach((spy) => spy.mockRestore());
+  }
+}
+
 /** A plugin command (`/spec review 001`, spec 072) starts with a slash but is no path: one slash, then the command words. */
 const isCommand = (s: string): boolean => /^\/spec [^/\\]+$/.test(s);
 
@@ -95,6 +117,7 @@ beforeAll(() => {
       { folder: "005-old-anchor", title: "Old anchor", stage: "done", claims: [true], closedHoursAgo: 30 },
     ],
   );
+  harborDir = harbor;
   registry = openRegistry(join(root, "data"));
   for (const path of [lantern, gone, harbor]) registry.add(path);
   rmSync(gone, { recursive: true, force: true });
@@ -115,7 +138,7 @@ afterAll(() => {
 });
 
 describe("GET /api/status (spec 071, ISC-593)", () => {
-  test("one entry per registered workspace in picker order; the 2 h closed specs listed, the 30 h ones not; no absolute path", async () => {
+  test("one entry per registered workspace in picker order; only open specs, no closed or archived one even 2 h after; no absolute path", async () => {
     const res = await call();
     expect(res.status).toBe(200);
     const body = (await res.json()) as StatusResponse;
@@ -132,15 +155,18 @@ describe("GET /api/status (spec 071, ISC-593)", () => {
     const [lantern, gone, harbor] = body.workspaces;
     expect(lantern?.specs.map((s) => [s.id, s.title, s.stage, s.claims, s.closedAt, s.archived])).toEqual([
       ["001", "Open lamp", "review", { closed: 1, total: 3 }, null, false],
-      ["002", "Recent wick", "done", { closed: 2, total: 2 }, hoursAgo(2), false],
     ]);
     expect(gone?.specs).toEqual([]);
     expect(harbor?.specs.map((s) => [s.id, s.title, s.stage, s.claims, s.closedAt, s.archived])).toEqual([
       ["006", "New pier", "review", { closed: 0, total: 2 }, null, false],
-      ["004", "Recent buoy", "done", { closed: 3, total: 3 }, hoursAgo(2), true],
     ]);
-    for (const spec of body.workspaces.flatMap((w) => w.specs)) expect(spec).toHaveProperty("state");
-    expect(body.kpis).toEqual({ repos: 2, closed: 2, listed: 4, claimsClosed: 6, claimsTotal: 10 });
+    // ISC-613: no listed spec is done or archived, the 2 h closed and the 2 h archived ones included.
+    const listed = body.workspaces.flatMap((w) => w.specs);
+    for (const spec of listed) expect(spec).toHaveProperty("state");
+    expect(listed.filter((s) => s.stage === "done" || s.archived)).toEqual([]);
+    expect(listed.map((s) => s.id)).not.toContain("002");
+    expect(listed.map((s) => s.id)).not.toContain("004");
+    expect(body.kpis).toEqual({ repos: 2, listed: 2, claimsClosed: 1, claimsTotal: 5 });
 
     // ISC-3: no field names an absolute path, and the board starts no services probe.
     expect(strings(body).filter(hasAbsolutePath)).toEqual([]);
@@ -148,15 +174,14 @@ describe("GET /api/status (spec 071, ISC-593)", () => {
     expect(probed).toEqual([]);
   });
 
-  test("spec 072 (ISC-599): each listed spec carries the dashboard row's next command in plugin form, null when complete or archived", async () => {
+  test("spec 072 (ISC-599): each listed spec carries the dashboard row's next command in plugin form, open specs only (ISC-613)", async () => {
     const body = (await (await call()).json()) as StatusResponse;
     const commands = body.workspaces.map((w) => [w.slug, w.specs.map((s) => [s.id, s.nextCommand])]);
     expect(commands).toEqual([
-      // An open spec with a next step, and a recently closed one with `phase: complete` and no next command.
-      ["lantern", [["001", "/spec review 001"], ["002", null]]],
+      // Every listed spec is open (spec 073, ISC-613); each here has a next step.
+      ["lantern", [["001", "/spec review 001"]]],
       ["gone", []],
-      // An open spec, and an archived one: archived specs never carry a command.
-      ["harbor", [["006", "/spec review 006"], ["004", null]]],
+      ["harbor", [["006", "/spec review 006"]]],
     ]);
 
     // The same command the dashboard row of that workspace shows.
@@ -170,6 +195,20 @@ describe("GET /api/status (spec 071, ISC-593)", () => {
         expect(spec.nextCommand).toBe(row === undefined ? "no dashboard row" : row.nextCommand);
       }
     }
+  });
+
+  test("ISC-614: the board reads no file under specs/archive/; the workspace stays readable with its open spec listed", async () => {
+    const paths = await touched(async () => {
+      const res = await call();
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as StatusResponse;
+      const harbor = body.workspaces.find((w) => w.slug === "harbor");
+      expect(harbor?.readable).toBe(true);
+      expect(harbor?.specs.map((s) => s.id)).toEqual(["006"]);
+    });
+    // The workspace was read (its open spec's files among the paths), and no file under its archive was.
+    expect(paths.some((p) => p.startsWith(join(harborDir, "specs", "006-new-pier") + sep))).toBe(true);
+    expect(paths.filter((p) => p.startsWith(join(harborDir, "specs", "archive") + sep))).toEqual([]);
   });
 
   test("a strong ETag over the body, 304 on revalidation, HEAD without a body", async () => {

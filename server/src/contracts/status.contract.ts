@@ -1,6 +1,7 @@
 /**
- * The status route contract (spec 071, ISC-593; plan 071 § Interfaces): `GET /api/status` answers the open and the
- * recently closed specs of every registered workspace in one body, for the status widget.
+ * The status route contract (spec 071, ISC-593; plan 071 § Interfaces): `GET /api/status` answers the open specs of
+ * every registered workspace in one body, for the status widget; never a closed or an archived spec (spec 073,
+ * ISC-613).
  *
  * Consumers, building against this file without talking to each other:
  * 1. `server/src/status/` reads every registered workspace at the request's clock and answers `StatusResponse`, which

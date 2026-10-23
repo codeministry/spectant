@@ -3640,7 +3640,7 @@ describe('stub API: the sidebar fixtures (spec 067, T7, ISC-528)', () => {
 describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
   type ListEntry = { slug: string; pathTail: string; readable: boolean; error?: string };
   type Init = Parameters<typeof request>[1];
-  /** The expectation from core: `statusBoard` over the stub's own list and dashboard answers, at `STUB_NOW`. */
+  /** The expectation from core: `statusBoard` over the stub's own list and dashboard answers. */
   const expected = async (init: Init = {}): Promise<StatusResponse> => {
     const list = (await (await ask('/api/workspaces', init)).json()) as ListEntry[];
     const inputs: StatusInput[] = [];
@@ -3652,7 +3652,7 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
       const model = (await (await ask(`/api/workspaces/${encodeURIComponent(w.slug)}/dashboard`, init)).json()) as StatusModel;
       inputs.push({ slug: w.slug, pathTail: w.pathTail, readable: true, model });
     }
-    return statusBoard(inputs, new Date(STUB_NOW));
+    return statusBoard(inputs);
   };
   /**
    * A plugin command (`/spec implement 072`, `/spec review 004 code`): it starts with a slash but is no path, one slash
@@ -3708,10 +3708,10 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
     expect(two.kpis.listed).toBeGreaterThan(0);
     const unreadable = (await (await ask(STATUS_PATH, { state: 'unreadable' })).json()) as StatusResponse;
     expect(unreadable.workspaces.at(-1)).toEqual({ slug: 'lantern', pathTail: 'lantern', readable: false, error: 'missing', specs: [] });
-    expect((await (await ask(STATUS_PATH, { state: 'empty' })).json()) as StatusResponse).toEqual(statusBoard([], new Date(STUB_NOW)));
+    expect((await (await ask(STATUS_PATH, { state: 'empty' })).json()) as StatusResponse).toEqual(statusBoard([]));
   });
 
-  test('each listed spec carries its dashboard row\'s nextCommand in the plugin form, null without one and for an archived spec (spec 072, T4, ISC-599)', async () => {
+  test('each listed spec carries its dashboard row\'s nextCommand in the plugin form, null without one (spec 072, T4, ISC-599); open specs only (spec 073, ISC-613)', async () => {
     // The path guard stays strict: only `/spec <words>` passes; a path, a drive letter, a home path or a slash inside fails.
     expect(absolutePaths(['/spec implement 072', '/spec review 004 code', '/spec 011'])).toEqual([]);
     expect(absolutePaths(['/Users/x/harbor', '/spec/../etc', '/spec implement 072/x', 'C:\\harbor', '~/harbor', '/spec'])).toEqual([ // leak:allow synthetic test input
@@ -3723,7 +3723,7 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
         const rows = ((await (await ask(`/api/workspaces/${w.slug}/dashboard`, { state })).json()) as StatusModel).specs;
         const commands = new Map(rows.map((r) => [r.id, r.nextCommand]));
         for (const s of w.specs) {
-          expect({ ws: w.slug, id: s.id, nextCommand: s.nextCommand }).toEqual({ ws: w.slug, id: s.id, nextCommand: s.archived ? null : (commands.get(s.id) ?? null) });
+          expect({ ws: w.slug, id: s.id, nextCommand: s.nextCommand }).toEqual({ ws: w.slug, id: s.id, nextCommand: commands.get(s.id) ?? null });
           if (s.nextCommand !== null) expect(isCommand(s.nextCommand)).toBe(true);
         }
       }
@@ -3731,14 +3731,11 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
     const harbor = ((await (await ask(STATUS_PATH)).json()) as StatusResponse).workspaces.find((w) => w.slug === 'harbor');
     const command = (id: string): string | null | undefined => harbor?.specs.find((s) => s.id === id)?.nextCommand;
     expect([command('003'), command('002'), command('008')]).toEqual(['/spec tasks 003', '/spec implement 002', null]);
-    // No archived spec closed within 24 h of STUB_NOW, so the board lists none; at a clock an hour after harbor's
-    // archived close the stub's own dashboard body lists it, with no command.
+    // The board lists no archived spec at all (spec 073, ISC-613), even over a dashboard body whose archive holds some.
     const model = (await (await ask('/api/workspaces/harbor/dashboard')).json()) as StatusModel;
-    const closedAt = model.archive.find((a) => a.closedAt !== null)?.closedAt ?? '';
-    const later = statusBoard([{ slug: 'harbor', pathTail: 'harbor', readable: true, model }], new Date(Date.parse(closedAt) + 60 * 60 * 1000));
-    const archived = later.workspaces[0]?.specs.filter((s) => s.archived) ?? [];
-    expect(archived.length).toBeGreaterThan(0);
-    expect(archived.map((s) => s.nextCommand)).toEqual(archived.map(() => null));
+    expect(model.archive.length).toBeGreaterThan(0);
+    const board = statusBoard([{ slug: 'harbor', pathTail: 'harbor', readable: true, model }]);
+    expect(board.workspaces[0]?.specs.filter((s) => s.archived)).toEqual([]);
   });
 
   test('the long-row fixture: STUB_STATUS_LONG is listed on the default board with its long title and the longest command form (spec 072, T4)', async () => {

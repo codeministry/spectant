@@ -5,9 +5,9 @@
  * - `bun run e2e -- status-widget-live -g live`: `/widget` open, its stream (`/api/events`) connected; in the test's
  *   stub session harbor 004 moves `code-review → close → done` (two board transitions) and a bump with `&spec=003`
  *   closes one of 003's claims and pushes one `update` frame, whose last view is `/api/status`. Within 2 s 003's row
- *   counter reads one more closed claim, 004's stage chip reads "Done", and the KPI tiles "closed" and "claims" each
- *   count one more; no `document` request follows the first load, a marker on `window` survives and the page's
- *   `main` is the same node.
+ *   counter reads one more closed claim, 004's row is gone (the widget lists open specs only, spec 073, ISC-613), the
+ *   KPI tile "specs" counts one less and "claims" counts 003's new claim without 004's closed ones (ISC-615); no
+ *   `document` request follows the first load, a marker on `window` survives and the page's `main` is the same node.
  */
 import type { Page } from '@playwright/test';
 
@@ -52,7 +52,7 @@ test.describe('status widget live at 1440', () => {
     await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: `status-widget-live-${info.testId}-${String(info.retry)}` } });
   });
 
-  test(`live: changed progress and a stage on done reach the open widget within ${String(LIVE_BUDGET_MS)} ms, without reload`, async ({ page }) => {
+  test(`live: changed progress and a spec moved to done reach the open widget within ${String(LIVE_BUDGET_MS)} ms, without reload`, async ({ page }) => {
     const headers = { [SESSION_HEADER]: session() };
     await page.context().setExtraHTTPHeaders(headers);
     expect((await page.request.post(RESET_PATH, { headers })).status()).toBe(204);
@@ -63,8 +63,10 @@ test.describe('status widget live at 1440', () => {
     const main = page.locator('main.widget');
     await expect(row(page, PROGRESS).locator('.entry-count')).toHaveText('0/13');
     await expect(row(page, CLOSING).locator('.entry-stage')).toHaveText('Code review');
-    const closed = await kpiValue(page, 1);
+    const specs = await kpiValue(page, 1);
     const claims = await kpiValue(page, 2);
+    // 004's closed claims leave the "claims" tile with its row.
+    const closingClosed = Number((await row(page, CLOSING).locator('.entry-count').textContent())?.split('/')[0]);
 
     await main.evaluate((el) => {
       const probe = window as Probe;
@@ -82,9 +84,9 @@ test.describe('status widget live at 1440', () => {
     expect((await page.request.post(`${BUMP_PATH}?ws=harbor&spec=${PROGRESS}`, { headers })).status()).toBe(204);
 
     await expect(row(page, PROGRESS).locator('.entry-count')).toHaveText('1/13', { timeout: LIVE_BUDGET_MS });
-    await expect(row(page, CLOSING).locator('.entry-stage')).toHaveText('Done', { timeout: LIVE_BUDGET_MS });
-    await expect(kpi(page, 1)).toHaveText(kpiText(closed + 1), { timeout: LIVE_BUDGET_MS });
-    await expect(kpi(page, 2)).toHaveText(kpiText(claims + 1), { timeout: LIVE_BUDGET_MS });
+    await expect(row(page, CLOSING)).toHaveCount(0, { timeout: LIVE_BUDGET_MS });
+    await expect(kpi(page, 1)).toHaveText(kpiText(specs - 1), { timeout: LIVE_BUDGET_MS });
+    await expect(kpi(page, 2)).toHaveText(kpiText(claims + 1 - closingClosed), { timeout: LIVE_BUDGET_MS });
     expect(Date.now() - sent).toBeLessThanOrEqual(LIVE_BUDGET_MS);
 
     expect(documents, 'no document request').toEqual([]);

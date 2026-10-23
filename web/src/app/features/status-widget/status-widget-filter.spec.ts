@@ -33,7 +33,7 @@ const spec = (id: string, stage: Spec['stage']): Spec => ({
 
 /** Three workspaces with mixed stages, one readable without specs, one unreadable, in picker order. */
 const MIXED: StatusResponse = {
-  kpis: { repos: 3, closed: 1, listed: 6, claimsClosed: 6, claimsTotal: 18 },
+  kpis: { repos: 3, listed: 6, claimsClosed: 6, claimsTotal: 18 },
   workspaces: [
     { slug: 'harbor', pathTail: 'harbor-app', readable: true, error: null, specs: [spec('002', 'build'), spec('005', 'review'), spec('001', 'done')] },
     { slug: 'quiet', pathTail: 'quiet', readable: true, error: null, specs: [] },
@@ -45,7 +45,7 @@ const MIXED: StatusResponse = {
 
 /** No workspace lists a spec and every one is readable: no group, so no filter. */
 const EMPTY: StatusResponse = {
-  kpis: { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 },
+  kpis: { repos: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 },
   workspaces: [{ slug: 'harbor', pathTail: 'harbor-app', readable: true, error: null, specs: [] }],
 };
 
@@ -190,29 +190,29 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
   });
 
   // Spec 072 (T24, ISC-604): the head counts exactly the visible rows; without a selection exactly the body's KPIs.
-  /** The head's three figures as rendered: repos, closed/listed, claims closed/total. */
+  /** The head's three figures as rendered: repos, specs (listed, spec 073, ISC-615), claims closed/total. */
   const figures = (root: HTMLElement): string[] => [...root.querySelectorAll<HTMLElement>('header.head dl.kpis dd')].map((dd) => dd.textContent.trim());
 
   it('counts the listed specs without a selection, exactly the body KPIs (ISC-583 held)', async () => {
     const root = await land();
-    const { repos, closed, listed, claimsClosed, claimsTotal } = MIXED.kpis;
-    expect(figures(root)).toEqual([`${repos}`, `${closed}/${listed}`, `${claimsClosed}/${claimsTotal}`]);
+    const { repos, listed, claimsClosed, claimsTotal } = MIXED.kpis;
+    expect(figures(root)).toEqual([`${repos}`, `${listed}`, `${claimsClosed}/${claimsTotal}`]);
   });
 
   it('counts only the rows a workspace, a stage or both selections leave visible', async () => {
     const root = await land();
     await press(root, 0, 'lantern');
-    expect(figures(root)).toEqual(['1', '0/2', '2/6']);
+    expect(figures(root)).toEqual(['1', '2', '2/6']);
     await press(root, 0, 'lantern');
     await press(root, 1, 'Review');
     expect(visible(root)).toEqual(['harbor: 005', 'beacon: !notice', 'reef: 020']);
-    expect(figures(root)).toEqual(['2', '0/2', '2/6']);
+    expect(figures(root)).toEqual(['2', '2', '2/6']);
     await press(root, 1, 'Review');
     await press(root, 1, 'Done');
     await press(root, 1, 'Build');
     await press(root, 0, 'harbor-app');
     expect(visible(root)).toEqual(['harbor: 002 001']);
-    expect(figures(root)).toEqual(['1', '1/2', '2/6']);
+    expect(figures(root)).toEqual(['1', '2', '2/6']);
   });
 
   // Spec 072 (T26, ISC-605): a selection without a hit shows one line with a reset button, never an empty area.
@@ -229,7 +229,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     expect(buttons.map((b) => [b.textContent.trim(), b.hasAttribute('ui-button'), b.dataset['variant'], b.classList.contains('btn-sm')])).toEqual([
       ['Reset filter', true, 'secondary', true],
     ]);
-    expect(figures(root)).toEqual(['0', '0/0', '0/0']);
+    expect(figures(root)).toEqual(['0', '0', '0/0']);
     expect(root.querySelector('section.widget-filter')).not.toBeNull();
     expect(chips(root, 0).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
   });
@@ -248,14 +248,14 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     expect([...chips(root, 0), ...chips(root, 1)].every((chip) => chip.getAttribute('aria-pressed') === 'false')).toBe(true);
     expect(root.querySelector('div.no-match')).toBeNull();
     expect(document.activeElement).toBe(chips(root, 0)[0]);
-    expect(figures(root)).toEqual(['3', '1/6', '6/18']);
+    expect(figures(root)).toEqual(['3', '6', '6/18']);
   });
 
   it('keeps the plain empty line without a button for a body that lists nothing', async () => {
     const root = await land(EMPTY);
     expect(root.querySelector('div.no-match')).toBeNull();
     expect(root.querySelectorAll('section.groups button')).toHaveLength(0);
-    expect(root.querySelector('section.groups p.meta')?.textContent.trim()).toBe('No open or recently closed specs.');
+    expect(root.querySelector('section.groups p.meta')?.textContent.trim()).toBe('No open specs.');
   });
 
   // Spec 072 (T22, ISC-611): each chip counts the listed specs its option meets under the other dimension's selection,

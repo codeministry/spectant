@@ -1,9 +1,10 @@
-// The status board (spec 071, ISC-593, ISC-584, ISC-583, ISC-594): `statusBoard` turns one dashboard model per
-// registered workspace into the status widget's answer: the open specs and those closed at most 24 hours before `now`,
-// archived ones included, grouped by workspace in the caller's order, with the KPIs over exactly the listed specs.
-// Spec 072 (ISC-599): each listed spec carries the dashboard row's next command, null for an archived spec.
-// Spec 072 (ISC-604): `statusKpis` counts exactly the workspaces and rows it is given, so a filtered view counts its rows.
-// The fixture is synthetic: three workspaces, one unreadable, with specs closed 2 h and 30 h before a fixed clock.
+// The status board (spec 071, ISC-593, ISC-583, ISC-594; spec 073, ISC-613): `statusBoard` turns one dashboard model
+// per registered workspace into the status widget's answer: the open specs only (stage not `done`), never a closed or
+// an archived one however recently it closed, grouped by workspace in the caller's order, with the KPIs over exactly
+// the listed specs. Spec 072 (ISC-599): each listed spec carries the dashboard row's next command. Spec 072 (ISC-604):
+// `statusKpis` counts exactly the workspaces and rows it is given, so a filtered view counts its rows.
+// The fixture is synthetic: three workspaces, one unreadable, with specs closed 2 h and 30 h before a
+// fixed clock and archived specs closed as long before.
 import { describe, expect, test } from 'bun:test';
 
 import type { ArchivedSpec } from '../src/archive.ts';
@@ -11,7 +12,7 @@ import type { DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
 import type { ItemState } from '../src/files.ts';
 import * as barrel from '../src/index.ts';
 import type { Stage } from '../src/stage.ts';
-import { STATUS_CLOSED_WINDOW_MS, statusBoard, statusKpis } from '../src/status-board.ts';
+import { statusBoard, statusKpis } from '../src/status-board.ts';
 import type { StatusInput, StatusKpis, StatusResponse, StatusSpec, StatusWorkspace } from '../src/status-board.ts';
 
 const NOW = new Date('2026-03-10T12:00:00Z');
@@ -54,14 +55,14 @@ const INPUT: StatusInput[] = [
   { slug: 'quiet', pathTail: 'quiet', readable: true, model: model([row('020', 'done', H30, 5, 5)]) },
 ];
 
-const board: StatusResponse = statusBoard(INPUT, NOW);
+const board: StatusResponse = statusBoard(INPUT);
 const ids = (slug: string): string[] => board.workspaces.find((w) => w.slug === slug)?.specs.map((s) => s.id) ?? [];
 const spec = (slug: string, id: string): StatusSpec | undefined => board.workspaces.find((w) => w.slug === slug)?.specs.find((s) => s.id === id);
 
 describe('the types and the barrel (ISC-593)', () => {
-  test('the barrel exports the board and its window', () => {
+  test('the barrel exports the board and no closed window any more (ISC-613)', () => {
     expect(barrel.statusBoard).toBe(statusBoard);
-    expect(barrel.STATUS_CLOSED_WINDOW_MS).toBe(24 * 60 * 60 * 1000);
+    expect('STATUS_CLOSED_WINDOW_MS' in barrel).toBe(false);
   });
 
   test('one entry per workspace in the input order, slug, path tail, readability and error', () => {
@@ -75,7 +76,7 @@ describe('the types and the barrel (ISC-593)', () => {
   });
 
   test('a spec carries id, slug, title, stage, claims, closedAt, state, archived and nextCommand, and nothing else', () => {
-    expect(spec('lantern', '002')).toEqual({ id: '002', slug: '002-spec-002', title: 'Spec 002', stage: 'done', claims: { closed: 4, total: 4 }, closedAt: H2, state: 'done', archived: false, nextCommand: null });
+    expect(spec('lantern', '001')).toEqual({ id: '001', slug: '001-spec-001', title: 'Spec 001', stage: 'build', claims: { closed: 2, total: 5 }, closedAt: null, state: 'running', archived: false, nextCommand: '/spec implement 001' });
   });
 
   test('no field names an absolute path', () => {
@@ -93,50 +94,54 @@ describe('the types and the barrel (ISC-593)', () => {
   });
 });
 
-describe('statusBoard lists open and recently closed specs (ISC-584)', () => {
-  test('open specs stay; a spec closed 2 h ago is listed, 30 h ago is not; done without closedAt is not', () => {
-    expect(ids('lantern')).toEqual(['001', '002', '005']);
+describe('statusBoard lists open specs only (ISC-613)', () => {
+  test('open specs stay; a spec closed 2 h ago is not listed, nor 30 h ago, nor done without closedAt', () => {
+    expect(ids('lantern')).toEqual(['001']);
     expect(ids('harbor')).toEqual(['010']);
+    expect(spec('lantern', '002')).toBeUndefined();
   });
 
-  test('archived specs closed within the window come after the active rows', () => {
-    expect(spec('lantern', '005')).toEqual({ id: '005', slug: '005-old-005', title: 'Old 005', stage: 'done', claims: { closed: 6, total: 6 }, closedAt: H2, state: 'done', archived: true, nextCommand: null });
+  test('no archived spec is listed, not even one closed 2 h ago', () => {
+    expect(spec('lantern', '005')).toBeUndefined();
     expect(spec('lantern', '006')).toBeUndefined();
+  });
+
+  test('no listed spec anywhere is done or archived, and none carries a closedAt', () => {
+    const listed = board.workspaces.flatMap((w) => w.specs);
+    expect(listed.filter((s) => s.stage === 'done' || s.archived || s.closedAt !== null)).toEqual([]);
   });
 
   test('a readable workspace with nothing listed stays in the list with no specs', () => {
     expect(board.workspaces.find((w) => w.slug === 'quiet')?.specs).toEqual([]);
   });
 
-  test('the window is inclusive at exactly 24 hours and the clock comes from the caller', () => {
-    expect(STATUS_CLOSED_WINDOW_MS).toBe(86_400_000);
-    const edge = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', H24, 1, 1)]) }], NOW);
-    expect(edge.workspaces[0]?.specs.map((s) => s.id)).toEqual(['030']);
-    const later = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', H24, 1, 1)]) }], new Date(NOW.getTime() + 1));
-    expect(later.workspaces[0]?.specs).toEqual([]);
+  test('a spec closed at the very clock, or 24 hours before it, is not listed either', () => {
+    const now = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', NOW.toISOString(), 1, 1)], [archived('031', NOW.toISOString(), 1, 1)]) }]);
+    expect(now.workspaces[0]?.specs).toEqual([]);
+    const edge = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', H24, 1, 1)]) }]);
+    expect(edge.workspaces[0]?.specs).toEqual([]);
   });
 
   test('an unparsable closedAt on a done spec lists nothing', () => {
-    const odd = statusBoard([{ slug: 'o', pathTail: 'o', readable: true, model: model([row('040', 'done', 'not a date', 1, 1)], [archived('041', 'later', 1, 1)]) }], NOW);
+    const odd = statusBoard([{ slug: 'o', pathTail: 'o', readable: true, model: model([row('040', 'done', 'not a date', 1, 1)], [archived('041', 'later', 1, 1)]) }]);
     expect(odd.workspaces[0]?.specs).toEqual([]);
   });
 });
 
 describe('the KPIs count exactly the listed specs (ISC-583)', () => {
-  test('repos with a listed spec, closed of listed, claims closed of total', () => {
-    // lantern lists 001 (2/5), 002 (4/4, done), 005 (6/6, done, archived); harbor lists 010 (0/3); quiet and gone nothing.
-    expect(board.kpis).toEqual({ repos: 2, closed: 2, listed: 4, claimsClosed: 12, claimsTotal: 18 });
+  test('repos with a listed spec, listed specs, claims closed of total', () => {
+    // lantern lists 001 (2/5); harbor lists 010 (0/3); quiet and gone nothing. Every listed spec is open (ISC-613); `listed` is the widget head's "specs" (ISC-615).
+    expect(board.kpis).toEqual({ repos: 2, listed: 2, claimsClosed: 2, claimsTotal: 8 });
   });
 
   test('no workspace at all: every KPI is zero', () => {
-    expect(statusBoard([], NOW)).toEqual({ kpis: { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 }, workspaces: [] });
+    expect(statusBoard([])).toEqual({ kpis: { repos: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 }, workspaces: [] });
   });
 });
 
 describe('the run state of a listed spec (ISC-594)', () => {
-  test("a row takes its item state, an archived spec is done, a row without one carries null", () => {
+  test('a row takes its item state, a row without one carries null', () => {
     expect(spec('lantern', '001')?.state).toBe('running');
-    expect(spec('lantern', '005')?.state).toBe('done');
     expect(spec('harbor', '010')?.state).toBeNull();
   });
 });
@@ -148,16 +153,14 @@ describe('the next command of a listed spec (ISC-599)', () => {
 
   test('a row without a next command carries null', () => {
     expect(spec('harbor', '010')?.nextCommand).toBeNull();
-    expect(spec('lantern', '002')?.nextCommand).toBeNull();
   });
 
-  test('an archived spec carries null', () => {
-    expect(spec('lantern', '005')?.archived).toBe(true);
-    expect(spec('lantern', '005')?.nextCommand).toBeNull();
+  test('every listed spec is an open row, so an archived spec never needs a command (ISC-613)', () => {
+    expect(board.workspaces.flatMap((w) => w.specs).filter((s) => s.archived)).toEqual([]);
   });
 
   test('the command comes from the row as it stands, never recomputed', () => {
-    const own = statusBoard([{ slug: 'c', pathTail: 'c', readable: true, model: model([row('050', 'plan', null, 0, 2, undefined, '/spec review 050 code')]) }], NOW);
+    const own = statusBoard([{ slug: 'c', pathTail: 'c', readable: true, model: model([row('050', 'plan', null, 0, 2, undefined, '/spec review 050 code')]) }]);
     expect(own.workspaces[0]?.specs[0]?.nextCommand).toBe('/spec review 050 code');
   });
 });
@@ -168,35 +171,34 @@ describe('statusKpis counts exactly the rows it is given (ISC-604)', () => {
     const rows = ws.flatMap((w) => w.specs);
     return {
       repos: ws.filter((w) => w.specs.length > 0).length,
-      closed: rows.filter((s) => s.stage === 'done').length,
       listed: rows.length,
       claimsClosed: rows.reduce((n, s) => n + s.claims.closed, 0),
       claimsTotal: rows.reduce((n, s) => n + s.claims.total, 0),
     };
   };
-  const ZERO: StatusKpis = { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 };
+  const ZERO: StatusKpis = { repos: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 };
 
   test('the barrel exports it; over every workspace it is the board KPIs, unchanged (ISC-583)', () => {
     expect(barrel.statusKpis).toBe(statusKpis);
     expect(statusKpis(board.workspaces)).toEqual(board.kpis);
-    expect(board.kpis).toEqual({ repos: 2, closed: 2, listed: 4, claimsClosed: 12, claimsTotal: 18 });
+    expect(board.kpis).toEqual({ repos: 2, listed: 2, claimsClosed: 2, claimsTotal: 8 });
   });
 
   test('over a subset of the workspaces it equals the sums over exactly those rows', () => {
     const harbor = board.workspaces.filter((w) => w.slug === 'harbor');
-    expect(statusKpis(harbor)).toEqual({ repos: 1, closed: 0, listed: 1, claimsClosed: 0, claimsTotal: 3 });
+    expect(statusKpis(harbor)).toEqual({ repos: 1, listed: 1, claimsClosed: 0, claimsTotal: 3 });
     const lanternAndGone = board.workspaces.filter((w) => w.slug === 'lantern' || w.slug === 'gone');
-    expect(statusKpis(lanternAndGone)).toEqual({ repos: 1, closed: 2, listed: 3, claimsClosed: 12, claimsTotal: 15 });
+    expect(statusKpis(lanternAndGone)).toEqual({ repos: 1, listed: 1, claimsClosed: 2, claimsTotal: 5 });
     expect(statusKpis(lanternAndGone)).toEqual(sums(lanternAndGone));
   });
 
   test('over workspaces whose specs were narrowed it counts only the remaining rows', () => {
-    const open = board.workspaces.map((w) => ({ ...w, specs: w.specs.filter((s) => s.stage !== 'done') }));
-    expect(statusKpis(open)).toEqual({ repos: 2, closed: 0, listed: 2, claimsClosed: 2, claimsTotal: 8 });
-    expect(statusKpis(open)).toEqual(sums(open));
-    const done = board.workspaces.map((w) => ({ ...w, specs: w.specs.filter((s) => s.stage === 'done') }));
-    expect(statusKpis(done)).toEqual({ repos: 1, closed: 2, listed: 2, claimsClosed: 10, claimsTotal: 10 });
-    expect(statusKpis(done)).toEqual(sums(done));
+    const started = board.workspaces.map((w) => ({ ...w, specs: w.specs.filter((s) => s.claims.closed > 0) }));
+    expect(statusKpis(started)).toEqual({ repos: 1, listed: 1, claimsClosed: 2, claimsTotal: 5 });
+    expect(statusKpis(started)).toEqual(sums(started));
+    const planned = board.workspaces.map((w) => ({ ...w, specs: w.specs.filter((s) => s.stage === 'plan') }));
+    expect(statusKpis(planned)).toEqual({ repos: 1, listed: 1, claimsClosed: 0, claimsTotal: 3 });
+    expect(statusKpis(planned)).toEqual(sums(planned));
   });
 
   test('an unreadable workspace or an empty selection counts for nothing', () => {

@@ -4,7 +4,7 @@ import { ApplicationRef, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { type ActivatedRouteSnapshot, provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LiveUpdate } from '../../../../../server/src/contracts/spec-routes.contract';
 import { STATUS_PATH, type StatusResponse } from '../../../../../server/src/contracts/status.contract';
@@ -40,7 +40,7 @@ const done = (id: string, title: string): Spec =>
 
 /** Three workspaces: harbor lists open and closed specs, lantern lists none, beacon cannot be read (T26, T27, T30). */
 const MIXED: StatusResponse = {
-  kpis: { repos: 1, closed: 1, listed: 3, claimsClosed: 6, claimsTotal: 10 },
+  kpis: { repos: 1, listed: 3, claimsClosed: 6, claimsTotal: 10 },
   workspaces: [
     { slug: 'harbor', pathTail: 'harbor-app', readable: true, error: null, specs: [spec('002', 'Console'), spec('005', 'Audit'), done('001', 'Init')] },
     { slug: 'lantern', pathTail: 'lantern', readable: true, error: null, specs: [] },
@@ -50,7 +50,7 @@ const MIXED: StatusResponse = {
 
 /** No workspace lists a spec and every one is readable (T30). */
 const EMPTY: StatusResponse = {
-  kpis: { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 },
+  kpis: { repos: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 },
   workspaces: [
     { slug: 'harbor', pathTail: 'harbor-app', readable: true, error: null, specs: [] },
     { slug: 'lantern', pathTail: 'lantern', readable: true, error: null, specs: [] },
@@ -58,7 +58,7 @@ const EMPTY: StatusResponse = {
 };
 
 const BODY: StatusResponse = {
-  kpis: { repos: 2, closed: 0, listed: 3, claimsClosed: 3, claimsTotal: 9 },
+  kpis: { repos: 2, listed: 3, claimsClosed: 3, claimsTotal: 9 },
   workspaces: [
     { slug: 'harbor', pathTail: 'harbor', readable: true, error: null, specs: [spec('002', 'Console'), spec('005', 'Audit')] },
     { slug: 'lantern', pathTail: 'lantern', readable: true, error: null, specs: [spec('001', 'Beam')] },
@@ -80,6 +80,7 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
       imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: lang }, preloadLangs: true })],
       providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
     });
+    TestBed.inject(TranslocoService).setActiveLang(lang);
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/widget');
     await harness.fixture.whenStable();
@@ -139,7 +140,7 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
     const root = (await land(MIXED, 'de')).routeNativeElement as HTMLElement;
     expect(tiles(root)).toEqual([
       { label: 'Repos', value: '1', den: null },
-      { label: 'Geschlossen', value: '1', den: '3' },
+      { label: 'Specs', value: '3', den: null },
       { label: 'Claims', value: '6', den: '10' },
     ]);
   });
@@ -149,16 +150,15 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
     const { kpis } = MIXED;
     expect(tiles(root)).toEqual([
       { label: 'repos', value: String(kpis.repos), den: null },
-      { label: 'closed', value: String(kpis.closed), den: String(kpis.listed) },
+      { label: 'specs', value: String(kpis.listed), den: null },
       { label: 'claims', value: String(kpis.claimsClosed), den: String(kpis.claimsTotal) },
     ]);
     const listed = MIXED.workspaces.filter((ws) => ws.readable).flatMap((ws) => ws.specs);
     const repos = MIXED.workspaces.filter((ws) => ws.readable && ws.specs.length > 0).length;
     const rendered = root.querySelectorAll('section.groups [data-spec]').length;
     expect(rendered).toBe(listed.length);
-    expect([kpis.repos, kpis.closed, kpis.listed, kpis.claimsClosed, kpis.claimsTotal]).toEqual([
+    expect([kpis.repos, kpis.listed, kpis.claimsClosed, kpis.claimsTotal]).toEqual([
       repos,
-      listed.filter((row) => row.stage === 'done').length,
       listed.length,
       listed.reduce((sum, row) => sum + row.claims.closed, 0),
       listed.reduce((sum, row) => sum + row.claims.total, 0),
@@ -185,7 +185,7 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
     expect(beacon?.querySelectorAll('[data-spec]')).toHaveLength(0);
     expect(root.querySelectorAll('[data-workspace="harbor"] [data-spec]')).toHaveLength(3);
     expect(root.querySelectorAll('[data-workspace="harbor"] ui-notice')).toHaveLength(0);
-    expect(tiles(root).map((tile) => tile.value)).toEqual(['1', '1', '6']);
+    expect(tiles(root).map((tile) => tile.value)).toEqual(['1', '3', '6']);
     expect(root.querySelector('section.groups .meta')).toBeNull();
   });
 
@@ -193,19 +193,48 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
     const root = (await land(EMPTY)).routeNativeElement as HTMLElement;
     const lines = root.querySelectorAll<HTMLElement>('section.groups .meta');
     expect(lines).toHaveLength(1);
-    expect(lines[0].textContent.trim()).toBe('No open or recently closed specs.');
+    expect(lines[0].textContent.trim()).toBe('No open specs.');
     expect(root.querySelectorAll('section.groups [data-workspace], section.groups h2, section.groups ul')).toHaveLength(0);
     expect(tiles(root)).toEqual([
       { label: 'repos', value: '0', den: null },
-      { label: 'closed', value: '0', den: '0' },
+      { label: 'specs', value: '0', den: null },
       { label: 'claims', value: '0', den: '0' },
     ]);
+  });
+
+  describe('status-widget specs kpi (spec 073, C4, ISC-615)', () => {
+    /** Three workspaces, each listing open specs only: four rows in all. */
+    const OPEN: StatusResponse = {
+      kpis: { repos: 3, listed: 4, claimsClosed: 4, claimsTotal: 12 },
+      workspaces: [
+        { slug: 'harbor', pathTail: 'harbor', readable: true, error: null, specs: [spec('002', 'Console'), spec('005', 'Audit')] },
+        { slug: 'lantern', pathTail: 'lantern', readable: true, error: null, specs: [spec('001', 'Beam')] },
+        { slug: 'beacon', pathTail: 'beacon', readable: true, error: null, specs: [spec('003', 'Signal', { stage: 'plan' })] },
+      ],
+    };
+
+    for (const [lang, label] of [
+      ['en', 'specs'],
+      ['de', 'Specs'],
+    ] as const) {
+      it(`shows "${label}" = the number of listed rows in the middle tile and no closed word in the head (${lang})`, async () => {
+        const harness = await land(OPEN, lang);
+        const root = harness.routeNativeElement as HTMLElement;
+        const rows = root.querySelectorAll('section.groups [data-spec]').length;
+        expect(rows).toBe(4);
+        expect(tiles(root)[1]).toEqual({ label, value: String(rows), den: null });
+        const head = root.querySelector<HTMLElement>('header.head dl.kpis');
+        expect(head).not.toBeNull();
+        const words = [head?.textContent ?? '', ...[...(head?.querySelectorAll('*') ?? [])].flatMap((el) => [...el.attributes].map((a) => a.value))].join(' ');
+        expect(words).not.toMatch(/closed|geschlossen/i);
+      });
+    }
   });
 });
 
 /** The body after a change: 002 gains a claim, 005 moves to done (T34, ISC-587). */
 const CHANGED: StatusResponse = {
-  kpis: { repos: 2, closed: 1, listed: 3, claimsClosed: 7, claimsTotal: 10 },
+  kpis: { repos: 2, listed: 3, claimsClosed: 7, claimsTotal: 10 },
   workspaces: [
     {
       slug: 'harbor',
@@ -285,7 +314,7 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
     const fixture = await render();
     const root = fixture.nativeElement as HTMLElement;
     const main = root.querySelector('main.widget');
-    expect(kpis(root)).toEqual(['2', '0/3', '3/9']);
+    expect(kpis(root)).toEqual(['2', '3', '3/9']);
     expect(row(root, '002')).toEqual({ count: '1/3', stage: 'Build' });
 
     push({ ws: 'harbor', views: [{ path: STATUS_PATH, etag: '"s1"', body: CHANGED }] });
@@ -296,7 +325,7 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
     answerOthers();
     await settled(fixture);
 
-    expect(kpis(root)).toEqual(['2', '1/3', '7/10']);
+    expect(kpis(root)).toEqual(['2', '3', '7/10']);
     expect(row(root, '002')).toEqual({ count: '2/3', stage: 'Build' });
     expect(row(root, '005')).toEqual({ count: '4/4', stage: 'Done' });
     expect(root.querySelector('main.widget')).toBe(main);
@@ -312,7 +341,7 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
     reread.flush(CHANGED, { headers: { ETag: '"s2"' } });
     answerOthers();
     await settled(fixture);
-    expect(kpis(root)).toEqual(['2', '1/3', '7/10']);
+    expect(kpis(root)).toEqual(['2', '3', '7/10']);
     expect(row(root, '005').stage).toBe('Done');
   });
 
@@ -381,6 +410,6 @@ describe('StatusWidgetPage live and bounds (spec 071, T34, ISC-587; T33, ISC-596
     place(480, 720, 10, 10);
     expect(() => window.dispatchEvent(new Event('pagehide'))).not.toThrow();
     fixture.detectChanges();
-    expect(kpis(fixture.nativeElement as HTMLElement)).toEqual(['2', '0/3', '3/9']);
+    expect(kpis(fixture.nativeElement as HTMLElement)).toEqual(['2', '3', '3/9']);
   });
 });

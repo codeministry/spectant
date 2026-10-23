@@ -17,7 +17,7 @@ describe('ApiClient status (spec 071, T16, ISC-593)', () => {
   afterEach(() => http.verify());
 
   const body: StatusResponse = {
-    kpis: { repos: 1, closed: 0, listed: 1, claimsClosed: 2, claimsTotal: 5 },
+    kpis: { repos: 1, listed: 1, claimsClosed: 2, claimsTotal: 5 },
     workspaces: [
       {
         slug: 'harbor',

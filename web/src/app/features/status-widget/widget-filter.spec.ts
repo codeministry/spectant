@@ -38,7 +38,7 @@ function ws(slug: string, specs: readonly StatusSpec[], readable = true): Status
 
 // Picker order: harbor, atlas, quarry, broken (unreadable), empty (nothing listed).
 const BODY: StatusResponse = {
-  kpis: { repos: 5, closed: 1, listed: 7, claimsClosed: 0, claimsTotal: 7 },
+  kpis: { repos: 5, listed: 7, claimsClosed: 0, claimsTotal: 7 },
   workspaces: [
     ws('harbor', [spec('001', 'done'), spec('002', 'build'), spec('003', 'plan')]),
     ws('atlas', [spec('010', 'review'), spec('011', 'build')]),

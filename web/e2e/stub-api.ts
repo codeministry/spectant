@@ -10,10 +10,10 @@
  *
  * - `GET|HEAD /api/workspaces` → `[{slug, name, pathTail, readable, error?, counts}]` in list order, `counts` = the
  *   golden's `kpis`, `null` when unreadable.
- * - `GET|HEAD /api/status` (spec 071, ISC-593) → core's `statusBoard` at `STUB_NOW` over that list in its order, each
- *   readable workspace with the dashboard body its own `GET` gets in that session; each listed spec carries that row's
- *   `nextCommand` (spec 072, ISC-599; null for an archived spec), harbor 004 the long row `STUB_STATUS_LONG`; 403,
- *   405 with `STATUS_ALLOW`.
+ * - `GET|HEAD /api/status` (spec 071, ISC-593) → core's `statusBoard` (open specs only, spec 073) over that list in
+ *   its order, each readable workspace with the dashboard body its own `GET` gets in that session; each listed spec
+ *   carries that row's `nextCommand` (spec 072, ISC-599), harbor 004 the long row `STUB_STATUS_LONG`; 403, 405 with
+ *   `STATUS_ALLOW`.
  * - `GET|HEAD /api/workspaces/:slug/dashboard` → the golden model, serialized as the server does (`JSON.stringify`);
  *   404 `{error: "not-found"}` for an unknown slug; 409 with the list entry for the unreadable workspace.
  * - Every route of `WORKSPACE_ROUTE_TABLE` with a golden family (`GET|HEAD /api/workspaces/:ws/planning`, spec 003
@@ -3110,7 +3110,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return takenDashboard(bumped, lockEditsOf(req, slug));
   };
   /**
-   * `GET|HEAD /api/status` (spec 071, ISC-593; `status.contract.ts`): core's `statusBoard` at `STUB_NOW` over the
+   * `GET|HEAD /api/status` (spec 071, ISC-593; `status.contract.ts`): core's `statusBoard` over the
    * request's workspace list in its order, each readable entry with the dashboard body its own `GET …/dashboard` gets
    * (so a session's move, bump or lock shows here too), each unreadable one with its list `error`. The rows carry
    * their `nextCommand` into the board as the dashboard serves it (spec 072, ISC-599), never recomputed. 403 the
@@ -3124,7 +3124,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
         ? { slug, pathTail, readable: true, model: dashboardBodyOf(req, slug) as StatusModel }
         : { slug, pathTail, readable: false, error: error ?? 'missing' },
     );
-    return workspaceJson(req, 200, statusBoard(inputs, LIVE_NOW));
+    return workspaceJson(req, 200, statusBoard(inputs));
   };
 
   /**
