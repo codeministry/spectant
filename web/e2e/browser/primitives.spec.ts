@@ -1,10 +1,10 @@
 /**
- * ISC-148, ISC-451: the shared primitives keep their anatomy in both themes, held against the app's own look snapshot
- * (spec 024 T24, spec 063 T8).
+ * ISC-148, ISC-451, ISC-585: the shared primitives keep their anatomy in both themes, held against the app's own look
+ * snapshot (spec 024 T24, spec 063 T8, spec 071 T18).
  *
  *   bun run test:browser -- primitives
  *
- * The reference is `web/tests/fixtures/look-snapshot.json` → `primitives`: 39 parts, each a computed-style
+ * The reference is `web/tests/fixtures/look-snapshot.json` → `primitives`: 44 parts, each a computed-style
  * measurement of the app itself per theme. This spec renders every part in the primitives gallery
  * (`/__ui?theme=light|dark`, section "Anatomy", one 640 px block `[data-anatomy="<part with . as ->"]` per part, with
  * the placeholder content "Ag", "12/3", "o", "K"; a literal `.glow` in a template trips web/tests/no-glow.test.ts),
@@ -14,7 +14,9 @@
  *
  * Measured: radius, padding and gap, border (width, style, colour), shadow, font family, size and weight, the box the
  * content sets (height, min-width, width on the fixed-size parts, line-height, letter-spacing, text-transform), the
- * surface (background-color, background-image: tints, the edge bar and the glow), opacity and the text `color`.
+ * surface (background-color, background-image: tints, the edge bar and the glow), opacity and the text `color`. The
+ * ring's circles also record `fill`, `stroke`, `stroke-width` and `stroke-linecap`; the bar's gradient reference
+ * `url("#ui-ring-<n>")` reads as `url(#ui-ring)`, since `<n>` counts the rings rendered before it.
  *
  * Part → app element (the selector inside the part's gallery block; a pseudo-element comes from the part's name):
  *
@@ -39,6 +41,9 @@
  * | seg, seg button, seg button[aria-pressed] | `ui-segmented fill` (the stretched form) with two options → `.group`, the unchecked and the checked `.seg` (T28) |
  * | kbd                           | `ui-kbd` → its `kbd`, content `K` (T28)                            |
  * | section-head                  | `ui-section-header` heading `Ag` → its `h2` (T28)                  |
+ * | ring, ring.full               | the text-less `ui-ring`, stroke 3: size 24 at 50 % (open) and size 20 at 100 % (full, `data-full`) (spec 071) |
+ * | ring .track, ring .bar        | the open ring's `.track` and `.bar` circles (spec 071)            |
+ * | ring.full .bar                | the full ring's `.bar` circle, solid lime (spec 071)               |
  *
  * Threshold: zero differing properties on every part in both themes, compared exactly (the measurement is
  * deterministic, so no tolerance). Each part is its own soft assertion, so one run lists every part that differs,
@@ -102,6 +107,11 @@ const PARTS: readonly string[] = [
   'seg button[aria-pressed]',
   'kbd',
   'section-head',
+  'ring',
+  'ring .track',
+  'ring .bar',
+  'ring.full',
+  'ring.full .bar',
 ];
 
 /** The computed properties read from every part. */
@@ -139,8 +149,17 @@ const WITH_WIDTH = new Set([
   'glyph.take',
   'glyph.taken',
   'kbd',
+  'ring',
+  'ring.full',
 ]);
-const propsOf = (part: string): readonly string[] => (WITH_WIDTH.has(part) ? [...PROPS, 'width'] : PROPS);
+/** The ring's SVG circles, whose look is their paint rather than a box, also record it (spec 071, ISC-585). */
+const WITH_STROKE = new Set(['ring .track', 'ring .bar', 'ring.full .bar']);
+const STROKE_PROPS: readonly string[] = ['fill', 'stroke', 'stroke-linecap', 'stroke-width'];
+const propsOf = (part: string): readonly string[] => [
+  ...PROPS,
+  ...(WITH_WIDTH.has(part) ? ['width'] : []),
+  ...(WITH_STROKE.has(part) ? STROKE_PROPS : []),
+];
 
 /** The element measured inside each part's gallery block. */
 const SELECTOR: Record<string, string> = {
@@ -167,6 +186,11 @@ const SELECTOR: Record<string, string> = {
   'seg button[aria-pressed]': 'ui-segmented[data-fill] .seg[aria-checked="true"]',
   kbd: 'ui-kbd kbd',
   'section-head': 'ui-section-header h2',
+  ring: 'ui-ring',
+  'ring .track': 'ui-ring .track',
+  'ring .bar': 'ui-ring .bar',
+  'ring.full': 'ui-ring',
+  'ring.full .bar': 'ui-ring .bar',
 };
 const selectorOf = (part: string): string => SELECTOR[part] ?? 'ui-chip';
 const pseudoOf = (part: string): string | null => /::(before|after)$/.exec(part)?.[0] ?? null;
@@ -209,10 +233,10 @@ function hexColours(value: string): string {
     );
 }
 
-/** Whole px, letter-spacing to 0.01 px, every colour as hex, long decimals to three places. */
+/** Whole px, letter-spacing to 0.01 px, every colour as hex, long decimals to three places, the ring gradient unnumbered. */
 function normalise(prop: string, value: string): string {
   const h = (n: number): string => Math.round(n).toString(16).padStart(2, '0');
-  let v = hexColours(value).replace(
+  let v = hexColours(value.replace(/url\("?#ui-ring-\d+"?\)/g, 'url(#ui-ring)')).replace(
     /rgba?\(\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\s*\)/g,
     (_m, r: string, g: string, b: string, a?: string) =>
       `#${h(Number(r))}${h(Number(g))}${h(Number(b))}${a === undefined || Number(a) >= 1 ? '' : h(Number(a) * 255)}`,
