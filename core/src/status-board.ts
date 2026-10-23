@@ -1,8 +1,9 @@
 // The status board (spec 071): the answer of `GET /api/status` that the status widget draws, built from one dashboard
-// model per registered workspace. It lists the open specs (stage not `done`) and those closed at most 24 hours before
-// the caller's clock, archived ones included (ISC-584), grouped by workspace in the caller's order, which is the
-// workspace picker's (ISC-593); its KPIs count exactly the listed specs (ISC-583), and each spec carries its item state
-// for the running pulse (ISC-594). No field names an absolute path: a workspace carries its slug and path tail only.
+// model per registered workspace. It lists the open specs only (stage not `done`; spec 073, ISC-613): never a
+// closed row and never an archive entry, however recently it closed. They are grouped by workspace in the caller's
+// order, which is the workspace picker's (ISC-593); its KPIs count exactly the listed specs (ISC-583), and each spec
+// carries its item state for the running pulse (ISC-594). No field names an absolute path: a workspace carries its
+// slug and path tail only.
 //
 // Pure and browser-safe (type-only imports, no clock read): the server route and the web e2e stub both build their
 // answer here, so the two cannot drift. It reads a dashboard model through `StatusModel`, the slice it uses, never
@@ -11,9 +12,6 @@
 import type { ItemState } from './files.ts';
 import type { Progress } from './frontmatter.ts';
 import type { Stage } from './stage.ts';
-
-/** How long a closed spec stays on the board: 24 hours after its `closedAt`, inclusive (ISC-584). */
-export const STATUS_CLOSED_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /** The fields of a `DashboardSpecRow` (`dashboard.ts`) the board reads. */
 interface StatusRow {
@@ -26,7 +24,7 @@ interface StatusRow {
   readonly state?: { readonly state: ItemState };
 }
 
-/** The fields of an `ArchivedSpec` (`archive.ts`) the board reads. */
+/** The fields of an `ArchivedSpec` (`archive.ts`) the slice names; the board lists none of them (ISC-613). */
 interface StatusArchived {
   readonly id: string;
   readonly slug: string;
@@ -35,7 +33,10 @@ interface StatusArchived {
   readonly closedAt: string | null;
 }
 
-/** The slice of a `DashboardModel` (`dashboard.ts`) the board reads; every dashboard model is one. */
+/**
+ * The slice of a `DashboardModel` (`dashboard.ts`) the board reads; every dashboard model is one. `archive` stays in
+ * the shape so the callers need not change, but the board never lists an entry of it (ISC-613).
+ */
 export interface StatusModel {
   readonly specs: readonly StatusRow[];
   readonly archive: readonly StatusArchived[];
@@ -49,22 +50,22 @@ export type StatusInput =
   | { readonly slug: string; readonly pathTail: string; readonly readable: true; readonly model: StatusModel }
   | { readonly slug: string; readonly pathTail: string; readonly readable: false; readonly error: string };
 
-/** One listed spec of a workspace (ISC-593). */
+/** One listed spec of a workspace (ISC-593): always an open one (ISC-613). */
 export interface StatusSpec {
   /** `NNN`, as on the dashboard row or the archive entry. */
   readonly id: string;
   /** `NNN-slug`. */
   readonly slug: string;
   readonly title: string;
-  /** The row's stage; `done` for an archived spec. */
+  /** The row's stage; never `done` (ISC-613). */
   readonly stage: Stage;
   /** Live claims, closed over total. */
   readonly claims: Progress;
-  /** ISO 8601 of the last transition to `done`; null for an open spec. */
+  /** ISO 8601 of the last transition to `done`; a listed spec is open, so this is null (ISC-613). */
   readonly closedAt: string | null;
-  /** The row's item state (`running` drives the pulse, ISC-594); `done` for an archived spec; null without one. */
+  /** The row's item state (`running` drives the pulse, ISC-594); null without one. */
   readonly state: ItemState | null;
-  /** Whether the spec comes from `specs/archive/`. */
+  /** Whether the spec comes from `specs/archive/`; always false, the board lists no archive entry (ISC-613). */
   readonly archived: boolean;
 }
 
@@ -76,7 +77,7 @@ export interface StatusWorkspace {
   readonly readable: boolean;
   /** Why the workspace is unreadable; null when it is readable. */
   readonly error: string | null;
-  /** Active rows in dashboard order, then the recently closed archived specs in archive order. */
+  /** The open rows in dashboard order. */
   readonly specs: readonly StatusSpec[];
 }
 
@@ -84,7 +85,7 @@ export interface StatusWorkspace {
 export interface StatusKpis {
   /** Workspaces with at least one listed spec. */
   readonly repos: number;
-  /** Listed specs at stage `done`. */
+  /** Listed specs at stage `done`: 0 since the board lists open specs only (ISC-613). */
   readonly closed: number;
   /** Listed specs. */
   readonly listed: number;
@@ -98,13 +99,6 @@ export interface StatusResponse {
   readonly workspaces: readonly StatusWorkspace[];
 }
 
-/** Whether `closedAt` lies at most the window before `now`; an unparsable or missing time is never recent. */
-function closedRecently(closedAt: string | null, now: number): boolean {
-  if (closedAt === null) return false;
-  const at = Date.parse(closedAt);
-  return !Number.isNaN(at) && now - at <= STATUS_CLOSED_WINDOW_MS;
-}
-
 const fromRow = (row: StatusRow): StatusSpec => ({
   id: row.id,
   slug: row.slug,
@@ -116,30 +110,18 @@ const fromRow = (row: StatusRow): StatusSpec => ({
   archived: false,
 });
 
-const fromArchive = (entry: StatusArchived): StatusSpec => ({
-  id: entry.id,
-  slug: entry.slug,
-  title: entry.title,
-  stage: 'done',
-  claims: entry.claims,
-  closedAt: entry.closedAt,
-  state: 'done',
-  archived: true,
-});
+/** The listed specs of one model: its open rows (stage not `done`) in row order; no archive entry (ISC-613). */
+const listedSpecs = (model: StatusModel): StatusSpec[] => model.specs.filter((r) => r.stage !== 'done').map(fromRow);
 
-/** The listed specs of one model: open rows and recently closed rows in row order, then recently closed archived specs. */
-function listedSpecs(model: StatusModel, now: number): StatusSpec[] {
-  const active = model.specs.filter((r) => r.stage !== 'done' || closedRecently(r.closedAt, now)).map(fromRow);
-  const archived = model.archive.filter((a) => closedRecently(a.closedAt, now)).map(fromArchive);
-  return [...active, ...archived];
-}
-
-/** The status board over the registered workspaces, in their given order, at the caller's clock `now`. */
-export function statusBoard(workspaces: readonly StatusInput[], now: Date): StatusResponse {
-  const at = now.getTime();
+/**
+ * The status board over the registered workspaces, in their given order. `now` is the caller's clock; since the board
+ * lists open specs only (ISC-613) no field depends on it, and it stays in the signature for the route and the stub.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the caller's clock stays in the seam (ISC-613)
+export function statusBoard(workspaces: readonly StatusInput[], _now: Date): StatusResponse {
   const board = workspaces.map((w): StatusWorkspace =>
     w.readable
-      ? { slug: w.slug, pathTail: w.pathTail, readable: true, error: null, specs: listedSpecs(w.model, at) }
+      ? { slug: w.slug, pathTail: w.pathTail, readable: true, error: null, specs: listedSpecs(w.model) }
       : { slug: w.slug, pathTail: w.pathTail, readable: false, error: w.error, specs: [] },
   );
   const listed = board.flatMap((w) => w.specs);

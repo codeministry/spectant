@@ -1,7 +1,7 @@
-// The status board route (spec 071, ISC-593): `GET /api/status` answers one entry per registered workspace in the
-// workspace picker's order (the order `GET /api/workspaces` answers): slug, path tail, readability and the listed
-// specs (open, or closed at most 24 hours before the request's clock, archived ones included), each with id, title,
-// stage, claim progress, `closedAt` and item state. No field names an absolute path.
+// The status board route (spec 071, ISC-593; spec 073, ISC-613): `GET /api/status` answers one entry per registered
+// workspace in the workspace picker's order (the order `GET /api/workspaces` answers): slug, path tail, readability and
+// the listed specs, the open ones only (stage not `done`), never a closed or an archived spec however recently it
+// closed, each with id, title, stage, claim progress, `closedAt` and item state. No field names an absolute path.
 //
 // Three fixture repositories in a temp directory, registered out of alphabetical order: `lantern` with an open spec
 // and two closed ones (2 h and 30 h before the pinned request clock), `gone` whose folder is removed after it was
@@ -109,7 +109,7 @@ afterAll(() => {
 });
 
 describe("GET /api/status (spec 071, ISC-593)", () => {
-  test("one entry per registered workspace in picker order; the 2 h closed specs listed, the 30 h ones not; no absolute path", async () => {
+  test("one entry per registered workspace in picker order; only open specs, no closed or archived one even 2 h after; no absolute path", async () => {
     const res = await call();
     expect(res.status).toBe(200);
     const body = (await res.json()) as StatusResponse;
@@ -126,15 +126,18 @@ describe("GET /api/status (spec 071, ISC-593)", () => {
     const [lantern, gone, harbor] = body.workspaces;
     expect(lantern?.specs.map((s) => [s.id, s.title, s.stage, s.claims, s.closedAt, s.archived])).toEqual([
       ["001", "Open lamp", "review", { closed: 1, total: 3 }, null, false],
-      ["002", "Recent wick", "done", { closed: 2, total: 2 }, hoursAgo(2), false],
     ]);
     expect(gone?.specs).toEqual([]);
     expect(harbor?.specs.map((s) => [s.id, s.title, s.stage, s.claims, s.closedAt, s.archived])).toEqual([
       ["006", "New pier", "review", { closed: 0, total: 2 }, null, false],
-      ["004", "Recent buoy", "done", { closed: 3, total: 3 }, hoursAgo(2), true],
     ]);
-    for (const spec of body.workspaces.flatMap((w) => w.specs)) expect(spec).toHaveProperty("state");
-    expect(body.kpis).toEqual({ repos: 2, closed: 2, listed: 4, claimsClosed: 6, claimsTotal: 10 });
+    // ISC-613: no listed spec is done or archived, the 2 h closed and the 2 h archived ones included.
+    const listed = body.workspaces.flatMap((w) => w.specs);
+    for (const spec of listed) expect(spec).toHaveProperty("state");
+    expect(listed.filter((s) => s.stage === "done" || s.archived)).toEqual([]);
+    expect(listed.map((s) => s.id)).not.toContain("002");
+    expect(listed.map((s) => s.id)).not.toContain("004");
+    expect(body.kpis).toEqual({ repos: 2, closed: 0, listed: 2, claimsClosed: 1, claimsTotal: 5 });
 
     // ISC-3: no field names an absolute path, and the board starts no services probe.
     expect(strings(body).filter(hasAbsolutePath)).toEqual([]);
