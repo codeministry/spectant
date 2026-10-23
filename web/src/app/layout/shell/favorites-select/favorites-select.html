@@ -1,0 +1,17 @@
+<button
+  #trigger
+  ui-icon-button
+  class="trigger"
+  data-control="favorites"
+  icon="star"
+  aria-haspopup="dialog"
+  [label]="'shell.favorites.trigger' | transloco"
+  [attr.aria-expanded]="open()"
+  (pointerdown)="press()"
+  (click)="toggle()"
+></button>
+
+<!-- The list, its sheet and popover load after first render; their overlay primitives stay out of the initial bundle. -->
+@defer (on immediate) {
+  <app-favorites-list #list [(open)]="open" />
+}

@@ -98,6 +98,15 @@
   min-inline-size: 0;
 }
 
+/*
+ * Spec 069 T34 (ISC-598): the favourite star, first in the chip row. Its 28 px box takes only the 22 px chip height in
+ * the line (3 px pulled in above and below), so the row keeps its height and the star sits level with the chips; the
+ * coarse-pointer 44 px hit area comes from the primitive.
+ */
+.head-star {
+  margin-block: -3px;
+}
+
 .chip-link {
   display: inline-flex;
   min-inline-size: 0;

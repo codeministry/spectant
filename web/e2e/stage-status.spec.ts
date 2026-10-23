@@ -177,11 +177,11 @@ test.describe('no phase word', () => {
       expect(await phaseChips(filters, words), `stage filter chips (${lang})`).toEqual([]);
       expect(await phaseChips(chips(page), words), `/w/${WS}/specs (${lang})`).toEqual([]);
 
-      // The header spec select, open: a chip per favourite, none a phase word.
-      await (await headerControl(page, 'spec')).click();
-      const picker = page.locator('nav[data-picker="spec"]');
+      // The header favourites list (spec 069), open: a chip per favourite spec row of harbor, none a phase word.
+      await (await headerControl(page, 'favorites')).click();
+      const picker = page.locator('nav[data-picker="favorites"]');
       await expect(picker).toBeVisible();
-      await expect(picker.locator('[data-spec] ui-chip')).toHaveCount(rows.length);
+      await expect(picker.locator(`[data-favorites-group="${WS}"] [data-spec] ui-chip`)).toHaveCount(rows.length);
       expect(await phaseChips(picker.locator('ui-chip'), words), `header select (${lang})`).toEqual([]);
       await page.keyboard.press('Escape');
       await expect(picker).toBeHidden();

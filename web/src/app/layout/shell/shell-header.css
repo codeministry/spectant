@@ -3,9 +3,9 @@
  * host is sticky and the `header` size container the parts query; the header's own tiers follow the `shell` container.
  *
  * One 64 px row on every width (principal 2026-10-13), every element 40 px tall (44 px at `pointer: coarse`).
- * From 1120 px the full header: brand rail (brand · rail-selects on one bordered field), the palette (a
+ * From 1120 px the full header: brand rail (brand · rail-selects on one bordered field), the favourites star, the palette (a
  * field in a minmax(240px, 360px) track; the 40 px icon on spec pages below 1560 px), then status group, zen, dot,
- * settings, help. Below 1120 px: the brand rail with the Workspace and Spec selects, the palette icon, the status group
+ * settings, help. Below 1120 px: the brand rail with the Workspace and Spec selects, the star, the palette icon, the status group
  * and the overflow menu `⋯`. The bottom hairline only after the page has scrolled (`.scrolled`).
  */
 :host {
@@ -18,7 +18,7 @@
 
 .shell-header {
   display: grid;
-  grid-template: "brand nav . palette live zen assistant settings help" 64px / auto minmax(0, auto) minmax(0, 1fr) minmax(240px, 360px) auto auto auto auto auto;
+  grid-template: "brand nav . favorites palette live zen assistant settings help" 64px / auto minmax(0, auto) minmax(0, 1fr) auto minmax(240px, 360px) auto auto auto auto auto;
   column-gap: 8px;
   align-items: center;
   padding-block-start: env(safe-area-inset-top);
@@ -54,6 +54,11 @@
 .nav {
   z-index: 1;
   grid-area: nav;
+}
+
+/* The favourites star (spec 069, ISC-552): its own track directly left of the palette on every tier. */
+.favorites {
+  grid-area: favorites;
 }
 
 .palette {
@@ -103,7 +108,7 @@
 /* The icon form: on spec pages below 1560 px (and below 1120 px, further down). */
 @container shell (width < 1560px) {
   .on-spec {
-    grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto;
+    grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto auto;
   }
 
   .on-spec .palette {
@@ -177,7 +182,7 @@
 @container shell (width < 1120px) {
   .shell-header,
   .shell-header.on-spec {
-    grid-template: "brand nav . palette live more" 64px / auto minmax(0, auto) minmax(0, 1fr) auto auto auto;
+    grid-template: "brand nav . favorites palette live more" 64px / auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto;
     padding-inline: 24px;
   }
 

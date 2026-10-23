@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import lantern from '../../../../../../core/fixtures/lantern.golden.json';
 import type { DashboardView as DashboardModel } from '../context-rail/dashboard-view';
@@ -51,7 +51,7 @@ describe('WarningsPanel', () => {
     const root = await render(HARBOR);
     const heading = root.querySelector('#warnings') as HTMLElement;
     expect(heading.tagName).toBe('H2');
-    expect(heading.querySelector('[data-warnings-title]')?.textContent.trim()).toBe('Warnings');
+    expect(heading.querySelector('[data-warnings-title]')).toBeNull();
     expect(heading.getAttribute('tabindex')).toBe('-1');
 
     const groups = [...root.querySelectorAll('[data-warning-spec]')];
@@ -104,11 +104,11 @@ describe('WarningsPanel', () => {
     expect(root.querySelector('[data-fog-line]')).toBeNull();
   });
 
-  it('renders the section form by default: the heading with the count above one card of lines', async () => {
+  it('renders the section form by default: the heading, without a count since spec 069, above one card of lines', async () => {
     const root = await render(HARBOR);
     expect(root.getAttribute('data-form')).toBe('section');
     const header = root.querySelector('section > h2#warnings') as HTMLElement;
-    expect(header.querySelector('[data-warnings-count]')?.textContent.trim()).toBe(String(HARBOR.kpis.warnings));
+    expect(header.querySelector('[data-warnings-count]')).toBeNull();
     const cards = root.querySelectorAll('ui-card');
     expect(cards.length).toBe(1);
     expect((cards[0] as HTMLElement).querySelectorAll('[data-warning-spec]').length).toBe(withNotes(HARBOR).length);
@@ -212,11 +212,11 @@ describe('WarningsPanel fold (spec 064, T32)', () => {
     const toggle = toggleOf(root);
     expect(toggle).not.toBeNull();
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    // The heading's name stays its visible text (title, then summary); the toggle word is only the button's title.
+    // The heading's name stays its visible text, the summary alone since spec 069; the toggle word is only the title.
     expect(toggle.hasAttribute('aria-label')).toBe(false);
     expect(toggle.title).toBe('Show warnings');
     expect(toggle.hasAttribute('aria-describedby')).toBe(false);
-    expect(text(root.querySelector('h2#warnings'))).toBe(`Warnings ${summary}`);
+    expect(text(root.querySelector('h2#warnings'))).toBe(summary);
     expect(text(toggle.querySelector('[data-warnings-summary]'))).toBe(summary);
     expect(toggle.querySelector('ui-icon[data-icon="triangle-alert"]')).not.toBeNull();
     expect(toggle.querySelector('ui-icon[data-icon="chevron-down"]')).not.toBeNull();
@@ -241,7 +241,7 @@ describe('WarningsPanel fold (spec 064, T32)', () => {
     const region = root.querySelector(`#${toggle.getAttribute('aria-controls') ?? 'none'}`) as HTMLElement;
     expect(region.hidden).toBe(false);
     expect(region.querySelectorAll('ui-card [data-warning-spec]').length).toBe(withNotes(HARBOR).length);
-    expect(text(root.querySelector('[data-warnings-count]'))).toBe(String(HARBOR.kpis.warnings));
+    expect(root.querySelector('[data-warnings-count]')).toBeNull();
     toggle.click();
     await fixture.whenStable();
     expect(toggleOf(root).getAttribute('aria-expanded')).toBe('false');
@@ -285,8 +285,53 @@ describe('WarningsPanel fold (spec 064, T32)', () => {
     for (const lang of LANGS) {
       const warnings = (CATALOGUES[lang] as Record<string, Record<string, unknown>>)['warnings'];
       const toggle = warnings['toggle'] as Record<string, string>;
-      const texts = [toggle['open'], toggle['close'], warnings['title'], warnings['empty']];
+      const texts = [toggle['open'], toggle['close'], warnings['empty']];
       expect(texts.every((v) => typeof v === 'string' && v.length > 0)).toBe(true);
     }
   });
+});
+
+// Spec 069 (T33, ISC-597): the section head drops the title and the count; the summary with its chevron is the only
+// visible label, closed and open, in both languages, and names the toggle. aria-expanded still follows the fold.
+describe('WarningsPanel head without title and count (spec 069, T33)', () => {
+  const text = (el: Element | null): string => (el?.textContent ?? '').replace(/\s+/gu, ' ').trim();
+  /** The toggle's accessible name from its content: the visible text, aria-hidden parts left out, no aria-label. */
+  const nameOf = (button: HTMLButtonElement): string => {
+    if (button.hasAttribute('aria-label') || button.hasAttribute('aria-labelledby')) return '<named elsewhere>';
+    const copy = button.cloneNode(true) as HTMLElement;
+    for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+    return text(copy);
+  };
+  const EIGHTEEN: DashboardModel = { ...HARBOR, kpis: { ...HARBOR.kpis, warnings: 18 } };
+  const cases = [
+    { lang: 'en', model: EIGHTEEN, summary: `18 warnings in ${withWarnings(HARBOR).length} specs` },
+    { lang: 'en', model: LANTERN, summary: 'No warnings' },
+    { lang: 'de', model: EIGHTEEN, summary: `18 Warnungen in ${withWarnings(HARBOR).length} Specs` },
+    { lang: 'de', model: LANTERN, summary: 'Keine Warnungen' },
+  ] as const;
+
+  it('has five warned specs in the harbor golden, so the 18 reads "18 warnings in 5 specs"', () => {
+    expect(withWarnings(HARBOR).length).toBe(5);
+  });
+
+  for (const { lang, model, summary } of cases) {
+    for (const open of [false, true]) {
+      it(`${lang}, ${summary}, ${open ? 'open' : 'closed'}: no title, no count, the summary names the toggle`, async () => {
+        TestBed.inject(TranslocoService).setActiveLang(lang);
+        const root = (await mount(model, 'section', open)).nativeElement as HTMLElement;
+        expect(root.querySelectorAll('[data-warnings-title]')).toHaveLength(0);
+        expect(root.querySelectorAll('[data-warnings-count]')).toHaveLength(0);
+        const heading = root.querySelector('section > h2#warnings') as HTMLElement;
+        expect(heading.getAttribute('tabindex')).toBe('-1');
+        const toggle = heading.querySelector(':scope > button[data-warnings-toggle]') as HTMLButtonElement;
+        expect(text(toggle.querySelector('[data-warnings-summary]'))).toBe(summary);
+        expect(text(heading)).toBe(summary);
+        expect(nameOf(toggle)).toBe(summary);
+        expect(toggle.querySelector('ui-icon[data-icon="chevron-down"]')).not.toBeNull();
+        expect(toggle.getAttribute('aria-expanded')).toBe(String(open));
+        expect(toggle.getAttribute('aria-controls')).toBe('warnings-region');
+        expect((root.querySelector('#warnings-region') as HTMLElement).hidden).toBe(!open);
+      });
+    }
+  }
 });

@@ -1,0 +1,105 @@
+<!--
+  Spec 069 (T10, ISC-557): the favourites of every workspace, one group per workspace with a favourite, in picker
+  order: its head (badge and name), its spec rows, then behind a hairline its idea rows, each linking into its own
+  workspace. Markup and styles follow the spec select's list (shell-menus § specList), without "Spec overview".
+-->
+<ng-template #favoritesList>
+  <nav
+    #favoritesNav
+    class="picker"
+    data-picker="favorites"
+    [class.picker-sheet]="compact()"
+    [style.min-block-size.px]="compact() ? sheetHeight() : null"
+    [attr.aria-label]="'shell.favorites.menu' | transloco"
+  >
+    @let groups = index.groups();
+    @if (groups.length === 0) {
+      <p class="picker-empty" tabindex="-1">
+        <ui-icon name="star" aria-hidden="true" [size]="14" />
+        {{ 'shell.favorites.empty' | transloco }}
+      </p>
+    }
+    <ul uiRovingList [singleKeys]="singleKeys()">
+      @for (group of groups; track group.ws) {
+        <li class="fav-group" [attr.data-favorites-group]="group.ws">
+          <p class="menu-head group-head" [id]="'favorites-group-' + group.ws">
+            <ui-ws-badge size="sm" [name]="group.name" />
+            <span class="entry-name">{{ group.name }}</span>
+          </p>
+          <ul [attr.aria-labelledby]="'favorites-group-' + group.ws">
+            @for (spec of group.specs; track spec.id) {
+              @let key = group.ws + '/spec/' + spec.id;
+              @let current = group.ws === state.ws() && spec.id === state.specId();
+              <li class="fav-row">
+                <a
+                  #link="uiRovingItem"
+                  uiRovingItem
+                  class="entry picker-entry"
+                  [attr.data-spec]="spec.id"
+                  [routerLink]="specLink(group.ws, spec.id)"
+                  [attr.aria-current]="current ? 'true' : null"
+                  [attr.data-autofocus]="key === focusKey() ? '' : null"
+                  (click)="close()"
+                >
+                  <span class="entry-id">{{ spec.id }}</span>
+                  <span class="entry-name">{{ spec.title }}</span>
+                  <ui-chip [tone]="stageTone(spec.stage)" [icon]="stageIcon(spec.stage)">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
+                  @if (current) {
+                    <ui-icon class="entry-check" name="check" [size]="16" />
+                  }
+                </a>
+                <button
+                  ui-star-toggle
+                  [uiRovingCompanion]="link"
+                  [pressed]="true"
+                  [label]="'favorites.toggle' | transloco: { id: spec.id, title: spec.title }"
+                  [attr.data-star]="spec.id"
+                  (click)="unstarSpec(group, spec, $event)"
+                ></button>
+              </li>
+            }
+            @if (group.specs.length > 0 && group.ideas.length > 0) {
+              <li class="picker-sep" role="presentation" data-favorites-sep></li>
+            }
+            @for (idea of group.ideas; track idea.slug) {
+              <li class="fav-row">
+                <a
+                  #ideaRow="uiRovingItem"
+                  uiRovingItem
+                  class="entry picker-entry"
+                  [attr.data-idea]="idea.slug"
+                  [routerLink]="ideaLink(group.ws, idea.slug)"
+                  [attr.data-autofocus]="group.ws + '/idea/' + idea.slug === focusKey() ? '' : null"
+                  (click)="close()"
+                >
+                  <ui-icon name="lightbulb" [size]="16" />
+                  <span class="entry-name">{{ idea.title }}</span>
+                </a>
+                <button
+                  ui-star-toggle
+                  [uiRovingCompanion]="ideaRow"
+                  [pressed]="true"
+                  [label]="'favorites.toggleIdea' | transloco: { title: idea.title }"
+                  [attr.data-star]="'idea:' + idea.slug"
+                  (click)="unstarIdea(group, idea, $event)"
+                ></button>
+              </li>
+            }
+          </ul>
+        </li>
+      }
+    </ul>
+  </nav>
+</ng-template>
+
+<ui-live-region data-favorites-announcer />
+
+@if (compact()) {
+  <ui-sheet tier="compact" [label]="'shell.favorites.menu' | transloco" [open]="open()" (openChange)="openChange($event)">
+    <ng-container [ngTemplateOutlet]="favoritesList" />
+  </ui-sheet>
+} @else {
+  <ui-popover class="picker-popover" placement="start" [label]="'shell.favorites.menu' | transloco" [open]="open()" (openChange)="openChange($event)">
+    <ng-container [ngTemplateOutlet]="favoritesList" />
+  </ui-popover>
+}
