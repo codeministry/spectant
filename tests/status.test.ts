@@ -6,10 +6,13 @@
 // Three fixture repositories in a temp directory, registered out of alphabetical order: `lantern` with an open spec
 // and two closed ones (2 h and 30 h before the pinned request clock), `gone` whose folder is removed after it was
 // registered (unreadable, `missing`), and `harbor` with an open spec and two archived ones closed 2 h and 30 h before.
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+// The board reads no file under `specs/archive/` (ISC-614): a spy on the file-system reads proves it on `harbor`.
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
+import * as fs from "node:fs";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import * as fsp from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { STATUS_ALLOW, STATUS_PATH, type StatusResponse } from "../server/src/contracts/status.contract.ts";
 import { dashboardApi } from "../server/src/cli/dashboard-api.ts";
 import { type Registry, openRegistry } from "../server/src/infra/db/registry.ts";
@@ -24,6 +27,7 @@ const HOST = { Host: "127.0.0.1:7717" };
 const hoursAgo = (hours: number): string => new Date(NOW.getTime() - hours * HOUR).toISOString();
 
 let root: string;
+let harborDir: string;
 let registry: Registry;
 let api: ApiHandler;
 const probed: string[] = [];
@@ -71,6 +75,24 @@ function strings(value: unknown, out: string[] = []): string[] {
   return out;
 }
 
+const SYNC_READS = ["readFileSync", "readdirSync", "statSync", "lstatSync", "existsSync", "accessSync", "realpathSync", "readlinkSync", "openSync", "opendirSync"] as const;
+const ASYNC_READS = ["readFile", "readdir", "stat", "lstat", "access", "realpath", "readlink", "open", "opendir"] as const;
+
+/** Every path handed to `node:fs`, `node:fs/promises` or `Bun.file` while `body` runs. */
+async function touched(body: () => Promise<unknown>): Promise<string[]> {
+  const spies = [
+    ...SYNC_READS.map((name) => spyOn(fs, name as "statSync")),
+    ...ASYNC_READS.map((name) => spyOn(fsp, name as "stat")),
+    spyOn(Bun, "file"),
+  ];
+  try {
+    await body();
+    return spies.flatMap((spy) => spy.mock.calls.map((call) => String(call[0])));
+  } finally {
+    spies.forEach((spy) => spy.mockRestore());
+  }
+}
+
 const hasAbsolutePath = (s: string): boolean => /^\/[^\s/]+\//.test(s) || [homedir(), tmpdir(), root].some((dir) => s.includes(dir));
 
 beforeAll(() => {
@@ -89,6 +111,7 @@ beforeAll(() => {
       { folder: "005-old-anchor", title: "Old anchor", stage: "done", claims: [true], closedHoursAgo: 30 },
     ],
   );
+  harborDir = harbor;
   registry = openRegistry(join(root, "data"));
   for (const path of [lantern, gone, harbor]) registry.add(path);
   rmSync(gone, { recursive: true, force: true });
@@ -142,6 +165,20 @@ describe("GET /api/status (spec 071, ISC-593)", () => {
     // ISC-3: no field names an absolute path, and the board starts no services probe.
     expect(strings(body).filter(hasAbsolutePath)).toEqual([]);
     expect(probed).toEqual([]);
+  });
+
+  test("ISC-614: the board reads no file under specs/archive/; the workspace stays readable with its open spec listed", async () => {
+    const paths = await touched(async () => {
+      const res = await call();
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as StatusResponse;
+      const harbor = body.workspaces.find((w) => w.slug === "harbor");
+      expect(harbor?.readable).toBe(true);
+      expect(harbor?.specs.map((s) => s.id)).toEqual(["006"]);
+    });
+    // The workspace was read (its open spec's files among the paths), and no file under its archive was.
+    expect(paths.some((p) => p.startsWith(join(harborDir, "specs", "006-new-pier") + sep))).toBe(true);
+    expect(paths.filter((p) => p.startsWith(join(harborDir, "specs", "archive") + sep))).toEqual([]);
   });
 
   test("a strong ETag over the body, 304 on revalidation, HEAD without a body", async () => {

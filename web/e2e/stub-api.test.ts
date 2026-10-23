@@ -3639,7 +3639,7 @@ describe('stub API: the sidebar fixtures (spec 067, T7, ISC-528)', () => {
 describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
   type ListEntry = { slug: string; pathTail: string; readable: boolean; error?: string };
   type Init = Parameters<typeof request>[1];
-  /** The expectation from core: `statusBoard` over the stub's own list and dashboard answers, at `STUB_NOW`. */
+  /** The expectation from core: `statusBoard` over the stub's own list and dashboard answers. */
   const expected = async (init: Init = {}): Promise<StatusResponse> => {
     const list = (await (await ask('/api/workspaces', init)).json()) as ListEntry[];
     const inputs: StatusInput[] = [];
@@ -3651,7 +3651,7 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
       const model = (await (await ask(`/api/workspaces/${encodeURIComponent(w.slug)}/dashboard`, init)).json()) as StatusModel;
       inputs.push({ slug: w.slug, pathTail: w.pathTail, readable: true, model });
     }
-    return statusBoard(inputs, new Date(STUB_NOW));
+    return statusBoard(inputs);
   };
   /** Every string value of a JSON body that reads as an absolute path. */
   const absolutePaths = (value: unknown): string[] => {
@@ -3702,7 +3702,7 @@ describe('stub API: GET /api/status (spec 071, T14, ISC-593)', () => {
     expect(two.kpis.listed).toBeGreaterThan(0);
     const unreadable = (await (await ask(STATUS_PATH, { state: 'unreadable' })).json()) as StatusResponse;
     expect(unreadable.workspaces.at(-1)).toEqual({ slug: 'lantern', pathTail: 'lantern', readable: false, error: 'missing', specs: [] });
-    expect((await (await ask(STATUS_PATH, { state: 'empty' })).json()) as StatusResponse).toEqual(statusBoard([], new Date(STUB_NOW)));
+    expect((await (await ask(STATUS_PATH, { state: 'empty' })).json()) as StatusResponse).toEqual(statusBoard([]));
   });
 
   test('a session\'s moved dashboard reaches its body with a new ETag; another session and a reset keep the golden board', async () => {

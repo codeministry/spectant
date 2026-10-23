@@ -52,7 +52,7 @@ const INPUT: StatusInput[] = [
   { slug: 'quiet', pathTail: 'quiet', readable: true, model: model([row('020', 'done', H30, 5, 5)]) },
 ];
 
-const board: StatusResponse = statusBoard(INPUT, NOW);
+const board: StatusResponse = statusBoard(INPUT);
 const ids = (slug: string): string[] => board.workspaces.find((w) => w.slug === slug)?.specs.map((s) => s.id) ?? [];
 const spec = (slug: string, id: string): StatusSpec | undefined => board.workspaces.find((w) => w.slug === slug)?.specs.find((s) => s.id === id);
 
@@ -110,14 +110,14 @@ describe('statusBoard lists open specs only (ISC-613)', () => {
   });
 
   test('a spec closed at the very clock, or 24 hours before it, is not listed either', () => {
-    const now = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', NOW.toISOString(), 1, 1)], [archived('031', NOW.toISOString(), 1, 1)]) }], NOW);
+    const now = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', NOW.toISOString(), 1, 1)], [archived('031', NOW.toISOString(), 1, 1)]) }]);
     expect(now.workspaces[0]?.specs).toEqual([]);
-    const edge = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', H24, 1, 1)]) }], NOW);
+    const edge = statusBoard([{ slug: 'e', pathTail: 'e', readable: true, model: model([row('030', 'done', H24, 1, 1)]) }]);
     expect(edge.workspaces[0]?.specs).toEqual([]);
   });
 
   test('an unparsable closedAt on a done spec lists nothing', () => {
-    const odd = statusBoard([{ slug: 'o', pathTail: 'o', readable: true, model: model([row('040', 'done', 'not a date', 1, 1)], [archived('041', 'later', 1, 1)]) }], NOW);
+    const odd = statusBoard([{ slug: 'o', pathTail: 'o', readable: true, model: model([row('040', 'done', 'not a date', 1, 1)], [archived('041', 'later', 1, 1)]) }]);
     expect(odd.workspaces[0]?.specs).toEqual([]);
   });
 });
@@ -129,7 +129,7 @@ describe('the KPIs count exactly the listed specs (ISC-583)', () => {
   });
 
   test('no workspace at all: every KPI is zero', () => {
-    expect(statusBoard([], NOW)).toEqual({ kpis: { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 }, workspaces: [] });
+    expect(statusBoard([])).toEqual({ kpis: { repos: 0, closed: 0, listed: 0, claimsClosed: 0, claimsTotal: 0 }, workspaces: [] });
   });
 });
 

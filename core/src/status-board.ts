@@ -114,11 +114,10 @@ const fromRow = (row: StatusRow): StatusSpec => ({
 const listedSpecs = (model: StatusModel): StatusSpec[] => model.specs.filter((r) => r.stage !== 'done').map(fromRow);
 
 /**
- * The status board over the registered workspaces, in their given order. `now` is the caller's clock; since the board
- * lists open specs only (ISC-613) no field depends on it, and it stays in the signature for the route and the stub.
+ * The status board over the registered workspaces, in their given order. It takes no clock: it lists open specs only
+ * (ISC-613), so no field depends on the time; the item states come in with the models, derived at the caller's clock.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the caller's clock stays in the seam (ISC-613)
-export function statusBoard(workspaces: readonly StatusInput[], _now: Date): StatusResponse {
+export function statusBoard(workspaces: readonly StatusInput[]): StatusResponse {
   const board = workspaces.map((w): StatusWorkspace =>
     w.readable
       ? { slug: w.slug, pathTail: w.pathTail, readable: true, error: null, specs: listedSpecs(w.model) }

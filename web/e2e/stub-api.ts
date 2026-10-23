@@ -3093,7 +3093,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return takenDashboard(bumped, lockEditsOf(req, slug));
   };
   /**
-   * `GET|HEAD /api/status` (spec 071, ISC-593; `status.contract.ts`): core's `statusBoard` at `STUB_NOW` over the
+   * `GET|HEAD /api/status` (spec 071, ISC-593; `status.contract.ts`): core's `statusBoard` over the
    * request's workspace list in its order, each readable entry with the dashboard body its own `GET …/dashboard` gets
    * (so a session's move, bump or lock shows here too), each unreadable one with its list `error`. 403 the guard, 405
    * with `STATUS_ALLOW`.
@@ -3106,7 +3106,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
         ? { slug, pathTail, readable: true, model: dashboardBodyOf(req, slug) as StatusModel }
         : { slug, pathTail, readable: false, error: error ?? 'missing' },
     );
-    return workspaceJson(req, 200, statusBoard(inputs, LIVE_NOW));
+    return workspaceJson(req, 200, statusBoard(inputs));
   };
 
   /**

@@ -11,7 +11,7 @@ import { guidanceOf, withGuidance } from "../../../core/src/guidance.ts";
 import { taskRunsOf } from "../../../core/src/live.ts";
 import type { UnreadableCode } from "../contracts/spec-routes.contract.ts";
 import { abortAge } from "../infra/abort-age.ts";
-import { readWorkspaceInput } from "./reading.ts";
+import { type ReadingOptions, readWorkspaceInput } from "./reading.ts";
 
 export type DashboardLoad = { readable: true; model: DashboardModel } | { readable: false; error: UnreadableCode };
 
@@ -46,10 +46,17 @@ export function workspaceItemStates(input: DashboardInput, model: DashboardModel
  * from the constitution's `dev_services:`; with `null` the services are empty (the workspace list needs counts only).
  * `lifeosStateDir` as for `readWorkspaceInput`. Each spec row and story carries its item state at `clock` (spec 040,
  * ISC-224, core's `withItemStates`); the request's time and core's abort age by default. The model carries the
- * workspace guidance (spec 020, ISC-237, core's `guidanceOf`) from the same items.
+ * workspace guidance (spec 020, ISC-237, core's `guidanceOf`) from the same items. `options` as for `readWorkspaceInput`:
+ * the status board passes `{ archive: false }` and reads no file under `specs/archive/` (spec 073, ISC-614).
  */
-export async function loadDashboard(root: string, probe: ServicesProbe | null, lifeosStateDir: string | null = null, clock: StateClock = { now: new Date() }): Promise<DashboardLoad> {
-  const reading = await readWorkspaceInput(root, lifeosStateDir);
+export async function loadDashboard(
+  root: string,
+  probe: ServicesProbe | null,
+  lifeosStateDir: string | null = null,
+  clock: StateClock = { now: new Date() },
+  options: ReadingOptions = {},
+): Promise<DashboardLoad> {
+  const reading = await readWorkspaceInput(root, lifeosStateDir, options);
   if (!reading.readable) return reading;
   const { input } = reading;
   const labels = input.constitution === null ? new Map<number, string>() : devServiceLabels(input.constitution);
