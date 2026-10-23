@@ -1,12 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, inject, resource } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, DOCUMENT, inject, resource, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { StatusKpis, StatusResponse, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
 import { ApiClient } from '../../core/api.service';
 import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 import { isTabMode, saveWidgetBounds } from '../../layout/shell/widget-window';
 import { UiBrandMark } from '../../shared/ui/brand-mark/brand-mark';
+import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
 import { UiNotice } from '../../shared/ui/notice/notice';
+import { isToneStage, toneOfStage } from '../../shared/ui/stage-tone';
 import { StatusWidgetRow } from './status-widget-row';
+import { EMPTY_FILTER, stageOptions, visibleGroups, type WidgetFilter, workspaceOptions } from './widget-filter';
 
 /** How long a resize must settle before the widget stores its bounds (T33, ISC-596). */
 export const BOUNDS_SETTLE_MS = 400;
@@ -23,6 +27,11 @@ export const BOUNDS_SETTLE_MS = 400;
  * warning notice, and with no group at all one empty line stands instead (T30, ISC-588). Each listed spec is one
  * `app-status-widget-row` (T28, ISC-585).
  *
+ * Between head and list stands the filter (spec 072, T19, ISC-603): two multi-select chip rows, workspace and stage,
+ * over the options of the unfiltered body (`widget-filter.ts`), so a toggle never removes the chip under the focus.
+ * The list renders `visibleGroups` of the selection; an empty selection is the unfiltered list. Without a listed spec
+ * there is no filter, only the empty line. `filter` is the selection's single source.
+ *
  * It stays current over the app's own live path (T34, ISC-587): injecting `RefreshService` starts the root
  * `LiveStreamService` (one `EventSource`, in this window without a shell too) and its fallback poll; each frame's
  * views go into the ETag cache, `STATUS_PATH` among them, and every refresh reloads the status read, which answers 304
@@ -32,7 +41,7 @@ export const BOUNDS_SETTLE_MS = 400;
  */
 @Component({
   selector: 'app-status-widget-page',
-  imports: [TranslocoPipe, UiBrandMark, UiNotice, StatusWidgetRow],
+  imports: [TranslocoPipe, UiBrandMark, UiFilterChips, UiNotice, StatusWidgetRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-widget-page.html',
   styleUrl: './status-widget-page.css',
@@ -52,13 +61,54 @@ export class StatusWidgetPage {
   /** The head's three figures (ISC-602); null before the first `ok` body, when the head shows the mark alone. */
   readonly kpis = computed<StatusKpis | null>(() => this.status()?.kpis ?? null);
 
+  private readonly transloco = inject(TranslocoService);
+  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+
+  /** The filter selection (ISC-603); empty in both dimensions shows every group. */
+  readonly filter = signal<WidgetFilter>(EMPTY_FILTER);
+
   /**
-   * The workspaces that get a group, in the body's (the picker's) order: each that lists a spec (ISC-584) and each
-   * unreadable one, which shows its head and a notice instead of rows (ISC-588). None left is the empty line.
+   * The workspaces that get a group, in the body's (the picker's) order, narrowed by the filter: each with a matching
+   * row (ISC-584, ISC-603) and each unreadable one the workspace selection admits, which shows its head and a notice
+   * instead of rows (ISC-588). None left is the empty line.
    */
-  readonly groups = computed<readonly StatusWorkspace[]>(
-    () => this.status()?.workspaces.filter((ws) => !ws.readable || ws.specs.length > 0) ?? [],
-  );
+  readonly groups = computed<readonly StatusWorkspace[]>(() => {
+    const body = this.status();
+    return body ? visibleGroups(body, this.filter()) : [];
+  });
+
+  /** Whether the filter shows: only while the body lists a spec. */
+  readonly hasFilter = computed(() => this.status()?.workspaces.some((ws) => ws.specs.length > 0) ?? false);
+
+  /** The workspace chips: the path tail, a warning dot and a "not readable" name on an unreadable one. */
+  readonly workspaceChips = computed<readonly FilterOption[]>(() => {
+    const body = this.status();
+    this.lang();
+    if (!body) return [];
+    return workspaceOptions(body).map(({ key, pathTail, readable }) =>
+      readable
+        ? { key, label: pathTail }
+        : { key, label: pathTail, tone: 'warning', name: this.transloco.translate('statusWidget.filter.unreadable', { name: pathTail }) },
+    );
+  });
+
+  /** The stage chips: the occurring stages in workflow order, with the rows' badge words and tones. */
+  readonly stageChips = computed<readonly FilterOption[]>(() => {
+    const body = this.status();
+    this.lang();
+    if (!body) return [];
+    return stageOptions(body).map((stage) => ({ key: stage, label: this.transloco.translate(`stages.${stage}`), tone: toneOfStage(stage) }));
+  });
+
+  /** Replaces the workspace selection. */
+  selectWorkspaces(keys: readonly string[]): void {
+    this.filter.update((filter) => ({ ...filter, workspaces: [...keys] }));
+  }
+
+  /** Replaces the stage selection; a key that is no stage is ignored. */
+  selectStages(keys: readonly string[]): void {
+    this.filter.update((filter) => ({ ...filter, stages: keys.filter(isToneStage) }));
+  }
 
   constructor() {
     reloadOnRefresh(() => this.load.reload());

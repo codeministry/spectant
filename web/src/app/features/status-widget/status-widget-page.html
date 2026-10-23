@@ -20,6 +20,28 @@
         </dl>
       }
     </header>
+    @if (hasFilter()) {
+      <section class="filter">
+        <span class="filter-label" aria-hidden="true">{{ 'statusWidget.filter.workspace' | transloco }}</span>
+        <ui-filter-chips
+          multiple
+          wrap
+          [label]="'statusWidget.filter.workspace' | transloco"
+          [options]="workspaceChips()"
+          [selected]="filter().workspaces"
+          (selectedChange)="selectWorkspaces($event)"
+        />
+        <span class="filter-label" aria-hidden="true">{{ 'statusWidget.filter.stage' | transloco }}</span>
+        <ui-filter-chips
+          multiple
+          wrap
+          [label]="'statusWidget.filter.stage' | transloco"
+          [options]="stageChips()"
+          [selected]="filter().stages"
+          (selectedChange)="selectStages($event)"
+        />
+      </section>
+    }
     <section class="groups">
       @if (status()) {
         @for (ws of groups(); track ws.slug) {
