@@ -5,11 +5,13 @@
 //     (`PRINCIPAL_STAGES`: review, code-review, close), and what the spec page lists as waiting on you: an open claim
 //     with a `manual` probe, an open task in lane `operator`, a `question` task of the newest rounds.jsonl line. The
 //     latter three are `waitingOnYouOf`, the one derivation the spec page (spec.ts) reads too.
+//     Each spec stands in it once (spec 070, ISC-568): its front entry in the order below, the rest folded under it.
 //   - next: every other spec item in state `open`, one entry per spec (its claims and tasks share its command).
 //   Ideas, the two marks and every item in `waiting`, `running`, `aborted` or `done` are in neither list.
 //
 // Both lists sort by priority (P1 first, a missing key reads P3 as everywhere in core), then since (oldest first, null
-// last), then spec id, item kind (spec, claim, task, question) and ref in natural order (ISC-2 before ISC-10).
+// last), then spec id, item kind (spec, claim, task, question) and ref in natural order (ISC-2 before ISC-10). `waits`
+// is sorted before the fold, so a spec stands where its front entry stood; the spec page unfolds its own slice.
 //
 // Each entry's reason is a stable key with its values, so the web renders one sentence per key in its own catalogs:
 // `stage.<stage>.<i>` for a spec (the template `matchReason` finds in the stage table), `waiting.<kind>` for the
@@ -206,7 +208,33 @@ export function guidanceOf(input: GuidanceInput): Guidance {
     }
   }
 
-  return { waits: waits.sort(compareEntries), next: next.sort(compareEntries) };
+  return { waits: foldBySpec(waits.sort(compareEntries)), next: next.sort(compareEntries) };
+}
+
+/**
+ * Each spec once (spec 070, ISC-568): the first entry of a spec in `sorted` stays where it stands and carries the
+ * spec's later entries, in their order, as `folded`. The specs keep their order among each other, and every entry keeps
+ * its reason; the spec page unfolds them again (`guidanceOfSpec`).
+ */
+function foldBySpec(sorted: readonly GuidanceEntry[]): GuidanceEntry[] {
+  const rest = new Map<string, GuidanceEntry[]>();
+  const fronts: GuidanceEntry[] = [];
+  for (const entry of sorted) {
+    const later = rest.get(entry.spec);
+    if (later === undefined) {
+      rest.set(entry.spec, []);
+      fronts.push(entry);
+    } else later.push(entry);
+  }
+  return fronts.map((front) => {
+    const folded = rest.get(front.spec) ?? [];
+    return folded.length === 0 ? front : { ...front, folded };
+  });
+}
+
+/** A `waits` list with every folded entry back in place behind its front one, none carrying `folded`. */
+function unfold(waits: readonly GuidanceEntry[]): GuidanceEntry[] {
+  return waits.flatMap(({ folded, ...front }) => [front, ...(folded ?? [])]);
 }
 
 /** `model` with its guidance set; every other field kept. */
@@ -214,7 +242,10 @@ export function withGuidance<M extends object>(model: M, guidance: Guidance): M 
   return { ...model, guidance };
 }
 
-/** The entries of one spec, both lists in their order: the spec page's slice of the workspace guidance. */
+/**
+ * The entries of one spec, both lists in their order: the spec page's slice of the workspace guidance. Its `waits` are
+ * every waiting entry of the spec, the front one and those folded under it (spec 070; ISC-239 holds).
+ */
 export function guidanceOfSpec(guidance: Guidance, specId: string): Guidance {
-  return { waits: guidance.waits.filter((e) => e.spec === specId), next: guidance.next.filter((e) => e.spec === specId) };
+  return { waits: unfold(guidance.waits.filter((e) => e.spec === specId)), next: guidance.next.filter((e) => e.spec === specId) };
 }

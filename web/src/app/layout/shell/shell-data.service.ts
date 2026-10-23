@@ -40,7 +40,7 @@ export interface SpecRowView {
 const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
 
 
-function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
+export function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
   const list = isLoose(body) ? body[key] : null;
   if (!Array.isArray(list)) return [];
   return list.filter(isLoose).flatMap((row) => {
@@ -68,7 +68,7 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
 export type IdeaFavoriteView = Readonly<{ slug: string; title: string }>;
 
 /** The dashboard body's `ideas.list`, slug and title only (the slug for a story without a title); rows without a slug drop. */
-function ideasOf(body: unknown): IdeaFavoriteView[] {
+export function ideasOf(body: unknown): IdeaFavoriteView[] {
   const ideas = isLoose(body) ? body['ideas'] : null;
   const list = isLoose(ideas) ? ideas['list'] : null;
   if (!Array.isArray(list)) return [];

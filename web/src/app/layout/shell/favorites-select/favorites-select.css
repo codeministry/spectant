@@ -1,0 +1,12 @@
+/* The favourites trigger (spec 069, ISC-553); its list's rows live in favorites-list.css. */
+:host {
+  display: inline-flex;
+}
+
+/* 44 px on a coarse pointer, as the header's other tools. */
+@media (pointer: coarse) {
+  .trigger {
+    min-inline-size: 44px;
+    block-size: 44px;
+  }
+}

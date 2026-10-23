@@ -3937,6 +3937,25 @@ function diagramsView(verdict) {
     return { state: "ok", detail: "mermaid diagram present" };
   return { state: "warn", detail: `no mermaid diagram in ${verdict.missing.join(", ")}`, files: verdict.missing };
 }
+function openRunOf(activity, id, slug, claims) {
+  const ours = (activity.openRuns ?? []).filter((r) => r.spec !== undefined && (r.spec === id || r.spec === slug || specIdOf(r.spec) === id));
+  const newest = ours.reduce((best, r) => best === null || Date.parse(r.since) >= Date.parse(best.since) ? r : best, null);
+  if (newest === null)
+    return null;
+  const key = commandKey(newest.command);
+  const phase = key === null ? null : key.split(" ")[0] ?? null;
+  const base = { run: newest.run, phase, command: pluginCommand(newest.command), since: newest.since, session: newest.session };
+  if (phase !== "implement")
+    return base;
+  const from = Date.parse(newest.since);
+  const onSpec = (l) => Date.parse(l.ts) >= from && (l.claim === undefined ? runSpecOf(l) === id : claims.has(l.claim));
+  const steps = [
+    ...(activity.runs ?? []).filter(onSpec).map((r) => ({ kind: r.event, at: r.ts, task: r.task, ...r.claim === undefined ? {} : { claim: r.claim }, session: r.session })),
+    ...(activity.steps ?? []).flatMap((s) => s.event === "probe" && onSpec(s) ? [{ kind: "probe", at: s.ts, task: s.task, claim: s.claim, session: s.session, result: s.result }] : [])
+  ];
+  const step = steps.reduce((best, s) => best === null || Date.parse(s.at) >= Date.parse(best.at) ? s : best, null);
+  return step === null ? base : { ...base, step };
+}
 function holdsFeatureOpen(phase, doc) {
   return phase !== "complete" && doc.claims.some((c) => !c.checked && !c.dropped);
 }
@@ -4069,6 +4088,7 @@ function specRow(f, ctx, diagnostics) {
   const source = read.source ?? "main";
   const main = source === "worktree" && read.main !== undefined ? mainCopyOf(read.main, ctx) : null;
   const summary = listArchive([f])[0];
+  const run = openRunOf(ctx.activity, id, f.folder, ids);
   return {
     id,
     slug: f.folder,
@@ -4104,7 +4124,8 @@ function specRow(f, ctx, diagnostics) {
     worktree,
     source,
     main,
-    waits: waitsOf(ctx.waits.get(id))
+    waits: waitsOf(ctx.waits.get(id)),
+    ...run === null ? {} : { run }
   };
 }
 var waitsOf = (wait) => wait === undefined || wait.blockers.length === 0 ? null : wait;
@@ -4305,7 +4326,8 @@ function buildDashboard(input) {
     workflow: input.workflow,
     openByFeature,
     waits: new Map(edges.waits.map((w) => [w.spec, w])),
-    specEdges: edgesBySpec(edges.edges)
+    specEdges: edgesBySpec(edges.edges),
+    activity: { openRuns: input.locks?.openRuns ?? [], runs: input.locks?.runs ?? [], steps: input.locks?.steps ?? [] }
   };
   const built = active.flatMap((f) => specRow(f, ctx, diagnostics) ?? []).sort(byAction);
   const extra = edgeWarnings(built, active, edges, input.constitution);

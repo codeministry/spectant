@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Guidance, GuidanceEntry, ItemStateInfo } from '../../../../../core/src/files';
-import { guidanceEntryOf, guidanceOfBody, withReason } from './guidance-entry';
+import { guidanceEntryOf, guidanceOfBody, waitingEntries, withReason } from './guidance-entry';
 
 // Spec 020 (T13, ISC-237.1): every surface finds its spec's own entry here, so the same item reads the same sentence.
 const entry = (spec: string, item: GuidanceEntry['item'], key: string, ref: string | null = null): GuidanceEntry => ({
@@ -26,11 +26,33 @@ describe('guidanceEntryOf', () => {
     expect(guidanceEntryOf(GUIDANCE, '003')?.item).toBe('spec');
   });
 
+  it('finds a spec item folded under its spec\'s front entry (spec 070, ISC-568), before the next list', () => {
+    const own = entry('005', 'spec', 'stage.review.0');
+    const folded: Guidance = {
+      waits: [{ ...entry('005', 'claim', 'waiting.manual', 'ISC-94'), folded: [entry('005', 'task', 'waiting.operator', 'T40'), own] }],
+      next: [entry('005', 'spec', 'stage.build.0')],
+    };
+    expect(guidanceEntryOf(folded, '005')).toBe(own);
+    expect(guidanceEntryOf(folded, '004')).toBeNull();
+  });
+
   it('is null for a spec without an entry, without guidance or without a spec id', () => {
     expect(guidanceEntryOf(GUIDANCE, '008')).toBeNull();
     expect(guidanceEntryOf(undefined, '006')).toBeNull();
     expect(guidanceEntryOf(null, '006')).toBeNull();
     expect(guidanceEntryOf(GUIDANCE, undefined)).toBeNull();
+  });
+});
+
+describe('waitingEntries', () => {
+  it('unfolds each front entry\'s folded entries behind it, in their order; an unfolded list stays as it is', () => {
+    const t31 = entry('002', 'task', 'waiting.operator', 'T31');
+    const t29 = entry('002', 'question', 'waiting.question', 'T29');
+    const front = { ...entry('002', 'claim', 'waiting.manual', 'ISC-77'), folded: [t31, t29] };
+    const spec = entry('006', 'spec', 'stage.review.0');
+    expect(waitingEntries([spec, front])).toEqual([spec, front, t31, t29]);
+    expect(waitingEntries(GUIDANCE.waits)).toEqual(GUIDANCE.waits);
+    expect(waitingEntries([])).toEqual([]);
   });
 });
 

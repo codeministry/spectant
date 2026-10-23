@@ -709,17 +709,6 @@
         "other": "Alle {{count}} Workspaces zeigen"
       }
     },
-    "spec": {
-      "label": "Spec: {{id}} {{title}}",
-      "countLabel": "Specs: {{count}}",
-      "all": "Alle Specs in {{workspace}}",
-      "menu": "Specs",
-      "none": "Öffnen Sie einen Workspace, um eine Spec zu wählen",
-      "head": "Specs · {{workspace}}",
-      "headFavorites": "Favoriten · {{workspace}}",
-      "favoritesEmpty": "Noch keine Favoriten. Markieren Sie eine Spec auf ihrer Seite oder in der Spec-Liste mit dem Stern, dann erscheint sie hier.",
-      "overview": "Spec-Übersicht"
-    },
     "area": {
       "label": "Bereich: {{area}}",
       "pageLabel": "Seite: {{page}}",
@@ -745,8 +734,6 @@
     "pills": {
       "workspace": "Workspace",
       "page": "Seite",
-      "specs": "Specs",
-      "spec": "Spec",
       "area": "Bereich",
       "all": "Alle"
     },
@@ -774,6 +761,11 @@
       "notes": "Notizen"
     },
     "tabBar": "Tabs: {{area}}",
+    "favorites": {
+      "trigger": "Favoriten",
+      "menu": "Favoriten aller Workspaces",
+      "empty": "Noch keine Favoriten. Markieren Sie eine Spec oder eine Idee auf ihrer Seite mit dem Stern, dann erscheint sie hier."
+    },
     "palette": {
       "pending": "Die Befehlspalette kommt mit einem späteren Task",
       "trigger": "Zu Spec, Workspace oder Befehl springen",
@@ -2837,7 +2829,26 @@
     "working": {
       "label": "In Arbeit",
       "showAllName": "Alle {{count}} anzeigen · In Arbeit",
-      "tileName": "{{id}} {{title}}, Agent {{session}} arbeitet"
+      "tileName": "{{id}} {{title}}, Agent {{session}} arbeitet",
+      "phases": {
+        "init": "Einrichtung",
+        "new": "Neu",
+        "plan": "Planung",
+        "tasks": "Tasks",
+        "review": "Review",
+        "implement": "Umsetzung",
+        "done": "Abschluss",
+        "status": "Status",
+        "drift": "Drift"
+      },
+      "steps": {
+        "dispatch": "Verteilen",
+        "build": "Bauen",
+        "patch": "Patchen",
+        "apply": "Anwenden",
+        "probe": "Testen"
+      },
+      "phaseStep": "{{phase}} · {{step}}"
     },
     "next": {
       "label": "Als Nächstes",

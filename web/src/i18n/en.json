@@ -709,17 +709,6 @@
         "other": "Show all {{count}} workspaces"
       }
     },
-    "spec": {
-      "label": "Spec: {{id}} {{title}}",
-      "countLabel": "Specs: {{count}}",
-      "all": "All specs in {{workspace}}",
-      "menu": "Specs",
-      "none": "Open a workspace to pick a spec",
-      "head": "Specs · {{workspace}}",
-      "headFavorites": "Favorites · {{workspace}}",
-      "favoritesEmpty": "No favorites yet. Star a spec on its page or in the spec list to see it here.",
-      "overview": "Spec overview"
-    },
     "area": {
       "label": "Area: {{area}}",
       "pageLabel": "Page: {{page}}",
@@ -745,8 +734,6 @@
     "pills": {
       "workspace": "Workspace",
       "page": "Page",
-      "specs": "Specs",
-      "spec": "Spec",
       "area": "Area",
       "all": "All"
     },
@@ -774,6 +761,11 @@
       "notes": "Notes"
     },
     "tabBar": "{{area}} tabs",
+    "favorites": {
+      "trigger": "Favorites",
+      "menu": "Favorites of all workspaces",
+      "empty": "No favorites yet. Star a spec or an idea on its page to see it here."
+    },
     "palette": {
       "pending": "The command palette comes with a later task",
       "trigger": "Jump to spec, workspace, command",
@@ -2837,7 +2829,26 @@
     "working": {
       "label": "In progress",
       "showAllName": "Show all {{count}} · In progress",
-      "tileName": "{{id}} {{title}}, agent {{session}} working"
+      "tileName": "{{id}} {{title}}, agent {{session}} working",
+      "phases": {
+        "init": "init",
+        "new": "new",
+        "plan": "plan",
+        "tasks": "tasks",
+        "review": "review",
+        "implement": "implement",
+        "done": "closing",
+        "status": "status",
+        "drift": "drift"
+      },
+      "steps": {
+        "dispatch": "dispatching",
+        "build": "building",
+        "patch": "patching",
+        "apply": "applying",
+        "probe": "testing"
+      },
+      "phaseStep": "{{phase}} · {{step}}"
     },
     "next": {
       "label": "Next",

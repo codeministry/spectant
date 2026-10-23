@@ -1,6 +1,6 @@
 import type { GuidanceEntry } from '../../../../../core/src/files';
 import type { WorkspaceListEntry } from '../../core/api.service';
-import { guidanceOfBody } from '../../core/model/guidance-entry';
+import { guidanceOfBody, waitingEntries } from '../../core/model/guidance-entry';
 import { type WorkingEntry, workingOf } from '../../core/model/working';
 import { wsMonogram } from '../../shared/ui/ws-badge/ws-identity';
 import { count, isLoose, type Loose, text } from '../../layout/shell/loose';
@@ -71,15 +71,15 @@ export interface TileList {
 
 /**
  * The tile's list area (ISC-518): the specs in progress first, then what waits, cut to `TILE_ROW_LIMIT` rows. A waiting
- * row's title is its spec's title: from `titles` (the column's rows), else a spec entry of the same spec in `waits`,
- * else the entry's own title.
+ * row's title is its spec's title: from `titles` (the column's rows), else a spec entry of the same spec in `waits`
+ * (one folded under its spec's front entry too, spec 070), else the entry's own title.
  */
 export function tileOf(
   working: readonly WorkingEntry[],
   waits: readonly GuidanceEntry[],
   titles: Readonly<Partial<Record<string, string>>>,
 ): TileList {
-  const listed = new Map(waits.filter((e) => e.item === 'spec').map((e) => [e.spec, e.title]));
+  const listed = new Map(waitingEntries(waits).filter((e) => e.item === 'spec').map((e) => [e.spec, e.title]));
   const all: TileRow[] = [
     ...working.map((entry): TileWorkingRow => ({ kind: 'working', ...entry })),
     ...waits.map(

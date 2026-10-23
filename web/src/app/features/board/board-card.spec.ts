@@ -347,6 +347,31 @@ describe('BoardCard "Waits on you" marker and reason (spec 020, T23, ISC-240)', 
     expect(BOARD.cards.some((c) => c.marked)).toBe(false);
   });
 
+  it('keeps the mark when the fold puts the spec entry under an older claim of the same spec (spec 070, ISC-568)', () => {
+    // Harbor's 005 stands as its spec entry with claim ISC-94 folded under it; core puts the claim in front and folds
+    // the spec entry instead when the claim waits longer. The same two entries, swapped, are that case.
+    const source = dashboard.guidance as unknown as Guidance;
+    const swapped: Guidance = {
+      ...source,
+      waits: source.waits.map((e) => {
+        const under = e.spec === '005' ? (e.folded ?? []) : [];
+        if (under.length === 0) return e;
+        const [claim, ...rest] = under;
+        const front = { ...e, folded: undefined };
+        delete front.folded;
+        return { ...claim, folded: [front, ...rest] };
+      }),
+    };
+    expect(swapped.waits.find((e) => e.spec === '005')?.item).toBe('claim');
+    const folded = buildBoard({
+      planning: planningGolden as unknown as PlanningModel,
+      rows: dashboard.specs as unknown as readonly BoardRow[],
+      guidance: swapped,
+      actors: [],
+    });
+    expect(folded.cards.filter((c) => c.marked).map((c) => c.id).sort()).toEqual(['004', '005', '006']);
+  });
+
   it('006 in review: the marker row (secondary, user-round) right above the state line, the whole sentence, then the chip', async () => {
     const host = await render('006', guided('006'));
     const marker = host.querySelector<HTMLElement>('[data-card-marker]');

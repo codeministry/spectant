@@ -6,6 +6,7 @@ import { areaById, areaPath, SPEC_AREAS, specLink, type TabId } from './areas';
 import { PaletteIndex } from '../command-palette/palette-index';
 import { RefreshService } from './refresh.service';
 import { ShellData } from './shell-data.service';
+import { type FavoriteGroup, FavoritesIndex } from './favorites-select/favorites-index.service';
 import { ShellState } from './shell-state.service';
 import { ToastService } from '../../shared/ui/toast/toast';
 import { G_WINDOW_MS, GO_PREFIX, GROUP_CONTEXT, SHORTCUTS, TAB_GO_KEYS } from './keyboard-bindings';
@@ -23,6 +24,8 @@ interface Setup {
   readonly order?: readonly string[];
   /** The ids of `ShellData.favoriteRows`, in list order (spec 052); default none. */
   readonly favorites?: readonly string[];
+  /** The groups `FavoritesIndex` has loaded, of every workspace (spec 069); default none. */
+  readonly groups?: readonly FavoriteGroup[];
 }
 
 /** A `MediaQueryList` the test drives, as in theme.service.spec.ts. */
@@ -71,6 +74,7 @@ function setup(options: Setup = {}) {
           favoriteRows: signal((options.favorites ?? []).map((id) => ({ id }))),
         },
       },
+      { provide: FavoritesIndex, useValue: { groups: signal(options.groups ?? []), load: vi.fn(() => Promise.resolve()) } },
       { provide: PaletteIndex, useValue: index },
       { provide: RefreshService, useValue: refresher },
       { provide: SettingsService, useValue: settings },
@@ -342,6 +346,21 @@ describe('KeyboardService', () => {
         expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '004', 'claims'));
         press('[');
         expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '002', 'claims'));
+      });
+
+      it('with favourites in two workspaces ] and [ walk only those of the open workspace, in spec-list order (spec 069, T26, ISC-562)', () => {
+        const spec = (id: string) => ({ id }) as FavoriteGroup['specs'][number];
+        const groups: FavoriteGroup[] = [
+          { ws: 'harbor', name: 'Harbor', specs: [spec('002'), spec('005')], ideas: [] },
+          { ws: 'lantern', name: 'Lantern', specs: [spec('003'), spec('004')], ideas: [] },
+        ];
+        const { press, navigate, state } = setup({ tab: 'claims', order, favorites: ['002', '005'], groups, specId: '002' });
+        press(']');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '005', 'claims'));
+        state.specId.set('005');
+        press('[');
+        expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '002', 'claims'));
+        expect(navigate).toHaveBeenCalledTimes(2);
       });
     });
 

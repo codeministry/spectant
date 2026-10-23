@@ -1,4 +1,4 @@
-import type { ActorRef, Priority, SpecWait, Workflow, WorkflowStage } from '../../../../../core/src/files';
+import type { ActorRef, Guidance, Priority, SpecWait, Workflow, WorkflowStage } from '../../../../../core/src/files';
 import type { PlanningHolder } from '../../../../../core/src/planning';
 import { allowedTransition, reasonOf, storyStep, WAITING_STAGES, workflowStagesOf } from '../../../../../core/src/stage';
 import { allowedEntryMove } from '../../../../../core/src/transition';
@@ -53,6 +53,15 @@ export function dropTargetsOf(
   return stages.filter(
     (stage) => stage !== card.stage && (allowedTransition(card.stage, stage, type, workflow) || allowedEntryMove(card.stage, stage, type, workflow)),
   );
+}
+
+/**
+ * Whether the spec's own entry (`item: 'spec'`) stands in `guidance.waits` (spec 020, T23, ISC-240): as a front entry or
+ * folded under the spec's older claim, task or question (spec 070, ISC-568), so the fold never drops the card's mark.
+ */
+export function specWaits(guidance: Guidance | null | undefined, spec: string | null | undefined): boolean {
+  if (!guidance || !spec) return false;
+  return guidance.waits.some((e) => e.spec === spec && (e.item === 'spec' || (e.folded ?? []).some((f) => f.item === 'spec')));
 }
 
 const PRIORITY_RANK: Readonly<Record<Priority, number>> = { P1: 1, P2: 2, P3: 3, P4: 4 };
@@ -156,7 +165,7 @@ export function buildBoard(input: BoardInput): BoardModel {
       command,
       waiting: WAITING_STAGES.has(stage),
       waitsOnYou: WAITING_STAGES.has(stage) && !WAITS_ON_OTHERS.has(stage) && command !== null,
-      marked: input.guidance?.waits.some((e) => e.item === 'spec' && e.spec === (entry?.holder.id ?? row?.id)) ?? false,
+      marked: specWaits(input.guidance, entry?.holder.id ?? row?.id),
       hash: entry?.holder.hash ?? null,
       path: null,
       targets: dropTargetsOf(base, planning.workflow, stages),

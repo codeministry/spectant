@@ -1225,6 +1225,12 @@ export interface GuidanceEntry {
    */
   readonly since: string | null;
   readonly reason: GuidanceReason;
+  /**
+   * Spec 070 (ISC-568): on a workspace `waits` entry, the spec's further waiting entries in their order, folded under
+   * this front one so the spec stands in the list once. Absent when the spec has no other; never on a spec page's
+   * slice, which `guidanceOfSpec` unfolds into all of the spec's entries.
+   */
+  readonly folded?: readonly GuidanceEntry[];
 }
 
 /**

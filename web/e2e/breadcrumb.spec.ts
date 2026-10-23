@@ -451,12 +451,14 @@ test.describe('workspace first', () => {
 // T21 · ISC-140.2: the header pills carry labels (design.md, every viewport § header pills, and across viewports). At
 // 390, 820 and 1440 every visible segment of `app-shell-nav` holds a visible label `[data-pill-label]` and its value
 // `[data-pill-value]`; no segment's text is a bare number. The labels are catalog values looked up by key name and
-// compared case-insensitively (the uppercase is CSS): `shell.pills.workspace`, `shell.pills.specs` on workspace pages,
-// `shell.pills.spec` on spec pages, `shell.pills.area`. On `/`, `/help` and `/settings` the spec and area pills are
-// absent, the workspace pill reads `shell.pills.all · n`, and no segment shows `0`. `bun run e2e -- breadcrumb -g pills`.
+// compared case-insensitively (the uppercase is CSS): `shell.pills.workspace`, `shell.pills.page`, `shell.pills.area`.
+// On `/`, `/help` and `/settings` the area pill is absent, the workspace pill reads `shell.pills.all · n`, and no
+// segment shows `0`. `bun run e2e -- breadcrumb -g pills`.
 // ISC-140.2 refined (spec 024: one-row header on every width, principal 2026-10-13): the labels are visible from 1120 px;
-// below it the Workspace and Spec labels are part of the select's accessible name, and the Area select is the entry
-// of the overflow menu `⋯`, label and value visible there.
+// below it the Workspace label is part of the select's accessible name, and the Area select is the entry of the
+// overflow menu `⋯`, label and value visible there.
+// Spec 069 (ISC-554, ISC-558): no Spec pill is left on any page (`spec` is never expected, so its absence is
+// asserted); on a spec page the nav shows the open spec as the crumb `[data-crumb="spec"]` with its ID instead.
 const PILLS = 'app-shell-nav';
 // spec 024: PAGE select (principal 2026-10-13): the PAGE select is the second pill; the Area pill only on a spec page
 type PillName = 'workspace' | 'page' | 'spec' | 'area';
@@ -470,6 +472,8 @@ interface PillPage {
   readonly path: string;
   /** The pills that render; the others must be absent. */
   readonly pills: Partial<Record<PillName, PillExpectation>>;
+  /** The ID the spec crumb shows; without it the crumb is absent. */
+  readonly crumb?: string;
 }
 
 const DATA_AREA = SPEC_AREAS.find((area) => area.tabs.includes('claims'))?.id ?? 'data';
@@ -482,7 +486,6 @@ const PILL_PAGES: readonly PillPage[] = [
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
       // spec 058: the workspace address is the Dashboard; the page pill names it.
       page: { label: 'shell.pills.page', value: { key: 'shell.pages.dashboard' } },
-      spec: { label: 'shell.pills.specs', value: { pattern: /^\s*\d+\s*$/u } },
     },
   },
   {
@@ -491,7 +494,6 @@ const PILL_PAGES: readonly PillPage[] = [
     pills: {
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
       page: { label: 'shell.pills.page', value: { key: 'shell.pages.specs' } },
-      spec: { label: 'shell.pills.specs', value: { pattern: /^\s*\d+\s*$/u } },
     },
   },
   {
@@ -500,9 +502,9 @@ const PILL_PAGES: readonly PillPage[] = [
     pills: {
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
       page: { label: 'shell.pills.page', value: { key: 'shell.pages.specs' } },
-      spec: { label: 'shell.pills.spec', value: { pattern: /^\s*002(\s|$)/u } },
       area: { label: 'shell.pills.area', value: { key: `shell.areas.${DATA_AREA}` } },
     },
+    crumb: '002',
   },
   { name: 'workspaces overview', path: '/', pills: { workspace: ALL_WORKSPACES } },
   { name: 'help', path: '/help', pills: { workspace: ALL_WORKSPACES } },
@@ -569,6 +571,14 @@ async function checkPills(page: Page, entry: PillPage, width: number): Promise<v
     if (entry.path === '/' || entry.path === '/help' || entry.path === '/settings') {
       expect(text, `${where}: no 0 on an app page`).not.toMatch(/(^|[^\d])0([^\d]|$)/u);
     }
+  }
+  // Spec 069 (ISC-558): the open spec stays in the nav as its crumb, with its ID.
+  const crumb = page.locator(`${PILLS} [data-crumb="spec"]`);
+  if (entry.crumb === undefined) {
+    await expect(crumb, `${entry.name}: no spec crumb`).toHaveCount(0);
+  } else {
+    await expect(crumb, `${entry.name}: the spec crumb is visible`).toBeVisible();
+    await expect(crumb.locator('[data-crumb-id]'), `${entry.name}: the spec crumb shows ${entry.crumb}`).toHaveText(entry.crumb);
   }
 }
 

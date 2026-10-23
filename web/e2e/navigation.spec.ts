@@ -181,37 +181,49 @@ test.describe('navigation', () => {
       await expect(page.locator('a[data-library-link]')).toHaveCount(0);
     });
 
-    // Spec 048 (ISC-280, refines ISC-150.2): from 1120 px the Area select stands before the Spec select, in DOM, tab
-    // and screen order.
-    test('the header selects run Workspace · Page · Area · Spec, the Area select only on a spec page', async ({ page }) => {
+    // Spec 048 (ISC-280, refines ISC-150.2): from 1120 px the Area select stands after Workspace and Page, in DOM, tab
+    // and screen order. Spec 069 (ISC-554): the Spec select left the row; the open spec follows as a crumb with its
+    // ID, and the favourites trigger stands outside the nav, directly before the palette.
+    test('the header selects run Workspace · Page · Area, then the spec crumb, the Area select only on a spec page', async ({ page }) => {
       const order = (): Promise<Array<string | null>> =>
         page.locator('app-shell-nav [data-control]').evaluateAll((els) => els.map((el) => el.getAttribute('data-control')));
       await page.goto('/w/harbor/s/002');
       await expect(page.locator('header [data-control="area"]')).toBeVisible();
-      expect(await order()).toEqual(['workspace', 'page', 'area', 'spec']);
+      expect(await order()).toEqual(['workspace', 'page', 'area']);
       const labels = page.locator('app-shell-nav [data-control] [data-pill-label]');
-      await expect(labels).toHaveText([/^workspace$/iu, /^page$/iu, /^area$/iu, /^spec$/iu]);
+      await expect(labels).toHaveText([/^workspace$/iu, /^page$/iu, /^area$/iu]);
+      const crumb = page.locator('app-shell-nav [data-crumb="spec"]');
+      await expect(crumb.locator('[data-crumb-id]')).toHaveText('002');
       const xs: number[] = [];
-      for (const name of ['workspace', 'page', 'area', 'spec']) xs.push((await page.locator(`app-shell-nav [data-control="${name}"]`).boundingBox())?.x ?? -1);
+      for (const name of ['workspace', 'page', 'area']) xs.push((await page.locator(`app-shell-nav [data-control="${name}"]`).boundingBox())?.x ?? -1);
+      xs.push((await crumb.boundingBox())?.x ?? -1);
       expect(xs).toEqual([...xs].sort((a, b) => a - b));
+      await expect(page.locator('header [data-control="spec"]')).toHaveCount(0);
+      const tools = await page.locator('header [data-control]').evaluateAll((els) => els.map((el) => el.getAttribute('data-control')));
+      expect(tools.join(' '), 'the favourites trigger stands directly before the palette').toContain('favorites palette');
       await page.goto('/w/harbor');
       await expect(page.locator('header [data-control="page"]')).toBeVisible();
-      expect(await order()).toEqual(['workspace', 'page', 'spec']);
+      expect(await order()).toEqual(['workspace', 'page']);
+      await expect(page.locator('app-shell-nav [data-crumb="spec"]')).toHaveCount(0);
       // spec 024: PAGE select without trigger icon (principal 2026-10-13): eyebrow, name and chevron only
       await expect(page.locator('header [data-control="page"] ui-icon')).toHaveCount(1);
       await expect(page.locator('header [data-control="page"] ui-icon')).toHaveAttribute('data-icon', 'chevron-down');
     });
 
-    // Spec 048 (ISC-281): below 1120 px the Area stays an entry of the ⋯ menu; the row keeps the Spec select.
-    test('the header selects at 820 keep Area in the ⋯ menu and the Spec select in the row', async ({ page }) => {
+    // Spec 048 (ISC-281): below 1120 px the Area stays an entry of the ⋯ menu. Spec 069 (ISC-554): the row shows the
+    // open spec as its crumb, no Spec select.
+    test('the header selects at 820 keep Area in the ⋯ menu and the spec crumb in the row', async ({ page }) => {
       await page.setViewportSize({ width: 820, height: 900 });
       await page.goto('/w/harbor/s/002');
-      await expect(page.locator('app-shell-nav [data-control="spec"]')).toBeVisible();
+      const crumb = page.locator('app-shell-nav [data-crumb="spec"]');
+      await expect(crumb).toBeVisible();
+      await expect(crumb.locator('[data-crumb-id]')).toHaveText('002');
       // The row only: the ⋯ menu's entries (area, zen, settings) carry data-control too.
       const row = await page
         .locator('app-shell-nav [data-control]')
         .evaluateAll((els) => els.filter((el) => el.closest('[data-menu]') === null).map((el) => el.getAttribute('data-control')));
-      expect(row).toEqual(['workspace', 'page', 'spec']);
+      expect(row).toEqual(['workspace', 'page']);
+      await expect(page.locator('header [data-control="spec"]')).toHaveCount(0);
       await expect(page.locator('header [data-menu="more"] [data-control="area"]')).toHaveCount(1);
     });
 
@@ -254,43 +266,52 @@ test.describe('navigation', () => {
   });
 
   /**
-   * Spec 052 (T19): the Spec select lists only the workspace's favourites, so each switch test stars the spec it leaves
-   * and the one it picks on harbor in its own stub session; `RESET_PATH` under the same session drops them again.
+   * Spec 052 (T19), spec 069: the favourites list shows only starred specs, so each switch test stars the spec it
+   * leaves and the ones it picks in its own stub session; `RESET_PATH` under the same session drops them again.
    */
-  const starOnHarbor = async (page: Page, request: APIRequestContext, session: string, folders: readonly string[]): Promise<void> => {
+  const starFavorites = async (page: Page, request: APIRequestContext, session: string, folders: ReadonlyArray<readonly [string, string]>): Promise<void> => {
     await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
     await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
-    for (const folder of folders) {
-      expect((await request.put(workspaceRoutes.favorite('harbor', folder), { headers: { [SESSION_HEADER]: session } })).ok()).toBe(true);
+    for (const [ws, folder] of folders) {
+      expect((await request.put(workspaceRoutes.favorite(ws, folder), { headers: { [SESSION_HEADER]: session } })).ok(), `${ws}/${folder}`).toBe(true);
     }
   };
 
-  // Spec 051 (ISC-294): the header's Spec select keeps the open area and tab, in the popover at 1440 and the bottom
-  // sheet at 390; the new address survives a reload.
+  // Spec 051 (ISC-294), re-targeted by spec 069 (ISC-554, ISC-566): the header's favourites list keeps the open area
+  // and tab, within a workspace and across workspaces, in the popover at 1440 and the bottom sheet at 390; the new
+  // address survives a reload.
   for (const width of [1440, 390] as const) {
     test.describe(`spec switch at ${String(width)}`, () => {
       test.use(atWidth(width));
 
-      test(`spec select keeps tab at ${String(width)}`, async ({ page, request }, info) => {
+      test(`favourites list keeps tab at ${String(width)}`, async ({ page, request }, info) => {
         const session = `navigation-switch-${info.testId}`;
-        await starOnHarbor(page, request, session, ['002-web-console', '003-config-loader']);
+        await starFavorites(page, request, session, [
+          ['harbor', '002-web-console'],
+          ['harbor', '003-config-loader'],
+          ['lantern', '001-reading-list'],
+        ]);
         const timeline = async (): Promise<void> => {
           await expect(page.locator('app-tab-bar a[data-tab="timeline"]')).toHaveAttribute('aria-current', 'page');
           await expect(page.locator('app-tab-bar a[data-tab="timeline"]')).toBeVisible();
           await expect(page.locator('app-timeline-tab')).toBeVisible();
         };
+        const pick = async (ws: string, id: string): Promise<void> => {
+          await (await headerControl(page, 'favorites')).click();
+          const picker = page.locator('nav[data-picker="favorites"]');
+          await expect(picker).toBeVisible();
+          await expect(picker.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);
+          await picker.locator(`[data-favorites-group="${ws}"] a[data-spec="${id}"]`).click();
+          await expect(page).toHaveURL((url) => url.pathname === `/w/${ws}/s/${id}/timeline`);
+          await timeline();
+          await page.reload();
+          await expect(page).toHaveURL((url) => url.pathname === `/w/${ws}/s/${id}/timeline`);
+          await timeline();
+        };
         await page.goto('/w/harbor/s/002/timeline');
         await timeline();
-        await (await headerControl(page, 'spec')).click();
-        const picker = page.locator('nav[data-picker="spec"]');
-        await expect(picker).toBeVisible();
-        await expect(picker.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);
-        await picker.locator('[data-spec="003"]').click();
-        await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/003/timeline');
-        await timeline();
-        await page.reload();
-        await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/s/003/timeline');
-        await timeline();
+        await pick('harbor', '003');
+        await pick('lantern', '001');
         await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
       });
     });

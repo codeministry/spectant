@@ -24,7 +24,7 @@ export const WARNINGS_HEADING = 'warnings';
  * here. Each warning is one line (alert icon, spec ID link to the preview `?spec=<id>`, text, and the clearing command
  * with copy when it has one); a spec with open fog adds a fog line (cloud icon, violet left edge on the violet tint).
  * The count is the model's `warnings` KPI; "in n specs" counts the specs that carry a warning. The section form heads
- * the card with its heading and the count.
+ * the card with its folding heading, whose only label is that summary (spec 069, ISC-597: no title, no count).
  *
  * Spec 064 (T32, ISC-476): the section form folds. Its heading row is one native button (≥ 44 px, full width) with
  * `aria-expanded` and `aria-controls` on the list region, the summary "n warnings in m specs" (or "No warnings") and a

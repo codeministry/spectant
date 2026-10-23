@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { WorkingEntry } from '../../../core/model/working';
+import type { WorkingEntry, WorkingRun } from '../../../core/model/working';
 import { UiIcon } from '../../icons/icon';
 import { UiAgentDot } from '../agent-dot/agent-dot';
 import { UiChip } from '../chip/chip';
 import { UiGlyph } from '../glyph/glyph';
+import { UiRelativeTime } from '../relative-time/relative-time';
 import { UiSectionHeader } from '../section-header/section-header';
 import { UiFlatTile } from './flat-tile';
 import { TILE_LIMIT } from './tiles';
@@ -19,10 +20,19 @@ import { TILE_LIMIT } from './tiles';
  * links to the spec's live view `/w/<ws>/s/<id>/board`, the live area's first tab (ISC-508). With more entries a 44 px
  * link "Show all n" leads to `/w/<ws>/specs?working=1`.
  * Without an entry the block renders nothing at all: no section, no heading, no space (ISC-462).
+ * Spec 070 (C5, ISC-571, ISC-572): a spec with an open run stands here too, once, with or without a held claim; its tile
+ * names the run's phase as a chip after the id (`guidance.working.phases`, the command itself for a phase the catalogue
+ * has no word for) and, on an `implement` run, its latest step (a `probe` reads as testing), the run's session as the
+ * agent and its start as the bare duration in the end column (`ui-relative-time`, `short`).
  */
+/** The `/spec` subcommands the catalogue names as a phase (`guidance.working.phases`). */
+const PHASES: ReadonlySet<string> = new Set(['init', 'new', 'plan', 'tasks', 'review', 'implement', 'done', 'status', 'drift']);
+/** The steps of an `implement` run (core's `DashboardRunStep.kind`); `probe` reads as testing. */
+const STEPS: ReadonlySet<string> = new Set(['dispatch', 'build', 'patch', 'apply', 'probe']);
+
 @Component({
   selector: 'ui-working-block',
-  imports: [RouterLink, TranslocoPipe, UiAgentDot, UiChip, UiFlatTile, UiGlyph, UiIcon, UiSectionHeader],
+  imports: [RouterLink, TranslocoPipe, UiAgentDot, UiChip, UiFlatTile, UiGlyph, UiIcon, UiRelativeTime, UiSectionHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './working-block.css',
   templateUrl: './working-block.html',
@@ -41,6 +51,17 @@ export class UiWorkingBlock {
   protected readonly more = computed(() => this.entries().length > TILE_LIMIT);
   protected readonly specsLink = computed(() => ['/w', this.workspace(), 'specs']);
   protected readonly showAllQuery = { working: '1' } as const;
+
+  /** The catalogue key of a run's phase, or null for a phase it has no word for (the chip then shows the command). */
+  protected phaseKey(run: WorkingRun): string | null {
+    return run.phase !== null && PHASES.has(run.phase) ? `guidance.working.phases.${run.phase}` : null;
+  }
+
+  /** The catalogue key of an `implement` run's latest step, or null without a step the catalogue names. */
+  protected stepKey(run: WorkingRun): string | null {
+    const kind = run.step?.kind;
+    return kind !== undefined && STEPS.has(kind) ? `guidance.working.steps.${kind}` : null;
+  }
 
   protected specLink(entry: WorkingEntry): readonly string[] {
     return ['/w', this.workspace(), 's', entry.id, 'board'];

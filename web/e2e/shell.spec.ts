@@ -10,15 +10,16 @@ import { atWidth, expect, headerControl, test } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
-// spec 024: PAGE select (principal 2026-10-13); spec 048 (ISC-280): Workspace · Page · Area · Spec, the Area select only on a spec route
-const CONTROLS = ['brand', 'workspace', 'page', 'area', 'spec', 'palette', 'live', 'zen', 'settings'] as const;
-/** Outside a workspace the page, spec and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
+// spec 024: PAGE select (principal 2026-10-13); spec 048 (ISC-280): Workspace · Page · Area, the Area select only on a spec route;
+// spec 069 (ISC-554): the Spec select is gone, the favourites select stands before the palette on every route
+const CONTROLS = ['brand', 'workspace', 'page', 'area', 'favorites', 'palette', 'live', 'zen', 'settings'] as const;
+/** Outside a workspace the page and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
 const controlsOn = (route: string): readonly string[] =>
   route.includes('/s/')
     ? CONTROLS
     : route.startsWith('/w/')
       ? CONTROLS.filter((control) => control !== 'area')
-      : CONTROLS.filter((control) => control !== 'page' && control !== 'spec' && control !== 'area');
+      : CONTROLS.filter((control) => control !== 'page' && control !== 'area');
 // spec 024: one-row header on every width (principal 2026-10-13): below 1120 the area, zen and settings controls are entries of the overflow
 // menu `⋯` (`data-tool="more"`), each carrying its `data-control`; `reveal` opens the menu first.
 const OVERFLOW = new Set<string>(['area', 'zen', 'settings']);
@@ -26,7 +27,7 @@ const reveal = async (page: Page, width: number, name: string): Promise<void> =>
   if (width < 1120 && OVERFLOW.has(name)) await page.locator('header [data-tool="more"]').click();
 };
 /**
- * Spec 052 (T19): the header spec select lists only the workspace's favourites, so a test that picks from it stars
+ * Spec 052 (T19), spec 069: the header favourites select lists only favourites, so a test that picks from it stars
  * `folders` on harbor in its own stub session first; `RESET_PATH` under the same session drops them again.
  */
 async function starOnHarbor(page: Page, request: APIRequestContext, session: string, folders: readonly string[]): Promise<void> {
@@ -60,6 +61,9 @@ for (const { width, tier, tabBar } of TIERS) {
         for (const control of controlsOn(route).filter((name) => OVERFLOW.has(name))) {
           await expect(page.locator(`header [data-control="${control}"]`), control).toBeVisible();
         }
+        // spec 069 (ISC-554): no Spec select is left in the nav, neither as a pill nor as its picker
+        await expect(page.locator('header [data-control="spec"]')).toHaveCount(0);
+        await expect(page.locator('[data-picker="spec"]')).toHaveCount(0);
       });
     }
 
@@ -92,11 +96,13 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.locator('[data-picker="workspace"] [data-workspace="harbor"]').click();
       await expect(page).toHaveURL(/\/w\/harbor$/);
 
-      await control('spec').click();
-      await page.locator('[data-picker="spec"] .picker-all').click();
-      // spec 058: "show all" leads to the Specs page and focuses its list heading.
-      await expect(page).toHaveURL(/\/w\/harbor\/specs$/);
-      await expect(page.locator('#specs')).toBeFocused();
+      // spec 069 (ISC-555): the spec crumb replaces the Spec select; from a tab it leads back to the spec's dashboard.
+      await page.goto('/w/harbor/s/002/status');
+      const crumb = page.locator('header [data-crumb="spec"]');
+      await expect(crumb).not.toHaveAttribute('aria-current');
+      await crumb.click();
+      await expect(page).toHaveURL(/\/w\/harbor\/s\/002$/);
+      await expect(crumb).toHaveAttribute('aria-current', 'page');
 
       await page.goto('/w/harbor/s/002/status');
       const area = control('area');
@@ -154,11 +160,15 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(page).toHaveURL(/\/w\/lantern$/);
       await expect(workspaces).toBeHidden();
 
+      // spec 069 (ISC-557): the favourites select picks the spec; its list groups the favourites by workspace.
       await page.goto('/w/harbor/s/002');
-      const spec = control('spec');
-      await spec.click();
-      const specs = page.locator('[data-picker="spec"]');
+      const favorites = control('favorites');
+      await expect(favorites).toHaveAttribute('aria-expanded', 'false');
+      await favorites.click();
+      await expect(favorites).toHaveAttribute('aria-expanded', 'true');
+      const specs = page.locator('[data-picker="favorites"] [data-favorites-group="harbor"]');
       await expect(specs).toBeVisible();
+      await expect(specs.locator('[data-spec]')).toHaveCount(2);
       await expect(specs.locator('[aria-current="true"]')).toHaveAttribute('data-spec', '002');
       await expect(specs.locator('[aria-current="true"]')).toBeFocused();
       const other = specs.locator('[data-spec]:not([aria-current])').first();
@@ -219,8 +229,8 @@ for (const { width, tier, tabBar } of TIERS) {
 
 /**
  * ISC-73 (T40): the claim's probe, `bun run e2e -- shell -g header`. Exactly one `<header>` and one `app-shell` on
- * every route, a spec tab and an unknown path included, with the seven named controls (brand is the eighth slot); the
- * spec picker shows the name at wide and the mono id at compact while a spec is open, the count otherwise; the palette
+ * every route, a spec tab and an unknown path included, with the named controls (brand is the first slot); no Spec
+ * select (spec 069, ISC-554): while a spec is open the spec crumb shows its mono id and short name, otherwise nothing; the palette
  * is the field at wide and an icon button at compact; the settings control names help and leads to it. Where each
  * control leads is "header controls lead where they say" above and is not repeated here.
  */
@@ -248,23 +258,24 @@ test.describe('header', () => {
             if (wide || !OVERFLOW.has(control)) await expect(header.locator(`[data-control="${control}"]`), control).toBeVisible();
           }
 
-          const spec = header.locator('[data-control="spec"]');
+          // spec 069 (ISC-554, ISC-555): no Spec select; the spec crumb names the open spec, and only while one is open.
+          await expect(header.locator('[data-control="spec"]')).toHaveCount(0);
+          const spec = header.locator('[data-crumb="spec"]');
           if (SPEC_OPEN.has(route)) {
-            const id = spec.locator('.pick-id');
+            const id = spec.locator('[data-crumb-id]');
             await expect(id).toHaveText('002');
             await expect(id).toBeVisible();
             await expect(id).toHaveCSS('font-family', /mono/i);
             // spec 024: one-row header on every width (principal 2026-10-13): id and short name on every width, the name ellipsizing
-            await expect(spec.locator('.spec-title')).toBeVisible();
+            await expect(spec.locator('[data-crumb-title]')).toBeVisible();
             // The name comes from the dashboard row (`ShellData.currentRow`), not from the spec head's title.
-            await expect(spec.locator('.spec-title')).toHaveText(/^(?!002$)\S.*\S$/);
-            await expect(spec).toHaveAttribute('aria-label', /002/);
-          } else if (!route.startsWith('/w/')) {
-            await expect(spec).toHaveCount(0);
+            await expect(spec.locator('[data-crumb-title]')).toHaveText(/^(?!002$)\S.*\S$/);
+            // The full title is the crumb's tooltip; `aria-current` only on the spec's dashboard.
+            await expect(spec).toHaveAttribute('title', /\S/);
+            if (route === '/w/harbor/s/002') await expect(spec).toHaveAttribute('aria-current', 'page');
+            else await expect(spec).not.toHaveAttribute('aria-current');
           } else {
-            await expect(spec.locator('.pick-id')).toHaveCount(0);
-            await expect(spec.locator('.pick-text')).toHaveText(/^\d+$/);
-            await expect(spec.locator('.pick-text')).toBeVisible();
+            await expect(spec).toHaveCount(0);
           }
 
           const palette = header.locator('[data-control="palette"]');
@@ -342,9 +353,12 @@ test.describe('zen', () => {
       await zen.click();
       await expect(zen).toHaveAttribute('aria-pressed', 'true');
       for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
-      for (const kept of ['brand', 'workspace', 'page', 'spec', 'area']) {
+      // spec 069: the favourites select is a header tool too and goes with them; the spec crumb stays with the rail-selects
+      await expect(page.locator('header [data-control="favorites"]')).toBeHidden();
+      for (const kept of ['brand', 'workspace', 'page', 'area']) {
         await expect(page.locator(`header [data-control="${kept}"]`), kept).toBeVisible();
       }
+      await expect(page.locator('header [data-crumb="spec"]')).toBeVisible();
       await expect(head).toBeHidden();
       await expect(rail).toBeHidden();
       await expect(page.locator('main app-tab-bar')).toBeVisible();

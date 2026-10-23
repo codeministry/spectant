@@ -11,7 +11,8 @@ gate open, 4 lock lost. Add `--json` wherever the output is read by a step rathe
 
 Start with `spec-check run start <NNN> --session <actor> --command "/spec done <NNN>"` and keep the run id it prints. End with
 `spec-check run end <run-id> --outcome ok`, or `--outcome error` on any stop: a failed close condition, a refused
-transition, a write that did not land, the user saying no. Every path out of this workflow writes the end line.
+transition, a write that did not land, the user saying no. Every path out of this workflow writes the end line, an open
+question that ends the turn included.
 
 ## Done looks like this
 

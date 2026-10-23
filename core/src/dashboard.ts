@@ -37,7 +37,10 @@ import type {
   LockReading,
   MainCopy,
   MergeState,
+  OpenRun,
   Priority,
+  ProbeResult,
+  RunEvent,
   RepoFileSource,
   SpecFiles,
   SpecGates,
@@ -62,8 +65,8 @@ import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates
 import { TABLE_SEP, tableCells } from './markdown.ts';
 import { resolveEdges } from './spec-edges.ts';
 import type { ResolvedSpecEdges } from './spec-edges.ts';
-import { specIdOf } from './spec-ref.ts';
-import { codeReviewOf, commandFor, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
+import { runSpecOf, specIdOf } from './spec-ref.ts';
+import { codeReviewOf, commandFor, commandKey, isWorkflowStage, pluginCommand, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
 import type { Stage, StageInput } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims, specEdgeHolds } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
@@ -174,6 +177,55 @@ export interface DashboardSpecRow {
    * sets none; the server's loader always does. Its marks, claims and tasks ride the spec page's claims and tasks.
    */
   readonly state?: ItemStateInfo;
+  /**
+   * The spec's open run (spec 070, ISC-570, ISC-572), see `DashboardOpenRun`; absent while no run is open on it, so a
+   * workspace without open runs reads byte for byte as before.
+   */
+  readonly run?: DashboardOpenRun;
+}
+
+/**
+ * The newest step of an `implement` run on its spec (spec 070, ISC-572): the newest run event (`dispatch`, `build`,
+ * `patch`, `apply`) or `probe` of `.spectant/activity.jsonl` on the spec at or after the run's start, whatever its
+ * session: the hooks write the parent's own session id, not the run's. A line counts for the spec as on the live frame:
+ * by its claim when it names one, else by its spec session or spec worktree (ISC-213). A `question` is no step: it waits
+ * on the person. The web reads a `probe` as the testing step; core gives the kind only.
+ */
+export interface DashboardRunStep {
+  readonly kind: RunEvent | 'probe';
+  /** ISO 8601: the step line's `ts`. */
+  readonly at: string;
+  /** The task id the line names, `T12` or `C2`. */
+  readonly task: string;
+  /** The claim the line names; absent on a claimless run event. */
+  readonly claim?: string;
+  /** The line's session as written: the hook's parent session, a builder's `<parent>/<task>` or the round's parent. */
+  readonly session: string;
+  /** A probe's result; absent on a run event. */
+  readonly result?: ProbeResult;
+}
+
+/**
+ * The open run of a spec (spec 070, ISC-570): the newest `run-start` on it without a `run-end` (`LockReading.openRuns`),
+ * matched by number or folder name. Set on the row while such a run is open, whatever its age: the abort age is the
+ * item state's business (`state`). A run of `/spec init` names no spec and lands on no row.
+ */
+export interface DashboardOpenRun {
+  /** The run id as written. */
+  readonly run: string;
+  /**
+   * The `/spec` subcommand of `command` (`plan`, `tasks`, `review`, `implement`, `done` …), an old skill name mapped
+   * (`commandKey`; the code review reads `review`); null for a command the plugin has no subcommand for.
+   */
+  readonly phase: string | null;
+  /** The command in the plugin's form (`/spec review 006 code`), an old skill name mapped (`pluginCommand`). */
+  readonly command: string;
+  /** ISO 8601: the `run-start` line's `ts`. */
+  readonly since: string;
+  /** The `run-start` line's session, as written. */
+  readonly session: string;
+  /** Only on an `implement` run, and only when a step followed its start. */
+  readonly step?: DashboardRunStep;
 }
 
 /** Warnings of one kind across specs, for the warnings panel. */
@@ -490,6 +542,33 @@ interface SpecContext {
   readonly waits: ReadonlyMap<string, SpecWait>;
   /** The resolved spec edges each active spec carries, by number: an open one on a claim holds it (ISC-162.2). */
   readonly specEdges: ReadonlyMap<string, readonly SpecEdge[]>;
+  /** The lock reading's open runs, run events and step events, for each row's open run (spec 070, ISC-570). */
+  readonly activity: Pick<LockReading, 'openRuns' | 'runs' | 'steps'>;
+}
+
+/**
+ * The open run of one spec (spec 070, ISC-570, ISC-572), or null: the newest open run naming the spec by number or
+ * folder name, its phase the subcommand of its command; on an `implement` run, the newest step on the spec's claims (or,
+ * claimless, its spec session or worktree) at or after the run's start.
+ */
+function openRunOf(activity: SpecContext['activity'], id: string, slug: string, claims: ReadonlySet<string>): DashboardOpenRun | null {
+  const ours = (activity.openRuns ?? []).filter((r: OpenRun) => r.spec !== undefined && (r.spec === id || r.spec === slug || specIdOf(r.spec) === id));
+  const newest = ours.reduce<OpenRun | null>((best, r) => (best === null || Date.parse(r.since) >= Date.parse(best.since) ? r : best), null);
+  if (newest === null) return null;
+  const key = commandKey(newest.command);
+  const phase = key === null ? null : (key.split(' ')[0] ?? null);
+  const base: DashboardOpenRun = { run: newest.run, phase, command: pluginCommand(newest.command), since: newest.since, session: newest.session };
+  if (phase !== 'implement') return base;
+  const from = Date.parse(newest.since);
+  const onSpec = (l: { readonly claim?: string; readonly session: string; readonly worktree?: string; readonly ts: string }): boolean =>
+    Date.parse(l.ts) >= from && (l.claim === undefined ? runSpecOf(l) === id : claims.has(l.claim));
+  const steps: DashboardRunStep[] = [
+    ...(activity.runs ?? []).filter(onSpec).map((r): DashboardRunStep => ({ kind: r.event, at: r.ts, task: r.task, ...(r.claim === undefined ? {} : { claim: r.claim }), session: r.session })),
+    ...(activity.steps ?? []).flatMap((s): DashboardRunStep[] => (s.event === 'probe' && onSpec(s) ? [{ kind: 'probe', at: s.ts, task: s.task, claim: s.claim, session: s.session, result: s.result }] : [])),
+  ];
+  // The newest by time; on a tie the later of the two lists, the probe, since a builder probes after its build.
+  const step = steps.reduce<DashboardRunStep | null>((best, s) => (best === null || Date.parse(s.at) >= Date.parse(best.at) ? s : best), null);
+  return step === null ? base : { ...base, step };
 }
 
 /** Whether an active spec holds a feature's code review back (row 9): not `phase: complete`, at least one open claim. */
@@ -683,6 +762,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
 
   // The archive listing's summary of a folder (title fallback, task counts, goal) serves an active folder as well.
   const summary = listArchive([f])[0];
+  const run = openRunOf(ctx.activity, id, f.folder, ids);
   return {
     id,
     slug: f.folder,
@@ -720,6 +800,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     source,
     main,
     waits: waitsOf(ctx.waits.get(id)),
+    ...(run === null ? {} : { run }),
   };
 }
 
@@ -976,6 +1057,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     openByFeature,
     waits: new Map(edges.waits.map((w) => [w.spec, w])),
     specEdges: edgesBySpec(edges.edges),
+    activity: { openRuns: input.locks?.openRuns ?? [], runs: input.locks?.runs ?? [], steps: input.locks?.steps ?? [] },
   };
 
   // The rows first: who waits in an overlap reads their stage and progress (T15). The edge warnings go before the locks.

@@ -138,12 +138,13 @@ describe('OverviewPage (T65, ISC-16)', () => {
   });
 
   // spec 066 T12 (ISC-518): the list block renders the tile list, three rows, "Show all n" past three
-  it('puts the tile list in the list block: three waiting rows of seven and "Show all 7" to the workspace', async () => {
+  // spec 070 (ISC-568): harbor's seven waiting items stand as four entries, one per spec, so the count reads 4
+  it('puts the tile list in the list block: three waiting rows of four, one per spec, and "Show all" to the workspace', async () => {
     const { root } = await render([entry('harbor'), entry('lantern')]);
     const list = root.querySelector('.overview [data-ws="harbor"] [data-tile-block="list"] app-tile-list');
     const waits = harbor.guidance.waits;
-    expect(waits.length).toBe(7);
-    expect(text(list?.querySelector('[data-tile-count="waits"]'))).toMatch(/\b7$/);
+    expect(waits.map((e) => e.spec)).toEqual(['006', '002', '005', '004']);
+    expect(text(list?.querySelector('[data-tile-count="waits"]'))).toMatch(/\b4$/);
     expect(text(list?.querySelector('[data-tile-count="working"]'))).toMatch(/\b0$/);
     const rows = [...(list?.querySelectorAll('li[data-tile-row]') ?? [])];
     expect(rows.map((row) => row.getAttribute('data-kind'))).toEqual(['waiting', 'waiting', 'waiting']);

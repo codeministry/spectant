@@ -30,7 +30,8 @@ subject:
 spec-check run start <working-slug> --session <actor> --command "/spec idea <the sentences>" --json
 ```
 
-Keep the returned run ID. Close the run on every way out of this workflow, the hand-off included:
+Keep the returned run ID. Close the run on every way out of this workflow, the hand-off and an open question
+that ends the turn included:
 
 ```bash
 spec-check run end <run-id> --outcome ok      # start, keep as story, or stop

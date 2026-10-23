@@ -1565,8 +1565,14 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
  * `/spec tasks 003`; `running` is the log as it is, so the bodies equal beacon's goldens (003 `running` since 14:52);
  * `ended` appends that run's `run-end` with outcome `ok` and gives 003 the `tasks.md` the run wrote (`STUB_RUN_TASKS`,
  * in memory), so 003 reads the stage and state its files then give: `review`, open with `/spec review 003` (ISC-224.1).
+ * `phases` (spec 070, C5, ISC-571) is `running` plus the lines of `STUB_PHASES`: a `/spec done 009` run opens on 009
+ * (whose close step otherwise waits on you) and a probe follows 005's open `implement` run, so the open runs span the
+ * phases review (006), tasks (003), implement with a testing step (005, which also holds claim locks) and done (009).
+ * Under every run variant (not the waits variant `1`, which keeps its lock-free rows) beacon's dashboard is built over the log's locks, as the server's `loadDashboard` builds it:
+ * a row carries its held claims in `taken` and its open run in `run` (spec 070, ISC-570), which beacon's golden, built
+ * without a log, leaves out.
  */
-export const RUN_STATES = ['none', 'running', 'ended'] as const;
+export const RUN_STATES = ['none', 'running', 'ended', 'phases'] as const;
 export type StubRunState = (typeof RUN_STATES)[number];
 export const RUN_HEADER = 'X-Spectant-Stub-Run';
 
@@ -1583,6 +1589,16 @@ export const STUB_RUN = {
   since: '2026-03-08T14:52:00Z',
   /** When the `ended` variant's run-end line is stamped, before `STUB_NOW`. */
   endedAt: '2026-03-08T14:58:00Z',
+} as const;
+
+/**
+ * The lines the `phases` variant appends to beacon's log (spec 070, C5): a `/spec done 009` run (plugin form) on
+ * `009-timezone-labels`, and a red probe of 005's T5 on ISC-18 after its newest `implement` run started (14:40), so
+ * that run's latest step is the probe, which the app reads as testing.
+ */
+export const STUB_PHASES = {
+  done: { ts: '2026-03-08T14:55:00Z', event: 'run-start', run: 'r-0308-1455', command: '/spec done 009', session: 'a:claude:sess-91', spec: '009-timezone-labels' },
+  probe: { ts: '2026-03-08T14:56:00Z', event: 'probe', claim: 'ISC-18', task: 'T5', result: 'red', session: 'a:claude:sess-52/T5', worktree: 'wt-5' },
 } as const;
 
 /** The `tasks.md` the `ended` run leaves in 003, one task per claim; only the stub's memory holds it. */
@@ -1609,6 +1625,7 @@ export function runActivity(text: string, state: StubRunState): string {
   const start = lines.filter((l) => l.includes(`"run":"${STUB_RUN.run}"`) && l.includes('"event":"run-start"'));
   if (start.length !== 1) throw new Error(`stub-api: ${STUB_RUN.workspace.golden}'s activity log has ${start.length} run-start lines of ${STUB_RUN.run}`);
   if (state === 'running') return text;
+  if (state === 'phases') return `${text.endsWith('\n') ? text : `${text}\n`}${JSON.stringify(STUB_PHASES.done)}\n${JSON.stringify(STUB_PHASES.probe)}\n`;
   if (state === 'none') return lines.filter((l) => l !== start[0]).join('\n');
   const end = { ts: STUB_RUN.endedAt, event: 'run-end', run: STUB_RUN.run, command: STUB_RUN.command, session: STUB_RUN.session, spec: STUB_RUN.folder, outcome: 'ok' };
   return `${text.endsWith('\n') ? text : `${text}\n`}${JSON.stringify(end)}\n`;
@@ -1632,6 +1649,7 @@ function runVariant(
   state: StubRunState,
   withReleases: (text: string) => string = (text) => text,
   without: ReadonlySet<string> = new Set(),
+  locked = true,
 ): RunVariant {
   const onDisk = edge.readTreeAt(base.root);
   // A folder left out (the waits variant `1`, spec 020 T15) is read as if the tree had none.
@@ -1641,18 +1659,20 @@ function runVariant(
   const input: TreeInput = { ...read, specs: read.specs.map(withTasks) };
   // The session's run releases (spec 040, ISC-226) append their run-end lines after the variant's edit.
   const activity = withReleases(runActivity(readFileSync(join(base.root, '.spectant', 'activity.jsonl'), 'utf8'), state));
-  return rebuiltVariant(core, edge, base, input, activity, without);
+  return rebuiltVariant(core, edge, base, input, activity, without, locked);
 }
 
 /**
  * The dashboard of edited inputs and an activity log text, composed as the goldens' builders and the server's
  * `loadDashboard` compose it: the items over the log's locks, the plain model, the guidance, both laid over it.
  */
-function rebuiltDashboard(edge: EdgeCore, input: TreeInput, activity: string) {
+function rebuiltDashboard(edge: EdgeCore, input: TreeInput, activity: string, locked = false) {
   const locks = edge.activityReading(activity);
   const workspace = { ...input, locks };
   const items = edge.itemStates({ workspace, dashboard: edge.buildDashboard(workspace), taskRuns: edge.taskRunsOf(input.specs, locks, LIVE_NOW), now: LIVE_NOW, abortAfterMs: edge.DEFAULT_ABORT_AFTER_MS }) as ReadonlyArray<{ kind: string; id: string; spec?: string }>;
-  const plain = edge.buildDashboard(input);
+  // `locked` (the run variants, spec 070): the rows read the log's locks as the server's rows do, so each carries its
+  // held claims (`taken`) and its open run (`run`); the other overlays keep their goldens' lock-free rows.
+  const plain = edge.buildDashboard(locked ? workspace : input);
   const guidance = edge.guidanceOf({ workspace, dashboard: plain, items });
   return { locks, items, plain, guidance, model: edge.withGuidance(edge.withItemStates(plain, items), guidance) };
 }
@@ -1700,8 +1720,8 @@ function movedDashboard(edge: EdgeCore, root: string, moves: readonly StageMove[
  * A tree rebuilt by core from edited inputs and an activity log text, as `runVariant` documents: the run variants and
  * the sidebar variant (spec 067, T7) share it, so both read exactly as the goldens' builders would read the edit.
  */
-function rebuiltVariant(core: Core, edge: EdgeCore, base: TreeGoldens, input: TreeInput, activity: string, without: ReadonlySet<string> = new Set()): RunVariant {
-  const { locks, items, plain, guidance, model } = rebuiltDashboard(edge, input, activity);
+function rebuiltVariant(core: Core, edge: EdgeCore, base: TreeGoldens, input: TreeInput, activity: string, without: ReadonlySet<string> = new Set(), locked = false): RunVariant {
+  const { locks, items, plain, guidance, model } = rebuiltDashboard(edge, input, activity, locked);
   const { master, specs, archived, workflow, constitution, tldr } = input;
   const specTexts = new Map(specs.map((f) => [f.folder, f.texts.spec]));
   const specStates = plain.specs.map((row) => {
@@ -2484,7 +2504,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     for (const w of from) {
       if (state === '1' && w.slug === STUB_RUN.workspace.slug) {
         runBase ??= readTree(core, dir, STUB_RUN.workspace.golden);
-        const variant = runVariant(core, edgeCore, runBase, 'running', undefined, new Set([STUB_WAITS.dropped]));
+        const variant = runVariant(core, edgeCore, runBase, 'running', undefined, new Set([STUB_WAITS.dropped]), false);
         out.dashboards.set(w.slug, variant.dashboard);
         out.trees.set(w.slug, variant.tree);
         out.plannings.set(w.slug, variant.planning);

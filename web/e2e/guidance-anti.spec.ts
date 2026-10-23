@@ -18,7 +18,7 @@ import { type GuidanceEntryView, type GuidanceView, sentenceOf, specEntryOf } fr
 import { WAITS_HEADER } from './stub-api';
 
 /** A guidance entry as the API serves it (structural; `GuidanceEntryView` plus the fields compared here). */
-type Entry = GuidanceEntryView & { readonly ref: string | null; readonly command: string | null };
+type Entry = GuidanceEntryView & { readonly ref: string | null; readonly command: string | null; readonly folded?: readonly Entry[] };
 type Guidance = { readonly waits: readonly Entry[]; readonly next: readonly Entry[] };
 type WorkspaceRow = { readonly slug: string; readonly readable: boolean };
 type DashboardBody = { readonly specs: ReadonlyArray<{ readonly id: string }>; readonly guidance?: Guidance };
@@ -267,9 +267,10 @@ test.describe('guidance anti', () => {
           const body = await getJson<SpecBody>(request, `/api/workspaces/${encodeURIComponent(ws)}/specs/${id}`, headers);
           expect(body.guidance, `${ws} ${id}: the spec page carries guidance`).toBeDefined();
           const slice = (body.guidance ?? { waits: [], next: [] }) as Guidance;
-          // The slice is the workspace's guidance for this spec, entry for entry and in order.
+          // The slice is the workspace's guidance for this spec, entry for entry and in order; its waits unfold the
+          // entries core folded under the spec's front one on the dashboard (spec 070, ISC-568).
           expect(slice, `${ws} ${id}: the slice is the dashboard's entries of this spec`).toEqual({
-            waits: wide.waits.filter((e) => e.spec === id),
+            waits: wide.waits.filter((e) => e.spec === id).flatMap(({ folded, ...front }) => [front, ...(folded ?? [])]),
             next: wide.next.filter((e) => e.spec === id),
           });
           const own = ownOf(slice, id);

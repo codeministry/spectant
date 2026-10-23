@@ -28,7 +28,8 @@ arguments, 3 drift or gate open, 4 lock lost. Before anything else, open the run
 spec-check run start NNN --session <actor> --command "/spec plan NNN" --json
 ```
 
-Keep the returned run ID. Close the run on every way out of this workflow, a refusal included:
+Keep the returned run ID. Close the run on every way out of this workflow, a refusal and an open question that
+ends the turn included:
 
 ```bash
 spec-check run end <run-id> --outcome ok      # plan.md written and the stage moved, or a refusal by design
