@@ -36,6 +36,11 @@
   grid-column: mark-start / agent-end;
 }
 
+/* Spec 068 (T1, ISC-546): Next up's "Command" heading stands at its column's start, over the chip. */
+.col[data-cell='command'] {
+  text-align: start;
+}
+
 /* "Priority" is a little wider than its 48 px column, and from 900 px the stage track's own heading stands right of
    it, so it cannot centre over a span there: it centres over its own column as a flex item, whose overflow a centred
    flex line shares between both sides, a few px into the gaps, instead of being cut. */
@@ -59,12 +64,14 @@
 
 /* Below 640 px only the compact form's first line: ID and Title (beside the empty `star`). */
 @container specs (width < 640px) {
-  :host {
+  /* Next up's variant (spec 068) too: its third line, the command chip's, has no heading. */
+  :host,
+  :host([data-variant='next']) {
     grid-template-areas: 'id title title title title star';
     grid-template-rows: auto;
   }
 
-  .col:is([data-cell='mark'], [data-cell='prio'], [data-cell='phase'], [data-cell='meter']) {
+  .col:is([data-cell='mark'], [data-cell='prio'], [data-cell='phase'], [data-cell='meter'], [data-cell='command']) {
     display: none;
   }
 }

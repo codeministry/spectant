@@ -74,19 +74,19 @@ describe('NextUpList', () => {
     expect(root.querySelector('[data-show-all]')).toBeNull();
   });
 
-  it('ports Next up to next-rows under the section header: id and title, the command below', async () => {
+  // Spec 068 (ISC-546): the rows are the spec list's, so id, title and command sit in their cells.
+  it('ports Next up to rows under the section header: id and title, the command in its cell', async () => {
     const root = await render(HARBOR);
     expect(root.querySelector('ui-section-header #next-up')).not.toBeNull();
     const withCommand = HARBOR.specs.filter((r) => r.nextCommand !== null).length;
     expect(root.querySelector('ui-section-header [data-next-count]')?.textContent.trim()).toBe(String(withCommand));
-    expect(root.querySelector('ui-stage-track')).toBeNull();
     const rows = [...root.querySelectorAll('[data-next-primary] [data-next-row]')];
     expect(rows.length).toBe(HARBOR.nextUp.length);
     for (const [i, id] of HARBOR.nextUp.entries()) {
       const item = rows[i] as HTMLElement;
-      expect(item.querySelector('ui-id-chip')?.textContent.trim(), id).toBe(id);
-      expect(item.querySelector('a[data-next-link] .title')?.textContent.trim()).toBe(row(id).title);
-      expect(item.querySelector('.cmd ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
+      expect(item.querySelector('[data-cell="id"] .rnum')?.textContent.trim(), id).toBe(id);
+      expect(item.querySelector('a[data-next-link]')?.textContent.trim()).toBe(row(id).title);
+      expect(item.querySelector('[data-cell="command"] ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
     }
   });
 
@@ -122,20 +122,22 @@ describe('NextUpList', () => {
   });
 });
 
-// T137 · ISC-122.3: every Next up entry, behind "Show all" too, shows the dashboard row's phrase through a compact
-// `ui-reason`, with the next command as its chip.
+// T137 · ISC-122.3: every Next up entry, behind "Show all" too, carries the dashboard row's phrase, with the next
+// command as its chip. Spec 068 (T10, ISC-545): the phrase is the row link's description, no visible line.
 describe('NextUpList reason line (T137, ISC-122.3)', () => {
-  it("shows each harbor entry's nextReason verbatim with its command chip", async () => {
+  it("describes each harbor entry's link with its nextReason verbatim, beside its command chip", async () => {
     const root = await render(HARBOR);
     const shown = [...root.querySelectorAll<HTMLElement>('[data-next-entry]')];
     expect(shown.length).toBeGreaterThan(0);
     for (const entry of shown) {
       const id = entry.getAttribute('data-next-entry') ?? '';
-      const reason = entry.querySelector('ui-reason[data-next-reason]');
-      expect(reason?.querySelector('.visually-hidden')?.textContent, id).toBe(row(id).nextReason);
-      expect(reason?.hasAttribute('data-compact')).toBe(true);
-      expect(reason?.querySelector('ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
-      expect(entry.querySelectorAll('ui-command-chip').length).toBe(1);
+      const item = entry.closest('li') as HTMLElement;
+      const reason = item.querySelector<HTMLElement>(`#next-why-${id}[data-next-reason]`);
+      expect(reason?.textContent, id).toBe(row(id).nextReason);
+      expect(reason?.hidden).toBe(true);
+      expect(item.querySelector('a[data-next-link]')?.getAttribute('aria-describedby')).toBe(`next-why-${id}`);
+      expect(entry.querySelector('[data-cell="command"] ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
+      expect(item.querySelectorAll('ui-command-chip').length).toBe(1);
     }
   });
 });
@@ -151,6 +153,8 @@ describe('NextUpList reads guidance.next (spec 020, T25, ISC-240)', () => {
     fixture.componentRef.setInput('specs', model.specs);
     fixture.componentRef.setInput('ids', model.nextUp);
     fixture.componentRef.setInput('guidance', model.guidance);
+    // Spec 068: the rows read the workspace for their waits chips, so the required `ws` must be set here too.
+    fixture.componentRef.setInput('ws', 'harbor');
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
   }
@@ -170,17 +174,18 @@ describe('NextUpList reads guidance.next (spec 020, T25, ISC-240)', () => {
     }
     for (const entry of next) {
       const el = root.querySelector(`[data-next-entry="${entry.spec}"]`) as HTMLElement;
-      const guide = el.querySelector('[data-next-guide]') as HTMLElement;
+      const item = el.closest('li') as HTMLElement;
+      // Spec 068 (T10, ISC-545): the sentence is the row link's hidden description, the ring stands in the mark cell.
+      const guide = item.querySelector('[data-next-guide]') as HTMLElement;
       expect(guide, entry.spec).not.toBeNull();
-      expect(el.querySelector('ui-reason')).toBeNull();
-      const text = guide.querySelector('[data-next-sentence]')?.textContent ?? '';
+      expect(item.querySelector('ui-reason')).toBeNull();
+      const text = guide.textContent;
       expect(text, entry.spec).toBe(sentence(entry));
       expect(text.startsWith('guidance.')).toBe(false);
-      expect(guide.querySelector('.visually-hidden')).toBeNull();
-      expect(guide.querySelector('ui-glyph')?.getAttribute('data-shape')).toBe('ring');
-      expect(guide.querySelector('.sentence ui-icon')).toBeNull();
-      expect(guide.querySelector('ui-command-chip code')?.textContent).toBe(entry.command);
-      expect(el.querySelectorAll('ui-command-chip').length).toBe(1);
+      expect(item.querySelector('a[data-next-link]')?.getAttribute('aria-describedby')).toBe(guide.id);
+      expect(el.querySelector('[data-cell="mark"] ui-glyph')?.getAttribute('data-shape')).toBe('ring');
+      expect(el.querySelector('[data-cell="command"] ui-command-chip code')?.textContent).toBe(entry.command);
+      expect(item.querySelectorAll('ui-command-chip').length).toBe(1);
       expect(el.querySelector('[data-waits-mark]')).toBeNull();
     }
   });
@@ -200,5 +205,23 @@ describe('NextUpList reads guidance.next (spec 020, T25, ISC-240)', () => {
     expect(GUIDED.nextUp.length).toBeGreaterThan(0);
     expect(entries(root)).toEqual([]);
     expect(root.querySelector('[data-next-empty]')).not.toBeNull();
+  });
+});
+
+// Spec 068 (T1, T2, T10; ISC-546, ISC-545): Next up renders the spec list's row component under its column headings,
+// each entry an `app-spec-row` whose last cell, `command`, holds the copy chip.
+describe('NextUpList rows of the spec list (spec 068, ISC-546)', () => {
+  it('renders every entry as app-spec-row with the copy chip in its command cell, under the column headings', async () => {
+    const root = await render(HARBOR);
+    const ids = entries(root);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(root.querySelector('app-spec-table-head [data-cell="command"]')).not.toBeNull();
+    for (const id of ids) {
+      const item = root.querySelector(`[data-next-entry="${id}"]`) as HTMLElement;
+      const specRow = item.closest('app-spec-row') ?? item.querySelector('app-spec-row');
+      expect(specRow, id).not.toBeNull();
+      expect(specRow?.querySelector('[data-cell="command"] ui-command-chip code')?.textContent, id).toBe(row(id).nextCommand);
+    }
+    expect(root.querySelector('app-next-up-entry')).toBeNull();
   });
 });

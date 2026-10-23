@@ -20,6 +20,9 @@ import type { SpecTableRow } from './spec-table-model';
 /** i18n key for the agent dot's name; the English fallback stands until the key lands in both catalogues. */
 const AGENT_KEY = 'specs.agentWorking';
 
+/** Spec 068 (T1, ISC-546): the row grid's two forms, the spec list's and Next up's (with the `command` column). */
+export type RowVariant = 'list' | 'next';
+
 /**
  * One spec as a row of the Specs panel (`spec-row`, T89):
  * `type glyph + id | title | agent dot + priority + mini five-segment stage track + phase chip | meter + a/b` (spec 008: the type glyph before the number, `ui-priority` before the stage track, ISC-118). It
@@ -49,6 +52,10 @@ const AGENT_KEY = 'specs.agentWorking';
  * Spec 052 (T17, ISC-300): a second slot takes the list's favorite star (`button[ui-star-toggle]`), a sibling of the
  * row link in its own cell above the link's stretch: from 640 px an end column of 32 px, below it line 2 under the
  * type glyph. The row only places it; the state and the click belong to the list. An archived row projects none.
+ *
+ * Spec 068 (T1, ISC-546): the variant `next`, set only by Next up, adds a last cell `command` (`data-variant="next"`,
+ * the grid's extra column in `_row-grid.css`) that takes Next up's copy chip (`[cell-command]`); the list's rows
+ * (variant `list`) render no such cell and keep their grid.
  */
 @Component({
   selector: 'app-spec-row',
@@ -61,9 +68,12 @@ const AGENT_KEY = 'specs.agentWorking';
     '[attr.data-mark]': 'shownMark()',
     '[attr.data-archived]': "row().archived ? '' : null",
     '[attr.data-archived-first]': "archivedFirst() ? '' : null",
+    '[attr.data-variant]': "variant() === 'next' ? 'next' : null",
   },
 })
 export class SpecRow {
+  /** Spec 068 (T1, ISC-546): `next` adds the `command` cell for Next up's copy chip; the list keeps `list`. */
+  readonly variant = input<RowVariant>('list');
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 

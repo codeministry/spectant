@@ -1,0 +1,37 @@
+/*
+ * The row link (spec 025, T24): the title, 15/24 500, stretched over the whole row by `::after`, so the row stays one
+ * target while the waits chip behind the title (lifted above it) is a link of its own. The title stays on one line and
+ * ends in an ellipsis when it is too long, like an idea row's (`idea-row.css` `.link`); the full title is its tooltip.
+ * The row look (hover, current, selected) moves to the `li`; the focus ring draws on the stretched area, inset as before.
+ * Shared by the spec list (`spec-table.css`) and Next up (`next-up-list.css`, spec 068), each importing it first; the
+ * `li` that holds the row is `position: relative`.
+ */
+.row-link {
+  display: block;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--color-base-content);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.row-link:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.row-link:focus-visible::after {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
