@@ -298,7 +298,9 @@ entries the first workspace column of the start holds with `X-Spectant-Stub-Wait
 
 - **0**: lantern alone, its golden as it is (no waiting entry; Next up still has two).
 - **1**: beacon, rebuilt by core without its folder `009-timezone-labels`, then lantern; only `/spec review 004` waits.
-- **7**: harbor, then lantern, the goldens as they are; the first column shows the top entry, four more and "+2 more".
+- **7**: harbor, then lantern, the goldens as they are. Harbor's seven waiting items are four entries, one per spec
+  (spec 070, ISC-568: 006, 002 with two folded, 005 with one folded, 004), so the first tile on `/` shows three rows
+  and "Show all 4", and harbor's `#waiting` three tiles and the fold "Show all 4" with one more.
 
 Absent, the workspaces are the default list. The header is a 400 for any other value and beside `X-Spectant-Stub-Locks:
 runs`, the worktree, edge or midnight overlays. Reason: every body is core's output over a real fixture tree, never
