@@ -17,7 +17,7 @@
           </ol>
           @if (folded().length > 0) {
             @if (more() === 'fold') {
-              <ui-disclosure class="fold" data-show-all [(open)]="open">
+              <ui-disclosure class="fold" data-show-all summaryAt="end" [(open)]="open">
                 <span uiDisclosureSummary data-fold-toggle>
                   <ng-container [ngTemplateOutlet]="showAll" />
                 </span>

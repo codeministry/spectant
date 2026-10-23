@@ -243,14 +243,24 @@ describe('ui-waits-block form tiles (spec 064, T13, ISC-478)', () => {
 
   it('the fold: "Show all 4" with a chevron, closed, its name naming the list; `open` opens it', async () => {
     const host = await render(FOUR, { form: 'tiles', titles: TITLES });
-    const button = host.querySelector('ui-disclosure[data-show-all] button');
+    const button = host.querySelector('ui-disclosure[data-show-all] button[aria-controls]');
     expect(text(button?.querySelector('[data-visible]'))).toBe('Show all 4');
     expect(text(button?.querySelector('[data-name]'))).toBe('Show all 4 · Waits on you');
     expect(button?.querySelector('ui-icon[name="chevron-down"]')).not.toBeNull();
     expect(button?.getAttribute('aria-expanded')).toBe('false');
     TestBed.resetTestingModule();
     const open = await render(FOUR, { form: 'tiles', open: true });
-    expect(open.querySelector('ui-disclosure button')?.getAttribute('aria-expanded')).toBe('true');
+    expect(open.querySelector('ui-disclosure button[aria-controls]')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('the fold\'s tiles continue the list above its toggle, so "Show all 4" stays under the last row', async () => {
+    const host = await render(FOUR, { form: 'tiles', titles: TITLES, open: true });
+    const fold = host.querySelector('ui-disclosure[data-show-all]');
+    const folded = fold?.querySelector('ol.tiles');
+    const button = fold?.querySelector('button[aria-expanded]');
+    if (!folded || !button) throw new Error('fold missing');
+    expect(folded.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(fold?.lastElementChild?.contains(button)).toBe(true);
   });
 
   it('more="link": three tiles, then a link with an arrow to moreLink#moreFragment; three or fewer, neither', async () => {

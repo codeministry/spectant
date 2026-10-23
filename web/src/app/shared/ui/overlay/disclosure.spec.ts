@@ -38,6 +38,19 @@ class HeadedHost {
   readonly level = signal<2 | 3 | 4 | 5 | 6 | null>(2);
 }
 
+@Component({
+  imports: [UiDisclosure],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ui-disclosure summaryAt="end">
+      <span uiDisclosureSummary id="summary">Show all 7</span>
+      <button uiDisclosureActions id="action" type="button">Copy</button>
+      <p id="body">Rows</p>
+    </ui-disclosure>
+  `,
+})
+class EndHost {}
+
 /** Tag, classes and attribute names (values and Angular's scoping attributes left out); comment nodes drop out. */
 function shape(node: Element): string {
   const classes = [...node.classList].map((c) => `.${c}`).join('');
@@ -140,6 +153,20 @@ describe('UiDisclosure', () => {
         'div.head(button.summary[aria-controls,aria-expanded,type](ui-icon.chevron[data-icon,name] span[id,uidisclosuresummary]) ' +
         'button[id,type,uidisclosureactions]) ' +
         'div.region[id,inert](div.content(p[id] a[href,id])))',
+    );
+  });
+
+  it('summaryAt end puts the head under the region, toggle and actions in DOM and tab order after the content', async () => {
+    const fixture = TestBed.createComponent(EndHost);
+    await fixture.whenStable();
+    const disclosure = (fixture.nativeElement as HTMLElement).querySelector('ui-disclosure');
+    if (disclosure === null) throw new Error('ui-disclosure missing');
+
+    expect(shape(disclosure)).toBe(
+      'ui-disclosure[summaryat](' +
+        'div.region[id,inert](div.content(p[id])) ' +
+        'div.head(button.summary[aria-controls,aria-expanded,type](ui-icon.chevron[data-icon,name] span[id,uidisclosuresummary]) ' +
+        'button[id,type,uidisclosureactions]))',
     );
   });
 
