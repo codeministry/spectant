@@ -142,7 +142,9 @@
  *   every spec page (`specs/NNN`) and last `/api/status` (spec 071, ISC-587), each view's `etag` and `body` the stub's own `GET` of that path with the
  *   stream's headers, so a page that primes its cache with them gets a 304 on its next poll; a path that does not
  *   answer 200 under those headers is left out. 404 for a workspace the stub does not hold; 405 with `Allow: POST`
- *   for another method.
+ *   for another method. With `&spec=<id>` the bump also raises that dashboard row's `progress.closed` by one, up to its
+ *   `total` (spec 071, T38, ISC-587): a claim ticked on disk, so the status widget's row counter and KPIs move too;
+ *   404 for a spec the dashboard does not list.
  * - `POST /api/__stub/lock?ws=<slug>` with a JSON body `{spec, claim, session, release?}` stands in for a claim or
  *   release line of an agent in `.spectant/activity.jsonl` (spec 064, T25, ISC-468): for that session from then on
  *   the workspace's dashboard row `spec` carries `{id: claim, session, since: STUB_NOW, source: 'activity'}` in its
@@ -510,6 +512,20 @@ export function bumpDashboard(model: unknown, by: number): unknown {
   const copy = structuredClone(model) as { kpis?: { claims?: { closed?: unknown } } };
   const claims = copy.kpis?.claims;
   if (claims && typeof claims.closed === 'number') claims.closed += by;
+  return copy;
+}
+
+/**
+ * The dashboard model with each row named in `by` closing that many more claims, capped at its total (the bump hook's
+ * `&spec=`, spec 071, T38); no entry returns the model itself, so the body stays byte for byte.
+ */
+export function bumpRows(model: unknown, by: ReadonlyMap<string, number>): unknown {
+  if (by.size === 0) return model;
+  const copy = structuredClone(model) as { specs?: Array<{ id?: unknown; progress?: { closed: number; total: number } }> };
+  for (const row of copy.specs ?? []) {
+    const n = typeof row.id === 'string' ? by.get(row.id) : undefined;
+    if (n !== undefined && row.progress) row.progress.closed = Math.min(row.progress.total, row.progress.closed + n);
+  }
   return copy;
 }
 
@@ -2750,14 +2766,27 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   /** Bumps per session, then per workspace slug. */
   const bumps = new Map<string, Map<string, number>>();
   const bumpsOf = (req: Request, slug: string): number => bumps.get(sessionOf(req))?.get(slug) ?? 0;
+  /** Row bumps (`&spec=`, spec 071, T38) per session, then per slug, then per spec id: claims closed on that row. */
+  const rowBumps = new Map<string, Map<string, Map<string, number>>>();
+  const rowBumpsOf = (req: Request, slug: string): ReadonlyMap<string, number> => rowBumps.get(sessionOf(req))?.get(slug) ?? new Map<string, number>();
   const bumpRoute = async (req: Request, url: URL): Promise<Response> => {
     if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
     const slug = url.searchParams.get('ws');
     if (slug === null || !dashboards.has(slug)) return settingsError(404, { error: 'not-found' });
+    const spec = url.searchParams.get('spec');
+    const rows = (dashboards.get(slug)?.model as { specs?: TakenRow[] }).specs ?? [];
+    if (spec !== null && !rows.some((row) => row.id === spec)) return settingsError(404, { error: 'not-found' });
     const id = sessionOf(req);
     const own = bumps.get(id) ?? new Map<string, number>();
     own.set(slug, (own.get(slug) ?? 0) + 1);
     bumps.set(id, own);
+    if (spec !== null) {
+      const perSlug = rowBumps.get(id) ?? new Map<string, Map<string, number>>();
+      const perSpec = perSlug.get(slug) ?? new Map<string, number>();
+      perSpec.set(spec, (perSpec.get(spec) ?? 0) + 1);
+      perSlug.set(slug, perSpec);
+      rowBumps.set(id, perSlug);
+    }
     // Pushed before the 204, so a caller that awaited the bump finds the frame already on every open stream.
     await pushUpdate(id, slug);
     return new Response(null, { status: 204 });
@@ -3040,7 +3069,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const moved = variant || worktreesOn(req) ? undefined : boards.get(sessionOf(req))?.dashboards.get(slug);
     const model = added ? adminGoldenOf(added.golden).dashboard.model : (moved ?? source.get(slug)?.model);
     const fixture = req.headers.get(LOCKS_HEADER) === 'working' && slug === STUB_WORKING.workspace ? workingEdits : [];
-    return takenDashboard(bumpDashboard(takenDashboard(model, fixture), bumpsOf(req, slug)), lockEditsOf(req, slug));
+    const bumped = bumpRows(bumpDashboard(takenDashboard(model, fixture), bumpsOf(req, slug)), rowBumpsOf(req, slug));
+    return takenDashboard(bumped, lockEditsOf(req, slug));
   };
   /**
    * `GET|HEAD /api/status` (spec 071, ISC-593; `status.contract.ts`): core's `statusBoard` at `STUB_NOW` over the
@@ -3824,6 +3854,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       writes.delete(sessionOf(req));
       notebooks.delete(sessionOf(req));
       bumps.delete(sessionOf(req));
+      rowBumps.delete(sessionOf(req));
       lockEdits.delete(sessionOf(req));
       runBumps.delete(sessionOf(req));
       addedSteps.delete(sessionOf(req));

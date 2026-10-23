@@ -1534,6 +1534,27 @@ describe('POST /api/__stub/bump (T68)', () => {
     expect((await ask('/api/__stub/bump?ws=nowhere', { method: 'POST' })).status).toBe(404);
     expect((await ask('/api/__stub/bump', { method: 'POST' })).status).toBe(404);
   });
+
+  test('with &spec= also closes one claim on that row, capped at its total, and reaches /api/status; 404 for an unlisted spec (spec 071, T38)', async () => {
+    const session = 'bump-row';
+    type Rows = { specs: Array<{ id: string; progress: { closed: number; total: number } }> };
+    const progressOf = async (id: string): Promise<{ closed: number; total: number } | undefined> =>
+      ((await (await ask(HARBOR, { session })).json()) as Rows).specs.find((r) => r.id === id)?.progress;
+    const statusClaims = async (): Promise<number> => ((await (await ask(STATUS_PATH, { session })).json()) as StatusResponse).kpis.claimsClosed;
+    const before = await statusClaims();
+    expect(await progressOf('003')).toEqual({ closed: 0, total: 13 });
+
+    expect((await ask('/api/__stub/bump?ws=harbor&spec=003', { method: 'POST', session })).status).toBe(204);
+    expect(await progressOf('003')).toEqual({ closed: 1, total: 13 });
+    expect(await progressOf('002')).toEqual({ closed: 25, total: 30 });
+    expect(await statusClaims()).toBe(before + 1);
+    expect((await ask('/api/__stub/bump?ws=harbor&spec=004', { method: 'POST', session })).status).toBe(204);
+    expect(await progressOf('004')).toEqual({ closed: 30, total: 30 });
+    expect((await ask('/api/__stub/bump?ws=harbor&spec=999', { method: 'POST', session })).status).toBe(404);
+
+    expect((await ask('/api/__stub/reset', { method: 'POST', session })).status).toBe(204);
+    expect(await progressOf('003')).toEqual({ closed: 0, total: 13 });
+  });
 });
 
 /** One SSE frame: its comment line, or its `event:` name and `data:` text. */
