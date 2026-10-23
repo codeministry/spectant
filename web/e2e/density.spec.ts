@@ -8,12 +8,12 @@
  *   the spec list, on the Specs page `/w/<ws>/specs` since spec 058 (the dashboard holds none), shows its head with the
  *   counters and its first `SPEC_ROW_CAP` rows; "show all N" opens the rest, writes `open=specs` into the address, a
  *   reload keeps it open, and closing it removes the key.
- * - names (T51 · ISC-248, `bun run e2e -- density -g names`): against the dense stub, whose long titles and goals give
- *   the Next-up entries and the spec head of `STUB_DENSE.goalSpec` a "More…" through overflow (a spec row's title is
- *   cut by an ellipsis and has none), the dashboard, the Specs page and that spec page at 1440, 600 and 390 px carry no
- *   two visible interactive targets with the same accessible name, and every "More…" / "Less" / "Show all" / "Show whole" toggle names its object beyond its
- *   word. Since spec 058 the dashboard is one column without the list and the rail, so at 1440 its Next-up titles fit
- *   their line and only the narrower widths give them a "More…".
+ * - names (T51 · ISC-248, `bun run e2e -- density -g names`): against the dense stub, whose long goal gives the spec
+ *   head of `STUB_DENSE.goalSpec` a "More…" through overflow, the dashboard, the Specs page and that spec page at 1440,
+ *   600 and 390 px carry no two visible interactive targets with the same accessible name, and every "More…" / "Less" /
+ *   "Show all" / "Show whole" toggle names its object beyond its word. Since spec 068 (T12, ISC-545) Next up's entries
+ *   are rows of the spec list: each title is cut by an ellipsis with no "More…", the reason is the row link's hidden
+ *   description, not a line of its own, and every entry shows without a "Show all N".
  *   The names are Chromium's own (the CDP accessibility tree), not a re-implementation of the name computation.
  *
  * Expected texts come from the stub's own fixture (`STUB_DENSE`), never from a literal copy of it.
@@ -266,8 +266,11 @@ async function scrollThrough(page: Page): Promise<void> {
   });
 }
 
-/** The overflow toggles of the view: Next up on the dashboard, the goal in the spec head (a spec row has none). */
-const overflowToggles = (page: Page): Locator => page.locator('[data-next-more], app-spec-head [data-more]');
+/**
+ * The overflow toggles of the view: the goal in the spec head. A spec row has none, and since spec 068 Next up's
+ * entries are spec rows, so the dashboard has none either.
+ */
+const overflowToggles = (page: Page): Locator => page.locator('app-spec-head [data-more]');
 
 /** Wait until the clamp measured: the view's overflow toggles are there and their count holds still. */
 async function togglesSettled(page: Page, ready: Locator): Promise<void> {
@@ -288,9 +291,9 @@ const NAME_VIEWS = [
   {
     view: 'dashboard',
     path: `/w/${STUB_DENSE.workspace.slug}`,
-    // The last Next-up entry's link: in the one column (spec 058) its title overflows only below the wide tier, so the
-    // settle poll of `togglesSettled` waits for the clamp, not for a "More…" that 1440 does not show.
-    ready: (page: Page): Locator => page.locator('[data-next-link]').nth(STUB_DENSE.next - 1),
+    // Spec 068 (T12, ISC-545): the last Next-up entry's row link. Every entry is a spec row shown directly, with no
+    // "Show all N" fold, so the last one stands visible once Next up rendered.
+    ready: (page: Page): Locator => page.locator('[data-next-card] app-spec-row[data-next-row] a[data-next-link]').nth(STUB_DENSE.next - 1),
   },
   {
     view: 'specs page',

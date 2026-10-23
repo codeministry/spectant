@@ -232,7 +232,6 @@
   },
   "nextUp": {
     "title": "Next up",
-    "showAll": "Show all {{count}}",
     "empty": "Nothing ready to build",
     "emptyHint": "Every active spec is waiting on scoping. Run /spec plan on a specified spec to get one moving.",
     "waitOnFog": {

@@ -3,8 +3,8 @@
   the card's edges, under hairlines.
 -->
 <ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
-  @if (total() > 0) {
-    <span meta class="count" data-next-count>{{ total() }}</span>
+  @if (entries().length > 0) {
+    <span meta class="count" data-next-count>{{ entries().length }}</span>
   }
 </ui-section-header>
 <ui-card data-next-card [padding]="0">
@@ -12,21 +12,12 @@
     <!-- Spec 068 (T2, ISC-546): the spec list's column headings on Next up's grid. They only label the columns for the
          eye; each row's link names its row, so the box stays out of the accessibility tree, as in the spec list. -->
     <div class="cols" data-next-cols aria-hidden="true"><app-spec-table-head variant="next" /></div>
+    <!-- Spec 068 (T6, ISC-543): every entry stands in this one list; no "Show all n" fold, no cap. -->
     <ol class="entries" data-next-primary>
       @for (item of entries(); track item.row.id) {
         <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: item }" />
       }
     </ol>
-    @if (more().length > 0) {
-      <ui-disclosure class="fold" data-show-all [(open)]="showAll">
-        <span uiDisclosureSummary>{{ 'nextUp.showAll' | transloco: { count: total() } }}</span>
-        <ol class="entries">
-          @for (item of more(); track item.row.id) {
-            <ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: item }" />
-          }
-        </ol>
-      </ui-disclosure>
-    }
   } @else {
     <!-- The small empty state "Nothing ready to build" with the `clock` icon: icon, 15/24 title and the muted hint in a card. -->
     <div class="empty" data-next-empty>

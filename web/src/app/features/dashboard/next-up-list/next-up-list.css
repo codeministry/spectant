@@ -39,6 +39,12 @@ ui-section-header {
   position: relative;
 }
 
+/* Spec 068 (T13, ISC-547): the copy chip may shrink below its command's width in its row's `command` cell, whose
+   column narrows when the list is tight, so the command ends in the chip's ellipsis inside the card. */
+.entries ui-command-chip {
+  min-inline-size: 0;
+}
+
 /* The rows sit inside one card, separated by hairlines. */
 .entries > li + li {
   border-block-start: 1px solid var(--line);
@@ -69,19 +75,6 @@ ui-section-header {
 .empty-hint {
   margin: 0;
   color: var(--muted);
-}
-
-/* The card has no padding (the rows carry their own), so the fold insets itself 12 px like a row; the folded rows step
-   back out to the card edges under a hairline. */
-.fold {
-  display: block;
-  padding-inline: 12px;
-  border-block-start: 1px solid var(--line);
-}
-
-.fold .entries {
-  margin-inline: -12px;
-  border-block-start: 1px solid var(--line);
 }
 
 .fog {

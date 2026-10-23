@@ -232,7 +232,6 @@
   },
   "nextUp": {
     "title": "Als Nächstes",
-    "showAll": "Alle {{count}} anzeigen",
     "empty": "Nichts bereit zum Bauen",
     "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
     "waitOnFog": {

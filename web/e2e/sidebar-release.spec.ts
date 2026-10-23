@@ -9,6 +9,7 @@
  * - 1440: 003 chosen from its Specs row docks the sidebar: the run line reads running and "Release run" stands once,
  *   in the action grid. The press opens the confirmation with the focus on "Keep"; "Release" sends exactly one POST to
  *   the run's release route, and the run line and the button leave the sidebar without a reload.
+ * - 1440: with no stage change beside it (spec 068, ISC-550), the release is the grid's only action at full width.
  * - 1440: the story `uptime-badges` chosen from its idea row shows the same release action once.
  * - 390: the same release from the bottom sheet.
  *
@@ -111,6 +112,12 @@ test.describe(`sidebar release run at ${String(WIDTHS.desktop)}`, () => {
     const { releases, noReload } = await watch(page, `/w/${WS}/specs`);
     await choose(page, page.locator(`a.row-link[data-ref="spec:${SPEC}"]`), `spec:${SPEC}`, 'docked');
     await expectOpenRun(page);
+    // Spec 068 (T19, ISC-550): with no stage change beside it, the release is the grid's only action and takes its
+    // full width.
+    const grid = sidebar(page).locator('[data-section="actions"] .acts');
+    await expect(grid).toHaveAttribute('data-single', '');
+    const [gridBox, releaseBox] = await Promise.all([grid.boundingBox(), sidebar(page).locator('[data-section="actions"] app-run-release').boundingBox()]);
+    expect(Math.abs((gridBox?.width ?? 0) - (releaseBox?.width ?? -10)), 'release width = grid width').toBeLessThanOrEqual(1);
     await releaseFromSidebar(page, releases);
     await noReload();
   });

@@ -186,7 +186,8 @@ describe('DashboardPage keeps its own selection on /w/harbor (spec 058, ISC-400)
 
   for (const tier of ['compact', 'medium', 'wide'] as const) {
     for (const [name, selector] of [
-      ['a Next up link', 'app-next-up-list a[data-next-link]'],
+      // Spec 068 (T9, ISC-544): the Next up row's title link, stretched over the spec-list row it stands in.
+      ['a Next up row link', 'app-next-up-list app-spec-row[data-next-row] a.row-link[data-next-link]'],
       ['a warnings link', 'app-warnings-panel a[data-warning-link]'],
     ] as const) {
       it(`sets ?sel=spec:<id> from ${name} and stays on /w/harbor, the sidebar ${FLOATING[tier]}, at ${tier}`, async () => {

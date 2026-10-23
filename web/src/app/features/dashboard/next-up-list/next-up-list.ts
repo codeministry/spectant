@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -10,7 +10,6 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { GuidanceReasonPipe } from '../../../shared/ui/guidance/guidance-reason.pipe';
-import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
 import { SpecRow } from '../spec-table/spec-row';
 import { SpecTableHead } from '../spec-table/spec-table-head';
@@ -22,16 +21,14 @@ export interface NextUpItem {
   readonly entry: GuidanceEntry | null;
 }
 
-/** Entries before "Show all n" when Next up reads `guidance.next`: as many as the model's `nextUp` holds (core NEXT_UP). */
-export const NEXT_UP_SHOWN = 3;
-
 /** The id the `g n` sequence moves focus to (DS-APP-35). */
 export const NEXT_UP_HEADING = 'next-up';
 
 /**
  * Next up (T64, design.md § Desktop / Mobile / Tablet): the model's `nextUp` ids resolved to their rows, in the model's
- * order; every further row with a next command sits behind "Show all n" in row order. Nothing is counted or ranked
- * here: the order and the commands are the parser's.
+ * order, then every further row with a next command in row order. Nothing is counted or ranked here: the order and the
+ * commands are the parser's. Spec 068 (T6, ISC-543): every entry stands directly in one list, with no "Show all n"
+ * fold and no cap; the header's count is the number of entries.
  * With nothing to run it says so and, when specs wait on fog, links to the fog filter of the Specs page (`/w/:ws/specs?phase=fog`, spec 058).
  *
  * Spec 068 (T2, T10; ISC-546, ISC-545): each entry is a row of the spec list (`app-spec-row`, variant `next`) under its
@@ -51,7 +48,6 @@ export const NEXT_UP_HEADING = 'next-up';
     TranslocoPipe,
     UiCard,
     UiCommandChip,
-    UiDisclosure,
     UiIcon,
     UiSectionHeader,
   ],
@@ -74,7 +70,6 @@ export class NextUpList {
   readonly guidance = input<Guidance | undefined>(undefined);
 
   protected readonly headingId = NEXT_UP_HEADING;
-  protected readonly showAll = signal(false);
 
   /** Spec 068 (T2): the model's rows as the spec list reads them (`readSpecRows`), so `app-spec-row` renders them. */
   private readonly rows = computed(() => readSpecRows({ specs: this.specs() }));
@@ -84,7 +79,7 @@ export class NextUpList {
    * first that names it) and each with its entry; what waits on you moved to `#waiting`. Without guidance (no clock)
    * the model's `nextUp` and every further row with a next command, as before.
    */
-  private readonly listed = computed<readonly NextUpItem[]>(() => {
+  protected readonly entries = computed<readonly NextUpItem[]>(() => {
     const byId = new Map(this.rows().map((row) => [row.id, row]));
     const guidance = this.guidance();
     if (!guidance) {
@@ -100,11 +95,6 @@ export class NextUpList {
       return [{ row, entry }];
     });
   });
-  /** How many entries stand before the fold: the model's `nextUp` count without guidance, `NEXT_UP_SHOWN` with it. */
-  private readonly shown = computed(() => (this.guidance() ? NEXT_UP_SHOWN : this.ids().filter((id) => this.specs().some((row) => row.id === id)).length));
-  protected readonly entries = computed(() => this.listed().slice(0, this.shown()));
-  protected readonly more = computed(() => this.listed().slice(this.shown()));
-  protected readonly total = computed(() => this.entries().length + this.more().length);
   /** Specs with open fog, named only when nothing is ready to build. */
   protected readonly fogWaiting = computed(() => this.specs().filter((row) => row.fog > 0).length);
 

@@ -7,6 +7,9 @@
  * dashboard's `#waiting` section and Next up puts exactly the entry's `command` in the clipboard, byte for byte (no
  * whitespace before or after), and confirms it visibly at the chip (the check) and in the chip's polite live region
  * (`common.copied`). Every expected command is read from the API body the page renders, never hand-typed.
+ *
+ * Spec 068 (T11, ISC-545): a Next up entry is a spec-list row (`app-spec-row[data-next-row]`); its chip stands in the
+ * row's command cell (`[data-cell="command"]`), and its reason is the row link's description, never a visible line.
  */
 import { readFileSync } from 'node:fs';
 import type { APIRequestContext, BrowserContext, Locator, Page } from '@playwright/test';
@@ -129,8 +132,24 @@ test.describe('guidance clipboard', () => {
 
     await page.goto(`/w/${WS}`);
     await expectCopies(page, page.locator('#waiting ui-flat-tile').first().locator('ui-command-chip'), waiting, '#waiting first tile');
-    const entry = page.locator(`app-next-up-list app-next-up-entry[data-next-entry="${first?.spec ?? ''}"] [data-next-guide] ui-command-chip`);
-    await expectCopies(page, entry, nextUp, `Next up ${first?.spec ?? ''}`);
+    // Spec 068 (T11, ISC-545): the entry is a spec-list row, its one chip in the row's command cell.
+    const spec = first?.spec ?? '';
+    const row = page.locator(`app-next-up-list app-spec-row[data-next-row][data-next-entry="${spec}"]`);
+    await expect(row, `Next up ${spec}: one row`).toHaveCount(1);
+    await expect(row.locator('ui-command-chip'), `Next up ${spec}: one chip in the row`).toHaveCount(1);
+    const chip = row.locator('[data-cell="command"] ui-command-chip');
+    await expect(chip, `Next up ${spec}: the chip sits in the command cell`).toHaveCount(1);
+    await expectCopies(page, chip, nextUp, `Next up ${spec}`);
+    // The reason describes the row link and ends its title; it is no visible line: nothing visible in the row holds it.
+    const link = row.locator('a[data-next-link]');
+    await expect(link, `Next up ${spec}: the link names its reason`).toHaveAttribute('aria-describedby', `next-why-${spec}`);
+    const reason = page.locator(`span#next-why-${spec}[data-next-reason][data-next-guide]`);
+    await expect(reason, `Next up ${spec}: the reason is hidden`).toBeHidden();
+    const sentence = ((await reason.textContent()) ?? '').trim();
+    expect(sentence, `Next up ${spec}: the reason has a sentence`).not.toBe('');
+    expect((await link.getAttribute('title'))?.endsWith(`\n${sentence}`), `Next up ${spec}: the reason ends the link's title`).toBe(true);
+    const item = page.locator('app-next-up-list li').filter({ has: row });
+    await expect(item.getByText(sentence).filter({ visible: true }), `Next up ${spec}: no visible line with the reason`).toHaveCount(0);
   });
 });
 
@@ -140,7 +159,7 @@ test.describe('guidance clipboard', () => {
  *
  * Harbor as its golden stands: 006 waits on the principal (its stale review) and carries two warnings (drift and
  * review), 002 waits three times with the same command, and 004 carries two warnings without a command. On the
- * workspace dashboard (Next up, `#waiting`, the warnings panel) and on 006's spec page (rail guide, its waiting rows,
+ * workspace dashboard (Next up's rows, `#waiting`, the warnings panel) and on 006's spec page (rail guide, its waiting rows,
  * the head), in English and in German, every copy chip's button and every warning link is collected with its
  * accessible name; each name is unique on its page, and a chip of the four guidance surfaces (Next up, waits on you,
  * the rail guide, the warnings) names its command and says more than the bare "Copy {command}".
@@ -164,7 +183,7 @@ async function names(page: Page): Promise<{ chips: Array<{ name: string; command
     const chips = [...document.querySelectorAll('ui-command-chip')].flatMap((chip) => {
       const button = chip.querySelector('button');
       // The four guidance surfaces of ISC-354, whose chips must also say what they stand for.
-      const guided = chip.closest('app-next-up-entry, app-waiting-section, ui-waits-block, app-spec-rail-guide, app-warnings-panel') !== null || chip.matches('[data-warning-command]');
+      const guided = chip.closest('app-next-up-list, app-waiting-section, ui-waits-block, app-spec-rail-guide, app-warnings-panel') !== null || chip.matches('[data-warning-command]');
       return button ? [{ name: nameOf(button), command: (chip.querySelector('code')?.textContent ?? '').trim(), guided }] : [];
     });
     const links = [...document.querySelectorAll('a[data-warning-link], a[data-overlap-other]')].map(nameOf);

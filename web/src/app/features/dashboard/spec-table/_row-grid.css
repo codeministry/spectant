@@ -94,13 +94,14 @@
 }
 
 /* Spec 068 (T1, ISC-546): Next up's variant (`data-variant="next"`) adds `command`, the copy chip's column, after
-   `star`: 176 px from 640 px, below it a third line under the second. The spec list never sets it and keeps the
-   columns above; each tier below repeats its own columns for the variant with `command` appended. */
+   `star`: 176 px from 848 px, below it a line of its own under the title, so the title keeps its width (spec 068,
+   T13, ISC-547). The spec list never sets it and keeps the columns above; each tier below repeats its own areas for
+   the variant. The chip may still end in its own ellipsis inside the column. */
 :host([data-variant='next']) {
   --command-col: 176px;
 
   grid-template-areas: 'id title feature mark agent prio track phase meter star command';
-  grid-template-columns: 72px minmax(0, 1fr) 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px var(--command-col);
+  grid-template-columns: 72px minmax(0, 1fr) 80px 24px 8px 48px var(--track-col, 88px) 104px 120px 32px minmax(0, var(--command-col));
 }
 
 [data-cell='command'] {
@@ -164,8 +165,13 @@
     grid-template-columns: 72px minmax(0, 1fr) 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px;
   }
 
+  /* Next up's command chip on a second line from the title's column to the row's end: beside the fixed columns of
+     this tier a 176 px chip would leave the title no width (spec 068, T13, ISC-547). */
   :host([data-variant='next']) {
-    grid-template-columns: 72px minmax(0, 1fr) 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px var(--command-col);
+    grid-template-areas:
+      'id title feature mark agent prio track phase meter star'
+      '. command command command command command command command command command';
+    grid-template-columns: 72px minmax(0, 1fr) 48px 24px 8px 48px var(--track-col, 88px) 104px 48px 32px;
   }
 
   .rfeat-ms {

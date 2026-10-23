@@ -60,6 +60,16 @@
   .col[data-cell='meter'] {
     grid-column: meter-start / star-end;
   }
+
+  /* Next up's variant (spec 068, T13): the command chip's second line has no heading; the head keeps one line. */
+  :host([data-variant='next']) {
+    grid-template-areas: 'id title feature mark agent prio track phase meter star';
+    grid-template-rows: auto;
+  }
+
+  .col[data-cell='command'] {
+    display: none;
+  }
 }
 
 /* Below 640 px only the compact form's first line: ID and Title (beside the empty `star`). */
