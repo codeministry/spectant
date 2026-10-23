@@ -118,7 +118,7 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
     expect(document.activeElement).not.toBe(section);
   });
 
-  it('opens the fold on a click, its name unchanged', async () => {
+  it('opens the fold on a click; the toggle under the last tile then reads "Show fewer"', async () => {
     entries = HARBOR;
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/w/harbor');
@@ -128,7 +128,8 @@ describe('WaitingSection (spec 020 T17, ISC-238; spec 064 T14, ISC-478 flat tile
     await settle(harness);
     const button = root.querySelector('app-waiting-section ui-disclosure button[aria-controls]');
     expect(button?.getAttribute('aria-expanded')).toBe('true');
-    expect(nameOf(button)).toBe('Show all 4 · Waits on you');
+    expect(visibleOf(button)).toBe('Show fewer');
+    expect(nameOf(button)).toBe('Show fewer · Waits on you');
   });
 
   it('reads the German names: "Alle 4 anzeigen · Liegt bei Ihnen"', async () => {

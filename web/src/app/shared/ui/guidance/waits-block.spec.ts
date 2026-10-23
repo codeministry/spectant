@@ -263,6 +263,18 @@ describe('ui-waits-block form tiles (spec 064, T13, ISC-478)', () => {
     expect(fold?.lastElementChild?.contains(button)).toBe(true);
   });
 
+  it('the open fold\'s toggle reads "Show fewer", its name naming the list, in both catalogues', async () => {
+    const host = await render(FOUR, { form: 'tiles', open: true });
+    const button = host.querySelector('ui-disclosure[data-show-all] button[aria-controls]');
+    expect(text(button?.querySelector('[data-visible]'))).toBe('Show fewer');
+    expect(text(button?.querySelector('[data-name]'))).toBe('Show fewer · Waits on you');
+    TestBed.resetTestingModule();
+    const de = await render(FOUR, { form: 'tiles', open: true }, 'de');
+    const knopf = de.querySelector('ui-disclosure[data-show-all] button[aria-controls]');
+    expect(text(knopf?.querySelector('[data-visible]'))).toBe('Weniger anzeigen');
+    expect(text(knopf?.querySelector('[data-name]'))).toBe('Weniger anzeigen · Liegt bei Ihnen');
+  });
+
   it('more="link": three tiles, then a link with an arrow to moreLink#moreFragment; three or fewer, neither', async () => {
     const host = await render(FOUR, { form: 'tiles', more: 'link', moreLink: '/w/harbor' }, 'de');
     expect(tilesOf(host)).toHaveLength(3);

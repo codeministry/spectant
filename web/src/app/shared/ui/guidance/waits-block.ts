@@ -38,7 +38,8 @@ const ABSENT = '\u0000';
  *   title as the main text (one line, cut with an ellipsis, the full title in the link's `title`), the copy chip where
  *   the entry has a command (its manual hint in the toast), "waiting 2 d". The reason sentence is never visible, only
  *   the tile's accessible description. `TILE_LIMIT` tiles stand; past them `more` `fold` folds the rest behind "Show
- *   all n" with a chevron (`open`, the dashboard's `#waiting`), the opened tiles continuing the list above the toggle;
+ *   all n" with a chevron (`open`, the dashboard's `#waiting`), the opened tiles continuing the list above the toggle,
+ *   which then reads "Show fewer";
  *   `more` `link` leads to `moreLink#moreFragment` with an arrow (the start).
  */
 @Component({
