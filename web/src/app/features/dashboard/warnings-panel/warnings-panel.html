@@ -14,8 +14,8 @@
     <!--
       Spec 064 (T32, ISC-476): the section folds, closed by default. Pattern: the button sits INSIDE the h2, so the
       heading stays a heading (and the `g w` focus target) while the button is the disclosure; the button is named by
-      its visible text (title, then summary), so the heading reads the same; the toggle word is only its `title`.
-      Closed, the region is hidden and renders no card.
+      its visible text, so the heading reads the same; the toggle word is only its `title`. Closed, the region is
+      hidden and renders no card. Spec 069 (T32, ISC-597): no title and no count; the summary is the only label.
     -->
     <section class="section">
       <h2 class="head" tabindex="-1" [id]="headingId">
@@ -28,10 +28,6 @@
           [title]="(open() ? 'warnings.toggle.close' : 'warnings.toggle.open') | transloco"
           (click)="toggle()"
         >
-          <span class="title" data-warnings-title>{{ 'warnings.title' | transloco }}</span>
-          @if (open()) {
-            <span class="count" data-warnings-count>{{ count() }}</span>
-          }
           <span class="summary">
             @if (count() > 0) {
               <ui-icon class="warn-icon" data-icon="triangle-alert" name="triangle-alert" [size]="12" />

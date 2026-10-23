@@ -15,8 +15,9 @@
 }
 
 /*
- * Section form, folded (spec 064, T32): the h2 holds one full-width button row of at least 44 px, title 600 16/24 as
- * the section header, the summary right, the chevron last; it turns 180° when open, by motion tokens only. The card
+ * Section form, folded (spec 064, T32): the h2 holds one full-width button row of at least 44 px; since spec 069
+ * (T32, ISC-597) it has no title and no count: the summary stays the right-hand label, the
+ * chevron last; it turns 180° when open, by motion tokens only. The card
  * stands 8 px under the row when open (spec 058, T46); the hidden region leaves no space when closed. The button's
  * class is `fold`, never `toggle`: daisyUI's switch `.toggle` is global and would add its knob as a flex item, centre
  * the row, hide the chevron and push the row past the main column at 600 px.
@@ -42,22 +43,6 @@
   font: inherit;
   text-align: start;
   cursor: pointer;
-}
-
-.title {
-  overflow: hidden;
-  min-inline-size: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.count {
-  flex: none;
-  color: var(--muted-ink);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 400;
-  line-height: 16px;
 }
 
 .summary {
