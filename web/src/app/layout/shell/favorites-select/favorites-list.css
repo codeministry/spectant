@@ -34,7 +34,10 @@
   min-inline-size: 0;
 }
 
-/* A favourite row is its link and its star side by side; hover and the current mark tint the whole row. */
+/*
+ * A favourite row is its link and its star side by side; hover and the open spec tint the whole row, the open spec
+ * without a check, as the other selects mark their current entry.
+ */
 .fav-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 32px;
@@ -58,16 +61,12 @@
 }
 
 .entry {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   min-block-size: 40px;
 }
 
 .entry[aria-current] {
   font-weight: 600;
-}
-
-.entry-check {
-  color: var(--disp-ink);
 }
 
 .entry-name {

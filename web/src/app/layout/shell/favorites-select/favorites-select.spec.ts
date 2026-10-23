@@ -316,18 +316,17 @@ const rowOf = (root: Element, ws: string, id: string) =>
 describe('FavoritesSelect open spec (spec 069, ISC-562)', () => {
   for (const slow of [false, true]) {
     const when = slow ? 'answers after the open' : 'answers at once';
-    it(`${when}: on /w/harbor/s/002, starred, 002 carries aria-current, the check and the focus`, async () => {
+    it(`${when}: on /w/harbor/s/002, starred, 002 carries aria-current and the focus, no check`, async () => {
       const { root, stable } = await mount({ specId: '002', slow });
       trigger(root).click();
       await stable();
       if (slow) await answered(stable);
       const open = rowOf(root, 'harbor', '002');
       expect(open?.getAttribute('aria-current')).toBe('true');
-      expect(open?.querySelector('.entry-check')).not.toBeNull();
       expect(open?.hasAttribute('data-autofocus')).toBe(true);
       expect(document.activeElement).toBe(open);
       expect(root.querySelectorAll('[aria-current]')).toHaveLength(1);
-      expect(root.querySelectorAll('.entry-check')).toHaveLength(1);
+      expect(root.querySelectorAll('.entry-check')).toHaveLength(0);
       expect(root.querySelectorAll('[data-autofocus]')).toHaveLength(1);
     });
 
@@ -340,7 +339,6 @@ describe('FavoritesSelect open spec (spec 069, ISC-562)', () => {
         // 003 is a favourite of lantern, not of the open harbor: the same id in another workspace is not current.
         expect(rowOf(root, 'lantern', '003')).not.toBeNull();
         expect(root.querySelectorAll('[aria-current]')).toHaveLength(0);
-        expect(root.querySelectorAll('.entry-check')).toHaveLength(0);
         const first = root.querySelector<HTMLAnchorElement>('nav[data-picker="favorites"] a.picker-entry');
         expect(first).toBe(rowOf(root, 'lantern', '004'));
         expect(first?.hasAttribute('data-autofocus')).toBe(true);
