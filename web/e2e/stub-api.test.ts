@@ -85,6 +85,7 @@ import {
   STUB_ADMIN,
   STUB_EDGES,
   STUB_PERSON,
+  STUB_PHASES,
   STUB_RUN,
   type StubRunState,
   QUESTION_HEADER,
@@ -2857,14 +2858,22 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
   test('runs: beacon is listed after the default workspaces; without runs it is no workspace', async () => {
     const list = await read<Json[]>('/api/workspaces', as());
     expect(list.map((w) => w['slug'])).toEqual(['harbor', 'lantern', WS]);
-    expect(list.at(-1)).toEqual({ slug: WS, name: WS, pathTail: WS, readable: true, counts: golden(WS)['kpis'], ...ADDED_OK });
+    // The counts are the KPIs of beacon's dashboard as the server reads it over the log's locks (spec 070, C5).
+    const { kpis } = await read<Json>(`/api/workspaces/${WS}/dashboard`, as());
+    expect(list.at(-1)).toEqual({ slug: WS, name: WS, pathTail: WS, readable: true, counts: kpis, ...ADDED_OK });
     expect((await ask(`/api/workspaces/${WS}/dashboard`)).status).toBe(404);
     expect((await ask(workspaceRoutes.planning(WS))).status).toBe(404);
   });
 
   test('running (and no run header): beacon answers its goldens, rebuilt by core from the log as it is', async () => {
+    // The dashboard is the server's own answer over the fixture tree at STUB_NOW (spec 070, C5): its rows read the log's
+    // locks, so they carry `taken` and `run` (and the takeable claims and assignee those give), which the golden,
+    // built without a log, leaves out. Every other route stays the golden.
+    type LoadModule = { loadDashboard: (root: string, probe: null, lifeos: null, clock: { now: Date }) => Promise<{ readable: boolean; model?: unknown }> };
+    const { loadDashboard } = (await import(join(SERVER, 'workspace', 'load.ts'))) as LoadModule;
+    const server = await loadDashboard(join(FIXTURES, STUB_RUN.workspace.golden), null, null, { now: new Date(STUB_NOW) });
     for (const headers of [as(), as('running')]) {
-      expect(await read<unknown>(`/api/workspaces/${WS}/dashboard`, headers)).toEqual(golden(WS));
+      expect(await read<unknown>(`/api/workspaces/${WS}/dashboard`, headers)).toEqual(server.model);
       const { backlogHash, ...served } = await planning(headers);
       expect(backlogHash).toBe(EMPTY_SHA256);
       expect(served).toEqual(golden(`${WS}.planning`) as unknown as PlanningModel);
@@ -2876,6 +2885,28 @@ describe('stub API: run variants via X-Spectant-Stub-Run (spec 040, T53, ISC-224
         expect({ key, tab: await read<unknown>(specRoutes.tasks(WS, id), headers) }).toEqual({ key, tab: withSteps(tabs[key] ?? null, WS, key) });
       }
     }
+  });
+
+  test('phases: the open runs span review, tasks, implement with a testing step and done; 009 leaves the waits', async () => {
+    type RunRow = Row & { run?: { phase: string | null; session: string; since: string; step?: { kind: string } }; taken: Array<{ id: string }> };
+    const opened = (list: RunRow[]) => list.filter((r) => r.run !== undefined || r.taken.length > 0).map((r) => ({ id: r.id, phase: r.run?.phase ?? null, step: r.run?.step?.kind ?? null, taken: r.taken.map((t) => t.id) }));
+    const running = (await rows(as('running'))) as RunRow[];
+    const phases = (await rows(as('phases'))) as RunRow[];
+    expect(opened(running)).toEqual([
+      { id: '006', phase: 'review', step: null, taken: [] },
+      { id: '005', phase: 'implement', step: null, taken: ['ISC-15', 'ISC-16'] },
+      { id: '003', phase: 'tasks', step: null, taken: [] },
+    ]);
+    expect(opened(phases)).toEqual([
+      { id: '009', phase: 'done', step: null, taken: [] },
+      { id: '006', phase: 'review', step: null, taken: [] },
+      { id: '005', phase: 'implement', step: 'probe', taken: ['ISC-15', 'ISC-16'] },
+      { id: '003', phase: 'tasks', step: null, taken: [] },
+    ]);
+    expect(phases.find((r) => r.id === '009')?.run).toMatchObject({ session: STUB_PHASES.done.session, since: STUB_PHASES.done.ts });
+    const waits = async (run: StubRunState) => (await read<{ guidance: { waits: Array<{ spec: string }> } }>(`/api/workspaces/${WS}/dashboard`, as(run))).guidance.waits.map((w) => w.spec);
+    expect(await waits('running')).toEqual(['004', '009']);
+    expect(await waits('phases')).toEqual(['004']);
   });
 
   test('none | running | ended: 003 answers open with its command, running with the run, then what its files give', async () => {

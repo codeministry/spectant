@@ -18,7 +18,7 @@ const emptySpot = (page: Page): Locator => page.locator('h1.type-page-title').fi
 
 /** Waits for the panel's slide-in and every other running animation. */
 async function settle(page: Page): Promise<void> {
-  await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
+  await page.evaluate(() => Promise.allSettled(document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity).map((animation) => animation.finished)));
 }
 
 async function expectOpen(page: Page, ref: string, presentation: string): Promise<void> {

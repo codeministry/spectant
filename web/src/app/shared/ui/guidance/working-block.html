@@ -13,11 +13,26 @@
             [link]="specLink(entry)"
             [name]="'guidance.working.tileName' | transloco: { id: entry.id, title: entry.title, session: entry.session }"
             [hint]="entry.title"
+            [attr.data-step]="entry.run?.step?.kind ?? null"
           >
             <ui-agent-dot tileMark />
             <span tileId data-id>{{ entry.id }}</span>
+            @if (entry.run; as run) {
+              <ui-chip tileId class="phase" variant="small" data-phase [attr.data-phase-key]="run.phase">
+                @let phase = phaseKey(run);
+                @let word = phase === null ? run.command : (phase | transloco);
+                @if (stepKey(run); as step) {
+                  {{ 'guidance.working.phaseStep' | transloco: { phase: word, step: (step | transloco) } }}
+                } @else {
+                  {{ word }}
+                }
+              </ui-chip>
+            }
             <span tileMain data-title>{{ entry.title }}</span>
             <span tileAside class="agent" data-agent [title]="entry.session">{{ entry.session }}</span>
+            @if (entry.since; as since) {
+              <ui-relative-time tileMeta data-since [date]="since" format="short" />
+            }
           </ui-flat-tile>
         </li>
       }

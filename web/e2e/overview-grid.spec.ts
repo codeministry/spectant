@@ -153,10 +153,10 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
       await expect(list.locator('[data-tile-empty]')).toHaveCount(0);
     });
 
-    test(`list area: waits 7 — harbor shows three waiting rows, counter 7 and "Show all 7" to /w/harbor (${String(width)})`, async ({ page, request }) => {
+    test(`list area: waits 7 — harbor shows three waiting rows, one per waiting spec (four), and "Show all" to /w/harbor (${String(width)})`, async ({ page, request }) => {
       const first = STUB_WAITS.workspaces['7'][0]?.slug ?? '';
       const e = await openStart(page, request, { [WAITS_HEADER]: '7' }, first);
-      expect(e.waits.length, `${first}: seven waiting entries`).toBe(7);
+      expect(e.waits.length, `${first}: four waiting specs, each once (ISC-568)`).toBe(4);
       const list = listOf(page, first);
       await expect(list.locator('li[data-tile-row][data-kind="waiting"]')).toHaveCount(ROWS);
       await expect(list.locator('a[data-tile-more]')).toHaveAttribute('href', `/w/${first}`);

@@ -34,7 +34,7 @@ const listRow = (page: Page, id: string): Locator => page.locator(`a.row-link[da
 
 /** Waits for the panel's slide-in (reduced motion is not set) and every other running animation. */
 async function settle(page: Page): Promise<void> {
-  await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
+  await page.evaluate(() => Promise.allSettled(document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity).map((animation) => animation.finished)));
 }
 
 /** The focused element as a stop; the key names the sidebar's action it is. */

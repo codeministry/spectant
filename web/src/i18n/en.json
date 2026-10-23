@@ -2838,7 +2838,26 @@
     "working": {
       "label": "In progress",
       "showAllName": "Show all {{count}} · In progress",
-      "tileName": "{{id}} {{title}}, agent {{session}} working"
+      "tileName": "{{id}} {{title}}, agent {{session}} working",
+      "phases": {
+        "init": "init",
+        "new": "new",
+        "plan": "plan",
+        "tasks": "tasks",
+        "review": "review",
+        "implement": "implement",
+        "done": "closing",
+        "status": "status",
+        "drift": "drift"
+      },
+      "steps": {
+        "dispatch": "dispatching",
+        "build": "building",
+        "patch": "patching",
+        "apply": "applying",
+        "probe": "testing"
+      },
+      "phaseStep": "{{phase}} · {{step}}"
     },
     "next": {
       "label": "Next",
