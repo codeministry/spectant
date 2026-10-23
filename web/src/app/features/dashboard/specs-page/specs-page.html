@@ -25,7 +25,4 @@
     [preview]="previewId()"
     (queryChange)="setQuery($event)"
   />
-  @if (page.pathTail()) {
-    <p class="footer-note" data-footer-note>{{ 'overview.dashboardFooter' | transloco: { path: page.pathTail() } }}</p>
-  }
 }

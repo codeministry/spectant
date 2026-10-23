@@ -325,8 +325,7 @@
       "hint": "Richten Sie Spectant auf ein Git-Repository mit Markdown-Specs. Es liest sie lokal und zeigt den Workspace hier bei der nächsten Aktualisierung."
     },
     "unreadable": "Dieser Workspace kann nicht gelesen werden",
-    "footer": "Läuft lokal unter {{origin}}",
-    "dashboardFooter": "Live aus den Specs in {{path}} gelesen"
+    "footer": "Läuft lokal unter {{origin}}"
   },
   "palette": {
     "label": "Befehlspalette",

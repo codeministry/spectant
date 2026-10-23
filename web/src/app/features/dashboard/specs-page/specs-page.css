@@ -1,4 +1,4 @@
-/* One column at every tier: the page head, the spec list, the backlog, the footnote (spec 058). */
+/* One column at every tier: the page head, the spec list, the backlog (spec 058). */
 @import "../_workspace-page.css";
 
 :host {
@@ -9,8 +9,8 @@
   min-inline-size: 0;
 }
 
-/* The page head's h1: the workspace badge, "Specs", then "· <ws>" in muted 400, and the closing footnote (both in
-   _workspace-page.css); the row 8 px apart. */
+/* The page head's h1: the workspace badge, "Specs", then "· <ws>" in muted 400 (_workspace-page.css); the row
+   8 px apart. */
 .h1-row {
   gap: 8px;
 }
