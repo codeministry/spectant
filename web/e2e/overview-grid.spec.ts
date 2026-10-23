@@ -3,8 +3,8 @@
  * `bun run e2e -- overview-grid -g "list area"`.
  *
  * Every tile's list area (`app-tile-list` inside `[data-tile-block="list"]`) holds at most three rows: first the specs
- * in work (`data-kind="working"`), then what waits (`data-kind="waiting"`), each row a link to its spec
- * (`/w/<ws>/s/<id>`). Above the rows stand both counters, always, also at 0; below them the reserved foot
+ * in work (`data-kind="working"`), linking to the live view (`/w/<ws>/s/<id>/board`, ISC-508), then what waits
+ * (`data-kind="waiting"`), linking to its spec (`/w/<ws>/s/<id>`). Above the rows stand both counters, always, also at 0; below them the reserved foot
  * `[data-tile-foot]`, which carries "Show all n" (`a[data-tile-more]`, n = in work + waiting, to `/w/<ws>`) only past
  * three entries. With no entry one empty line stands (`guidance.waits.empty`) and the free places stay without a
  * placeholder. Run under `X-Spectant-Stub-Waits` 0, 1 and 7 and `X-Spectant-Stub-Locks: working`, at 1440 and 390 px.
@@ -53,10 +53,10 @@ async function expectedOf(request: APIRequestContext, ws: string, headers: Recor
   return { ws, working, waits: (body.guidance?.waits ?? []).map((e) => e.spec) };
 }
 
-/** The rows the list area must show: in work before waiting, at most three, each linking to its spec. */
+/** The rows the list area must show: in work before waiting, at most three; a row in work links to the live view, a waiting one to its spec. */
 const rowsOf = (e: Expected): Row[] =>
   [
-    ...e.working.map((id): Row => ({ kind: 'working', id, href: `/w/${e.ws}/s/${id}` })),
+    ...e.working.map((id): Row => ({ kind: 'working', id, href: `/w/${e.ws}/s/${id}/board` })),
     ...e.waits.map((id): Row => ({ kind: 'waiting', id, href: `/w/${e.ws}/s/${id}` })),
   ].slice(0, ROWS);
 
@@ -85,7 +85,7 @@ async function expectList(page: Page, e: Expected): Promise<void> {
       href: el.querySelector('a[data-tile-link]')?.getAttribute('href') ?? '',
     })),
   );
-  expect(shown, `${e.ws}: in work before waiting, in served order, each row a link to its spec`).toEqual(expected);
+  expect(shown, `${e.ws}: in work before waiting, in served order, each row a link to its target`).toEqual(expected);
   for (const row of await rows.all()) await expect(row).toBeVisible();
 
   // The counters stand above the rows; the free places stay without a placeholder.
@@ -172,13 +172,13 @@ for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
       await expect(list.locator('a[data-tile-more]')).toHaveText(holds(STUB_WORKING.specs.length + e.waits.length));
     });
 
-    test(`list area: a row links to its spec page, as the waits tiles do (${String(width)})`, async ({ page, request }) => {
+    test(`list area: a row in progress links to the spec's live view, as the in-progress tiles of /w/<ws> do (ISC-508) (${String(width)})`, async ({ page, request }) => {
       const ws = STUB_WORKING.workspace;
       await openStart(page, request, { [LOCKS_HEADER]: 'working' }, ws);
       const link = listOf(page, ws).locator('li[data-tile-row]').first().locator('a[data-tile-link]');
-      await expect(link).toHaveAttribute('href', `/w/${ws}/s/${STUB_WORKING.specs[0]}`);
+      await expect(link).toHaveAttribute('href', `/w/${ws}/s/${STUB_WORKING.specs[0]}/board`);
       await link.click();
-      await expect(page).toHaveURL(new RegExp(`/w/${ws}/s/${STUB_WORKING.specs[0]}$`, 'u'));
+      await expect(page).toHaveURL(new RegExp(`/w/${ws}/s/${STUB_WORKING.specs[0]}/board$`, 'u'));
     });
   });
 }
