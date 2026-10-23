@@ -2937,6 +2937,14 @@
     }
   },
   "statusWidget": {
-    "title": "Spectant-Status"
+    "title": "Spectant-Status",
+    "kpi": {
+      "repos": "Repos",
+      "closed": "Geschlossen",
+      "claims": "Claims"
+    },
+    "unreadable": "Dieser Workspace konnte nicht gelesen werden.",
+    "empty": "Keine offenen oder kürzlich geschlossenen Specs.",
+    "agentRunning": "Agent läuft"
   }
 }

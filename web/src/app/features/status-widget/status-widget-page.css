@@ -26,21 +26,60 @@
   margin-inline: auto;
 }
 
+/* The KPI band (T26, ISC-583): three small tiles side by side, 8 px apart, at every width. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Below 400 px the tile padding drops to 12 px, so "133/256" keeps one line. `ui-kpi-tile` sets its card's padding as
+   an inline style (`ui-card`'s `padding` input), which only `!important` outranks from here. */
+@container widget (width < 400px) {
+  /* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+  .kpis ::ng-deep ui-card {
+    padding: 12px !important;
+  }
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+/* The group head (T27, ISC-584): the workspace's path tail, one line with an ellipsis, the whole tail in `title`. */
 .group-head {
+  overflow: hidden;
   margin: 0;
   font-family: var(--font-mono);
   font-size: 12px;
+  font-weight: 400;
   line-height: 16px;
+  color: var(--muted-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The empty line (T30, ISC-588): one muted line instead of an empty list, no empty-state block. */
+.meta {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--muted-ink);
 }
 
 .rows {
+  display: grid;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.row {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
 }

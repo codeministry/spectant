@@ -1,0 +1,12 @@
+<a class="entry" [href]="href()" [attr.aria-label]="name()">
+  <span class="entry-ring">
+    <ui-ring [value]="percent()" [size]="24" [stroke]="3" [label]="ringLabel()" />
+    @if (running()) {
+      <ui-agent-dot class="entry-pulse" />
+    }
+  </span>
+  <span class="entry-id">{{ spec().id }}</span>
+  <span class="entry-title" [title]="spec().title">{{ spec().title }}</span>
+  <span class="entry-count">{{ spec().claims.closed }}/{{ spec().claims.total }}</span>
+  <ui-chip class="entry-stage" [tone]="tone()" [dot]="true">{{ 'stages.' + spec().stage | transloco }}</ui-chip>
+</a>

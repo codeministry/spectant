@@ -1,18 +1,42 @@
 <main class="widget">
   <div class="column">
     <h1 class="visually-hidden">{{ 'statusWidget.title' | transloco }}</h1>
-    <section class="kpis"></section>
-    <section class="groups">
+    <section class="kpis">
       @if (status(); as body) {
-        @for (ws of body.workspaces; track ws.slug) {
+        <ui-kpi-tile variant="sm" [label]="'statusWidget.kpi.repos' | transloco" [value]="body.kpis.repos" />
+        <ui-kpi-tile
+          variant="sm"
+          accent="success"
+          [glow]="false"
+          [label]="'statusWidget.kpi.closed' | transloco"
+          [value]="body.kpis.closed"
+          [denominator]="body.kpis.listed"
+        />
+        <ui-kpi-tile
+          variant="sm"
+          [label]="'statusWidget.kpi.claims' | transloco"
+          [value]="body.kpis.claimsClosed"
+          [denominator]="body.kpis.claimsTotal"
+        />
+      }
+    </section>
+    <section class="groups">
+      @if (status()) {
+        @for (ws of groups(); track ws.slug) {
           <div class="group" [attr.data-workspace]="ws.slug">
-            <h2 class="group-head">{{ ws.slug }}</h2>
-            <ul class="rows">
-              @for (spec of ws.specs; track spec.slug) {
-                <li class="row" [attr.data-spec]="spec.id">{{ spec.id }}</li>
-              }
-            </ul>
+            <h2 class="group-head" [title]="ws.pathTail">{{ ws.pathTail }}</h2>
+            @if (ws.readable) {
+              <ul class="rows">
+                @for (spec of ws.specs; track spec.slug) {
+                  <li class="row" [attr.data-spec]="spec.id"><app-status-widget-row [spec]="spec" [ws]="ws.slug" /></li>
+                }
+              </ul>
+            } @else {
+              <ui-notice tone="warning">{{ 'statusWidget.unreadable' | transloco }}</ui-notice>
+            }
           </div>
+        } @empty {
+          <p class="meta">{{ 'statusWidget.empty' | transloco }}</p>
         }
       }
     </section>
