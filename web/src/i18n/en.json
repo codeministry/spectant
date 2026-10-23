@@ -2957,7 +2957,7 @@
       "claims": "claims"
     },
     "unreadable": "This workspace could not be read.",
-    "empty": "No open or recently closed specs.",
+    "empty": "No open specs.",
     "agentRunning": "agent running"
   }
 }

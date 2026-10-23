@@ -864,8 +864,8 @@ describe('SpecHead archived chip (C1, ISC-612)', () => {
       const root = await open('/w/harbor/s/001/status');
       const chips = root.querySelectorAll('[data-head-chips] [data-head-chip="archived"]');
       expect(chips).toHaveLength(1);
-      expect(chips[0]?.querySelector('ui-icon[data-icon="archive"]')).not.toBeNull();
-      expect(text(chips[0] ?? null)).toBe(word);
+      expect(chips[0].querySelector('ui-icon[data-icon="archive"]')).not.toBeNull();
+      expect(text(chips[0])).toBe(word);
       expect(chipNames(root).slice(0, 3)).toEqual(['type', 'stage', 'archived']);
     });
 

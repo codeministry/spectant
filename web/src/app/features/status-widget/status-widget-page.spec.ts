@@ -179,7 +179,7 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
     const root = (await land(EMPTY)).routeNativeElement as HTMLElement;
     const lines = root.querySelectorAll<HTMLElement>('section.groups .meta');
     expect(lines).toHaveLength(1);
-    expect(lines[0].textContent.trim()).toBe('No open or recently closed specs.');
+    expect(lines[0].textContent.trim()).toBe('No open specs.');
     expect(root.querySelectorAll('section.groups [data-workspace], section.groups h2, section.groups ul')).toHaveLength(0);
     expect(tiles(root)).toEqual([
       { label: 'repos', value: '0', den: null },
