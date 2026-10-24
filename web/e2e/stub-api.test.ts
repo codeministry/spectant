@@ -517,6 +517,25 @@ describe('stub API: the library (spec 017, T3)', () => {
     expect([unknown.status, ((await unknown.json()) as { error: string }).error]).toEqual([400, 'unknown-stub-library']);
   });
 
+  test('repo docs command (spec 074, ISC-626): commands name /spec doc and /spec tldr exactly for an absent file', async () => {
+    const WRITERS = { tech: '/spec doc', tldr: '/spec tldr' };
+    // Lantern has neither specs/tech.md nor specs/tldr.md: both commands, no entry, and the dashboard names /spec tldr.
+    const lantern = await catalogOf('lantern');
+    expect(lantern.commands).toEqual(WRITERS);
+    expect(lantern.docs.filter((doc) => doc.spec === 'workspace' && (doc.type === 'tech' || doc.type === 'tldr'))).toEqual([]);
+    const model = (await (await ask('/api/workspaces/lantern/dashboard')).json()) as { tldrCommand?: unknown };
+    expect(model.tldrCommand).toBe(WRITERS.tldr);
+    // Harbor has both, and the stub serves every workspace document `ok`: no command on the entry or in `commands`.
+    const harbor = await catalogOf('harbor');
+    const derived = harbor.docs.filter((doc) => doc.spec === 'workspace' && (doc.type === 'tech' || doc.type === 'tldr'));
+    expect(derived.map((doc) => [doc.type, doc.state, doc.command])).toEqual([
+      ['tech', 'ok', null],
+      ['tldr', 'ok', null],
+    ]);
+    expect(harbor.commands).toEqual({ tech: null, tldr: null });
+    expect(EMPTY_CATALOG.commands).toEqual(WRITERS);
+  });
+
   test('the workspace guards: 404 unknown or in the empty state, 409 unreadable, 405, 403 cross-site', async () => {
     for (const path of [workspaceRoutes.library('nope'), workspaceRoutes.libraryDoc('nope', 'tech.md'), workspaceRoutes.librarySearch('nope', 'x')]) {
       expect((await ask(path)).status).toBe(404);

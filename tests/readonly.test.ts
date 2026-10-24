@@ -2294,6 +2294,22 @@ describe("ISC-308 workspace admin: add, rename, re-scan, upload and remove chang
 // (405 for a write method, 403 for a foreign `Origin`) and the live stream the widget listens on change no byte or
 // mtime of either copy, `.git/` included, and every request names the loopback host only. The widget adds no write
 // path: `WRITE_PATHS` deep-equals its value on `main` at the spec's base, the eight paths of the root `CLAUDE.md`.
+/** `WRITE_PATHS` as it stands on `main`: the eight write paths of the root `CLAUDE.md`, none added since. */
+const WRITE_PATHS_ON_MAIN: typeof WRITE_PATHS = {
+  gateReviewed: { writes: ["specs/NNN-slug/.gates/reviewed.json", "specs/NNN-slug/events.jsonl"], removes: [], creates: "specs/NNN-slug/.gates/" },
+  taskCheck: { writes: ["specs/NNN-slug/tasks.md"], removes: [], creates: null },
+  transition: { writes: ["specs/NNN-slug/spec.md", "specs/NNN-slug/events.jsonl"], removes: [], creates: null },
+  allocate: {
+    writes: ["specs/NNN-slug/context.md", "specs/NNN-slug/spec.md", "specs/NNN-slug/events.jsonl"],
+    removes: ["specs/ideas/<slug>.md"],
+    creates: "specs/NNN-slug/",
+  },
+  codeReviewFeature: { writes: ["specs/NNN-slug/.gates/code-reviewed.json", "specs/NNN-slug/events.jsonl"], removes: [], creates: "specs/NNN-slug/.gates/" },
+  tokens: { writes: ["specs/tokens.jsonl"], removes: [], creates: null },
+  backlog: { writes: ["specs/backlog.md", "specs/backlog.events.jsonl"], removes: [], creates: null },
+  runRelease: { writes: [".spectant/activity.jsonl"], removes: [], creates: null },
+};
+
 describe("ISC-589 status widget: opening the widget and loading its board leave every registered repository byte-identical", () => {
   test("readonly status: /widget, /api/status read, revalidated, HEAD and refused, and the live stream change no byte or mtime of two repositories, .git/ included; every request is loopback", async () => {
     const parent = mkdtempSync(join(root, "status-"));
@@ -2380,24 +2396,64 @@ describe("ISC-589 status widget: opening the widget and loading its board leave 
   }, 60_000);
 
   test("write paths status: WRITE_PATHS deep-equals its value on main, eight paths, none added by the widget", () => {
-    expect(WRITE_PATHS).toStrictEqual({
-      gateReviewed: { writes: ["specs/NNN-slug/.gates/reviewed.json", "specs/NNN-slug/events.jsonl"], removes: [], creates: "specs/NNN-slug/.gates/" },
-      taskCheck: { writes: ["specs/NNN-slug/tasks.md"], removes: [], creates: null },
-      transition: { writes: ["specs/NNN-slug/spec.md", "specs/NNN-slug/events.jsonl"], removes: [], creates: null },
-      allocate: {
-        writes: ["specs/NNN-slug/context.md", "specs/NNN-slug/spec.md", "specs/NNN-slug/events.jsonl"],
-        removes: ["specs/ideas/<slug>.md"],
-        creates: "specs/NNN-slug/",
-      },
-      codeReviewFeature: { writes: ["specs/NNN-slug/.gates/code-reviewed.json", "specs/NNN-slug/events.jsonl"], removes: [], creates: "specs/NNN-slug/.gates/" },
-      tokens: { writes: ["specs/tokens.jsonl"], removes: [], creates: null },
-      backlog: { writes: ["specs/backlog.md", "specs/backlog.events.jsonl"], removes: [], creates: null },
-      runRelease: { writes: [".spectant/activity.jsonl"], removes: [], creates: null },
-    });
+    expect(WRITE_PATHS).toStrictEqual(WRITE_PATHS_ON_MAIN);
     // The status slice reaches neither the write paths nor a write primitive.
     const src = join(import.meta.dir, "..", "server", "src", "status");
     const sources = [...new Bun.Glob("**/*.ts").scanSync(src)];
     expect(sources.length).toBeGreaterThan(0);
     expect(sources.filter((file) => /\bwrites\/|in-place|writeFile|Bun\.write/.test(readFileSync(join(src, file), "utf8")))).toEqual([]);
+  });
+});
+
+// Spec 074 (T35, ISC-626): the repo docs hints under the same guard. The library fixture with its planted git state,
+// then `specs/tldr.md` deleted from the worktree (a tracked file gone) and `specs/tech.md` aged before every spec.md
+// (stale, its stat data moved). The library names `/spec doc` and `/spec tldr`, the dashboard `/spec tldr`; reading
+// both, the tech.md entry included, changes no byte or mtime, `.git/` included, and `WRITE_PATHS` stays as on `main`.
+describe("ISC-626 repo docs command: the library and the dashboard with both hints leave the repository byte-identical", () => {
+  test("readonly repo docs command: library, tech.md and dashboard over a stale tech.md and an absent tldr.md change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "repo-docs-")), SHELF);
+    buildLibraryRepository(copy);
+    rmSync(join(copy, "specs", "tldr.md"));
+    const aged = new Date("2026-03-01T00:00:00Z");
+    utimesSync(join(copy, "specs", "tech.md"), aged, aged);
+
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+    const indexMtimeBefore = lstatSync(join(copy, ".git", "index")).mtimeMs;
+    const registry = openRegistry(mkdtempSync(join(root, "data-repo-docs-")));
+    try {
+      registry.add(copy);
+      const slug = registry.list()[0]?.slug ?? "";
+      const api = dashboardApi({ registry, services: () => Promise.resolve([]) });
+      const get = async (path: string, init: RequestInit = {}): Promise<Response> => {
+        const url = new URL(path, "http://127.0.0.1:7717");
+        const answer = await api(new Request(url.href, { ...init, headers: { Host: "127.0.0.1:7717" } }), url);
+        if (answer === null) throw new Error(`declined: ${path}`);
+        expect({ path, method: init.method ?? "GET", status: answer.status }).toEqual({ path, method: init.method ?? "GET", status: 200 });
+        return answer;
+      };
+      const catalog = (await (await get(workspaceRoutes.library(slug))).json()) as WorkspaceRouteResponses["library"];
+      await get(workspaceRoutes.library(slug), { method: "HEAD" });
+      const derived = catalog.docs.filter((d) => d.spec === "workspace" && (d.type === "tech" || d.type === "tldr"));
+      expect({ commands: catalog.commands, derived: derived.map((d) => ({ path: d.path, state: d.state, command: d.command })) }).toEqual({
+        commands: { tech: "/spec doc", tldr: "/spec tldr" },
+        derived: [{ path: "tech.md", state: "stale", command: "/spec doc" }],
+      });
+      await (await get(workspaceRoutes.libraryDoc(slug, "tech.md"))).arrayBuffer();
+      const model = (await (await get(`/api/workspaces/${encodeURIComponent(slug)}/dashboard`)).json()) as DashboardModel;
+      await get(`/api/workspaces/${encodeURIComponent(slug)}/dashboard`, { method: "HEAD" });
+      expect({ brief: model.brief, tldrCommand: model.tldrCommand }).toEqual({ brief: null, tldrCommand: "/spec tldr" });
+    } finally {
+      registry.close();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+    expect(lstatSync(join(copy, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
+    // The hints add no write path: the eight of `main`, unchanged.
+    expect(WRITE_PATHS).toStrictEqual(WRITE_PATHS_ON_MAIN);
   });
 });

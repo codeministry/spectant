@@ -26,7 +26,7 @@ import { TILE_LIMIT } from './tiles';
  * agent and its start as the bare duration in the end column (`ui-relative-time`, `short`).
  */
 /** The `/spec` subcommands the catalogue names as a phase (`guidance.working.phases`). */
-const PHASES: ReadonlySet<string> = new Set(['init', 'new', 'plan', 'tasks', 'review', 'implement', 'done', 'status', 'drift']);
+const PHASES: ReadonlySet<string> = new Set(['init', 'new', 'plan', 'tasks', 'review', 'implement', 'done', 'status', 'drift', 'doc', 'tldr']);
 /** The steps of an `implement` run (core's `DashboardRunStep.kind`); `probe` reads as testing. */
 const STEPS: ReadonlySet<string> = new Set(['dispatch', 'build', 'patch', 'apply', 'probe']);
 

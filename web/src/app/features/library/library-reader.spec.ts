@@ -551,7 +551,7 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
 
 // The page's way back below 1120 px (DS-APP-35), through the real route.
 describe('LibraryPage with the reader below 1120 px (T34)', () => {
-  const CATALOG: LibraryCatalog = { docs: DOCS, groups: [], fog: [], missing: 0, stale: 0 };
+  const CATALOG: LibraryCatalog = { docs: DOCS, groups: [], fog: [], missing: 0, stale: 0, commands: { tech: null, tldr: null } };
   let harness: RouterTestingHarness;
 
   afterEach(() => {
@@ -620,7 +620,7 @@ describe('LibraryPage with the reader below 1120 px (T34)', () => {
 // reader scrolls there and focuses its heading; opening another document drops the section from the address.
 describe('LibraryPage on a former tech address (T42, ISC-157.1)', () => {
   const TECH = doc('tech.md', 'tech', 'Tech');
-  const CATALOG: LibraryCatalog = { docs: [TECH, ...DOCS], groups: [], fog: [], missing: 0, stale: 0 };
+  const CATALOG: LibraryCatalog = { docs: [TECH, ...DOCS], groups: [], fog: [], missing: 0, stale: 0, commands: { tech: null, tldr: null } };
   // The route's answer for tech.md: each marker's part marked (ISC-355), core's section heads beside the toc the
   // renderer lists (ISC-157.2).
   const TECH_PAGE: LibraryDocPage = {

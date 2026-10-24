@@ -396,7 +396,7 @@ describe('ApiClient library routes (spec 017, T25, ISC-156)', () => {
   afterEach(() => http.verify());
 
   const URL = '/api/workspaces/harbor/library';
-  const catalog: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
+  const catalog: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0, commands: { tech: null, tldr: null } };
 
   it('GETs the catalog from the contract builder and replays it on a 304', async () => {
     const first = api.library('harbor');

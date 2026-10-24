@@ -60,6 +60,7 @@ const catalog = (docs: readonly LibraryDoc[], over: Partial<LibraryCatalog> = {}
   fog: [],
   missing: docs.filter((entry) => entry.state === 'missing').length,
   stale: docs.filter((entry) => entry.state === 'stale').length,
+  commands: { tech: null, tldr: null },
   ...over,
 });
 
@@ -290,6 +291,7 @@ describe('the spec area scope (T46, ISC-158)', () => {
     ],
     missing: 2,
     stale: 2,
+    commands: { tech: null, tldr: null },
   };
 
   it('keeps the spec’s documents, missing entries and evidence, plus the constitution, and counts the spec alone', () => {

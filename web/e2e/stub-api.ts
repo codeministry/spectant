@@ -408,8 +408,29 @@ function techHeadingText(text: string): string {
   return text.replace(TECH_ARCHITECTURE_HEAD, `<!-- section: architecture -->\n## ${STUB_TECH_HEADING}\n`);
 }
 
+/**
+ * The commands that write the two derived workspace documents (spec 074, ISC-626), as core's `commandFor` builds them
+ * from each writer subcommand (`library.ts` `WRITER`): `/spec doc` for `specs/tech.md`, `/spec tldr` for `specs/tldr.md`.
+ */
+export const STUB_DOC_COMMANDS = { tech: '/spec doc', tldr: '/spec tldr' } as const;
+
+/** A workspace `tech.md` or `tldr.md` with its `command` as core's `withCommand` sets it: null while `ok`; others unchanged. */
+function withDocCommand(doc: LibraryDoc): LibraryDoc {
+  if (doc.spec !== 'workspace' || (doc.type !== 'tech' && doc.type !== 'tldr')) return doc;
+  return { ...doc, command: doc.state === 'ok' ? null : STUB_DOC_COMMANDS[doc.type] };
+}
+
+/** `LibraryCatalog.commands` over the stub's documents, as core's `commandsOf`: a listed file's `command`, else the writer's. */
+export function stubDocCommands(docs: readonly LibraryDoc[]): LibraryCatalog['commands'] {
+  const of = (type: 'tech' | 'tldr'): string | null => {
+    const doc = docs.find((d) => d.spec === 'workspace' && d.type === type);
+    return doc === undefined ? STUB_DOC_COMMANDS[type] : (doc.command ?? null);
+  };
+  return { tech: of('tech'), tldr: of('tldr') };
+}
+
 /** The catalog of a workspace without one document: what `readCatalog` returns for a tree with no spec folder. */
-export const EMPTY_CATALOG: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
+export const EMPTY_CATALOG: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0, commands: stubDocCommands([]) };
 
 /**
  * What the stub adds to harbor's catalog, so one workspace carries every case the library page draws (T3): a `stale`
@@ -2325,12 +2346,15 @@ async function buildCatalog(core: Core, dir: string, tree: TreeGoldens, tech: Te
     };
   });
   const fog = tech.specs.flatMap((s) => s.fog.map((text): LibraryFogLine => ({ spec: s.slug, text })));
+  // The command of tech.md and tldr.md follows the stub's own state, never the checkout's mtimes (spec 074, ISC-626).
+  const judged = docs.map(withDocCommand);
   const catalog: LibraryCatalog = {
-    docs,
+    docs: judged,
     groups,
     fog,
-    missing: docs.filter((doc) => doc.state === 'missing').length,
-    stale: docs.filter((doc) => doc.state === 'stale').length,
+    missing: judged.filter((doc) => doc.state === 'missing').length,
+    stale: judged.filter((doc) => doc.state === 'stale').length,
+    commands: stubDocCommands(judged),
   };
   return { catalog, texts, prototypes, pages: new Map() };
 }

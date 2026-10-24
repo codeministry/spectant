@@ -120,7 +120,7 @@ const doc = (n: number): LibraryDoc => ({
   state: 'ok',
   media: 'markdown',
 });
-const CATALOG: LibraryCatalog = { docs: Array.from({ length: 52 }, (_, n) => doc(n)), groups: [], fog: [], missing: 5, stale: 3 };
+const CATALOG: LibraryCatalog = { docs: Array.from({ length: 52 }, (_, n) => doc(n)), groups: [], fog: [], missing: 5, stale: 3, commands: { tech: null, tldr: null } };
 
 type LibraryAnswer = () => Promise<ApiResult<LibraryCatalog>>;
 

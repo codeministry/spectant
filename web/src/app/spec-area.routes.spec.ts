@@ -107,6 +107,7 @@ const CATALOG: LibraryCatalog = {
   fog: [],
   missing: 0,
   stale: 0,
+  commands: { tech: null, tldr: null },
 };
 
 const page = (html: string): DocsPage => ({ html, toc: [], frontmatter: null, figures: [], sections: [], wordCount: 4 });

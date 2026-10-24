@@ -1,4 +1,4 @@
-// The plugin's command surface (spec 031 T4, ISC-39): the Spec plugin exposes the bare `/spec` and its eight
+// The plugin's command surface (spec 031 T4, ISC-39): the Spec plugin exposes the bare `/spec` and its ten
 // subcommands, and nothing else.
 //
 // What Claude Code would load from the shipped plugin directory decides the surface. That directory is the source the
@@ -32,7 +32,7 @@ const SKILL_MD = join(SKILLS, "spec", "SKILL.md");
 const MANIFEST = join(PLUGIN, ".claude-plugin", "plugin.json");
 
 const BARE = "/spec";
-const SUBCOMMANDS = ["init", "idea", "new", "plan", "tasks", "implement", "review", "done"];
+const SUBCOMMANDS = ["init", "idea", "new", "plan", "tasks", "implement", "review", "done", "doc", "tldr"];
 
 /** Directories and files under `plugin/` that would add a command, an agent or another surface beside the skill. */
 const FORBIDDEN_ENTRIES = ["commands", "agents", "output-styles", ".mcp.json", ".lsp.json"];
@@ -85,7 +85,7 @@ describe("plugin layout: exposed commands (ISC-39)", () => {
     expect(frontmatter.values.description ?? "").toMatch(/\S/);
   });
 
-  test("commands: the routing table names exactly the bare /spec and the eight subcommands", () => {
+  test("commands: the routing table names exactly the bare /spec and the ten subcommands", () => {
     const routed = routedSubcommands(readSkill());
     expect(routed.length).toBe(new Set(routed).size);
     expect([...routed].sort()).toEqual([BARE, ...SUBCOMMANDS].sort());
