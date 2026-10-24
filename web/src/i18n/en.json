@@ -2961,6 +2961,7 @@
     "filter": {
       "workspace": "Workspace",
       "stage": "Stage",
+      "active": "Active",
       "none": "No spec matches this filter.",
       "reset": "Reset filter",
       "unreadable": "{{name}}, not readable"

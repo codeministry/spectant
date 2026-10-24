@@ -38,7 +38,7 @@
           wrap
           [label]="'statusWidget.filter.stage' | transloco"
           [options]="stageChips()"
-          [selected]="filter().stages"
+          [selected]="stageSelection()"
           (selectedChange)="selectStages($event)"
         />
       </section>

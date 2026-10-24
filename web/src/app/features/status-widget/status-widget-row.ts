@@ -12,8 +12,8 @@ import { toneOfStage } from '../../shared/ui/stage-tone';
 
 /**
  * One row of the status widget (spec 071, T28, ISC-585; design.md § Mobile, Tablet, Desktop "Zeile"): a link over the
- * whole row to `/w/<ws>/s/<id>` with the text-less 24 px ring (a progressbar named "3 of 9 claims closed", solid lime
- * at 100 %), the spec number (mono, `--disp-text`), the title (one line with an ellipsis, the full text in `title`),
+ * whole row to `/w/<ws>/s/<id>` with the text-less 32 px ring (spec 075, ISC-640; a progressbar named "3 of 9 claims
+ * closed", solid lime at 100 %), the spec number (mono, `--disp-text`), the title (one line with an ellipsis, the full text in `title`),
  * the counter `closed/total` and the stage chip in `toneOfStage()` with its dot and the word from `stages.*`, so a
  * closed spec differs in word and tone, never in colour alone. The link's name joins number, title, counter and stage.
  * One line from a 480 px `widget` container, two below.
@@ -28,8 +28,8 @@ import { toneOfStage } from '../../shared/ui/stage-tone';
  * is gone (T32, ISC-586.1), the row navigates the widget's own tab through the router instead, never a new one. A
  * modified or middle click keeps the native link.
  *
- * An open agent run (T29, ISC-594) adds the decorative `ui-agent-dot` at the ring's top end corner and "agent
- * running" to the link's name; the dot's ring stands still under reduced motion through the primitive.
+ * An open agent run (T29, ISC-594) adds the decorative `ui-agent-dot` centred inside the ring (spec 075, ISC-638)
+ * and "agent running" to the link's name; the dot's ring stands still under reduced motion through the primitive.
  */
 @Component({
   selector: 'app-status-widget-row',

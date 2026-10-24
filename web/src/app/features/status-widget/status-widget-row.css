@@ -2,8 +2,8 @@
  * The status widget row (spec 071, ISC-585; spec 072, T11, ISC-600; design.md "Zeile", "Zeilenstruktur"): the card is
  * `div.entry` on `--color-base-100` with a 1 px `--line`; the title link is stretched over it by `::after`, and the
  * command line (`.entry-cmd`) is lifted above that stretch so its copy button is a target of its own. Below a 480 px
- * `widget` container: 'ring id title count' over '. cmd cmd stage'; from 480 px: 'ring id title count stage' over
- * '. cmd cmd cmd cmd', one line without a command. The counter closes line 1 on every width. Never `overflow: hidden`
+ * `widget` container: 'ring id title count' over 'ring cmd cmd stage'; from 480 px: 'ring id title count stage' over
+ * 'ring cmd cmd cmd cmd', one line without a command. The counter closes line 1 on every width. Never `overflow: hidden`
  * on the card: the copy button's focus halo needs the padding.
  */
 :host {
@@ -15,8 +15,8 @@
   position: relative;
   grid-template-areas:
     'ring id title count'
-    '. cmd cmd stage';
-  grid-template-columns: 24px auto minmax(0, 1fr) auto;
+    'ring cmd cmd stage';
+  grid-template-columns: 32px auto minmax(0, 1fr) auto;
   gap: 4px 12px;
   align-items: center;
   box-sizing: border-box;
@@ -33,17 +33,19 @@
   background: var(--color-base-300);
 }
 
+/*
+ * The 32 px ring spans both lines (spec 075, ISC-639, ISC-640), so it stands vertically centred in a one- and a
+ * two-line row alike; the 8 px block padding and the 12 px column gap keep it clear of the edges and the number.
+ */
 .entry-ring {
   display: inline-grid;
-  position: relative;
   grid-area: ring;
+  place-items: center;
 }
 
-/* The agent dot of an open run (ISC-594) sits on the ring's top end corner. */
-.entry-pulse {
-  position: absolute;
-  inset-block-start: -2px;
-  inset-inline-end: -2px;
+/* The agent dot of an open run (ISC-594) shares the ring's cell, centred inside it, clear of its stroke (ISC-638). */
+.entry-ring > * {
+  grid-area: 1 / 1;
 }
 
 .entry-id {
@@ -121,14 +123,14 @@
 @container widget (width >= 480px) {
   .entry {
     grid-template-areas: 'ring id title count stage';
-    grid-template-columns: 24px auto minmax(0, 1fr) auto auto;
-    min-block-size: 40px;
+    grid-template-columns: 32px auto minmax(0, 1fr) auto auto;
+    min-block-size: 48px;
   }
 
   .entry:has(> .entry-cmd) {
     grid-template-areas:
       'ring id title count stage'
-      '. cmd cmd cmd cmd';
+      'ring cmd cmd cmd cmd';
   }
 
   .entry-stage {
