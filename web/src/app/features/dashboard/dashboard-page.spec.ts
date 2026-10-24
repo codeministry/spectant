@@ -147,10 +147,17 @@ describe('DashboardPage on /w/harbor (spec 058, ISC-390, ISC-392)', () => {
     expect(page.querySelector('app-warnings-panel h2')).not.toBeNull();
   });
 
-  it('renders no TL;DR card without a brief, the rest in order', async () => {
-    body.set(withBrief(null));
+  it('renders no TL;DR card without a brief and without a command, the rest in order', async () => {
+    body.set({ ...(withBrief(null) as object), tldrCommand: null });
     const { page } = await render('medium');
     expect(blocks(page)).toEqual(BLOCKS.filter((tag) => tag !== 'app-brief'));
+  });
+
+  it('renders the compact TL;DR card with the model\'s command without a brief, second as always (spec 074, ISC-627)', async () => {
+    body.set(withBrief(null));
+    const { page } = await render('medium');
+    expect(blocks(page)).toEqual([...BLOCKS]);
+    expect(page.querySelector('app-brief [data-brief-missing] ui-command-chip code')?.textContent.trim()).toBe('/spec tldr');
   });
 
   it('shows a skeleton where the KPI band and Next up stand while the body is loading', async () => {

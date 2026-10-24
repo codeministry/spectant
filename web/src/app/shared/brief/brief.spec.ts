@@ -110,7 +110,7 @@ describe('Brief', () => {
     expect(fromMain.head()?.querySelector('[data-brief-source]')?.hasAttribute('hidden')).toBe(true);
   });
 
-  it('names no command: the Spec plugin has none that writes specs/tldr.md (spec 031, ISC-265)', async () => {
+  it('names no command while the model names none (spec 074: `tldrCommand` absent or null)', async () => {
     const { host } = await render(BRIEF);
     expect(host.querySelector('ui-command-chip')).toBeNull();
     expect(host.textContent).not.toMatch(/\/spec[ -]/);
@@ -543,5 +543,86 @@ describe('Brief stale: always collapsed on arrival (spec 058, T15)', () => {
     const { first, fold } = await render({ ...STALE, stale: false }, '/?open=tldr');
     expect(first()?.hasAttribute('data-clipped')).toBe(false);
     expect(fold()?.hasAttribute('data-open')).toBe(true);
+  });
+});
+
+// Spec 074 · ISC-627: the dashboard model's `tldrCommand` (`/spec tldr` while specs/tldr.md is absent or stale) as a
+// copy chip: a compact card without a brief, beside the stale chip with one, nothing while it is null.
+describe('Brief repo docs chip (spec 074, ISC-627)', () => {
+  const FRESH: BriefModel = { markdown: '# TL;DR — harbor\n\nSync is done.', generated: GENERATED, stale: false };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en', reRenderOnLangChange: true },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  async function render(brief: BriefModel | null, tldrCommand: string | null, lang: 'en' | 'de' = 'en') {
+    TestBed.inject(TranslocoService).setActiveLang(lang);
+    const fixture = TestBed.createComponent(Brief);
+    fixture.componentRef.setInput('brief', brief);
+    fixture.componentRef.setInput('tldrCommand', tldrCommand);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const chip = () => host.querySelector<HTMLElement>('ui-command-chip');
+    return { fixture, host, chip };
+  }
+
+  it('repo docs chip: without tldr.md a compact card names /spec tldr, in en and de', async () => {
+    const en = await render(null, '/spec tldr');
+    expect(en.host.hasAttribute('hidden')).toBe(false);
+    const card = en.host.querySelector('ui-card[data-brief-missing]');
+    expect(card?.querySelector('[data-brief-missing-hint]')?.textContent.trim()).toBe('No TL;DR of this repository yet; the command writes specs/tldr.md.');
+    expect(card?.querySelector('ui-command-chip code')?.textContent.trim()).toBe('/spec tldr');
+    expect(en.chip()?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy /spec tldr · writes specs/tldr.md');
+    expect(en.host.querySelector('[data-brief-prose]')).toBeNull();
+
+    const de = await render(null, '/spec tldr', 'de');
+    expect(de.host.querySelector('[data-brief-missing-hint]')?.textContent.trim()).toBe('Noch kein TL;DR dieses Repositories; der Befehl schreibt specs/tldr.md.');
+    expect(de.chip()?.querySelector('button')?.getAttribute('aria-label')).toBe('/spec tldr kopieren · schreibt specs/tldr.md');
+  });
+
+  it('repo docs chip: without tldr.md and without a command the card stays hidden', async () => {
+    const { host, chip } = await render(null, null);
+    expect(host.hasAttribute('hidden')).toBe(true);
+    expect(chip()).toBeNull();
+  });
+
+  it('repo docs chip: a stale brief carries /spec tldr beside its stale chip, in en and de', async () => {
+    const en = await render({ ...FRESH, stale: true }, '/spec tldr');
+    const head = en.host.querySelector('[data-brief-head]');
+    expect(head?.querySelector('[data-brief-stale]')).not.toBeNull();
+    expect(head?.querySelector('ui-command-chip code')?.textContent.trim()).toBe('/spec tldr');
+    expect(en.host.querySelector('[data-brief-missing]')).toBeNull();
+
+    const de = await render({ ...FRESH, stale: true }, '/spec tldr', 'de');
+    expect(de.host.querySelector('[data-brief-stale]')?.textContent.trim()).toBe('veraltet');
+    expect(de.chip()?.querySelector('button')?.getAttribute('aria-label')).toBe('/spec tldr kopieren · schreibt specs/tldr.md');
+  });
+
+  it('repo docs chip: a fresh brief shows no chip', async () => {
+    const { chip, host } = await render(FRESH, null);
+    expect(chip()).toBeNull();
+    expect(host.textContent).not.toMatch(/\/spec[ -]/);
+  });
+
+  it('repo docs chip: a click copies exactly the command', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const { fixture, chip } = await render(null, '/spec tldr');
+    chip()?.querySelector<HTMLButtonElement>('button')?.click();
+    await fixture.whenStable();
+    expect(writeText).toHaveBeenCalledExactlyOnceWith('/spec tldr');
   });
 });

@@ -158,10 +158,18 @@ export class LibraryReaderStore {
   });
   /** tech.md only: the sections the file has none for, named under the prose. */
   readonly techMissing = computed<readonly TechSection[]>(() => this.reading()?.missing ?? []);
-  /** The placeholder of an absent `specs/tech.md` (the page lists it dimmed): the empty state, with no command: the Spec plugin has none that writes it. */
+  /** The placeholder of an absent `specs/tech.md` (the page lists it dimmed): the empty state, with the command below. */
   readonly techAbsent = computed(() => {
     const doc = this.doc();
     return doc?.type === 'tech' && doc.state === 'missing';
+  });
+  /**
+   * The command that writes or refreshes `specs/tech.md` (spec 074, ISC-627): core's `command` of the tech entry (stale),
+   * or the catalog's `commands.tech` the placeholder carries (absent); null for a fresh tech.md and every other document.
+   */
+  readonly techCommand = computed<string | null>(() => {
+    const doc = this.doc();
+    return doc?.type === 'tech' ? (doc.command ?? null) : null;
   });
 
   /** `.design/` assets of a design document (`data-spec-asset`, relative to its folder) through the same file route. */

@@ -54,7 +54,7 @@ export function controlViews(catalog: Pick<LibraryCatalog, 'missing' | 'stale'>,
 /**
  * The row an absent `specs/tech.md` stands as (design.md 017 § 8, § Across viewports): in the workspace-wide group,
  * dimmed, without the "missing" flag and outside every count (ISC-155.2 names spec documents only); its reader is the
- * empty state, which names no command. Core never marks a tech document missing, so `tech` with `missing` names this row alone.
+ * empty state. Core never marks a tech document missing, so `tech` with `missing` names this row alone.
  */
 export const TECH_PLACEHOLDER: LibraryDoc = {
   path: 'tech.md',
@@ -66,9 +66,13 @@ export const TECH_PLACEHOLDER: LibraryDoc = {
   media: 'markdown',
 };
 
-/** The tech placeholder when the catalog holds documents but no tech.md; null otherwise. */
-export const techPlaceholderOf = (catalog: Pick<LibraryCatalog, 'docs'>): LibraryDoc | null =>
-  catalog.docs.length === 0 || catalog.docs.some((doc) => doc.type === 'tech') ? null : TECH_PLACEHOLDER;
+/**
+ * The tech placeholder when the catalog holds documents but no tech.md; null otherwise. It carries the catalog's
+ * `commands.tech` (`/spec doc`, spec 074, ISC-627) as its `command`, so the reader's empty state names it; null when
+ * the catalog names none.
+ */
+export const techPlaceholderOf = (catalog: Pick<LibraryCatalog, 'docs'> & Partial<Pick<LibraryCatalog, 'commands'>>): LibraryDoc | null =>
+  catalog.docs.length === 0 || catalog.docs.some((doc) => doc.type === 'tech') ? null : { ...TECH_PLACEHOLDER, command: catalog.commands?.tech ?? null };
 
 /** Whether the list shows the placeholder under `filter`: as a tech document would, under the state "all" only. */
 export const showsPlaceholder = (filter: LibraryFilter): boolean => filter.state === 'all' && matches({ ...TECH_PLACEHOLDER, state: 'ok' }, filter);

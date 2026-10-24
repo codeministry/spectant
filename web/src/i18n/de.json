@@ -124,7 +124,9 @@
     "lessName": "Weniger vom TL;DR",
     "showWhole": "Ganzes TL;DR zeigen",
     "showWholeName": "Ganzes TL;DR zeigen, alle Abschnitte der Kurzfassung",
-    "lang": "Sprache des Textes: {{lang}}"
+    "lang": "Sprache des Textes: {{lang}}",
+    "missing": "Noch kein TL;DR dieses Repositories; der Befehl schreibt specs/tldr.md.",
+    "commandContext": "schreibt specs/tldr.md"
   },
   "specs": {
     "title": "Specs",
@@ -2688,6 +2690,9 @@
       "notCreated": "{{path}} · noch nicht angelegt",
       "emptyHeading": "Noch keine Tech-Dokumentation",
       "emptyBody": "Überblick, Stack, Architektur und Risiken des Repositories stehen in einer Datei, specs/tech.md.",
+      "emptyBodyCommand": "Überblick, Stack, Architektur und Risiken des Repositories stehen in einer Datei, specs/tech.md; der Befehl unten schreibt sie.",
+      "staleCommand": "specs/tech.md hinkt dem Repository hinterher; der Befehl unten bringt sie auf den aktuellen Stand.",
+      "commandContext": "schreibt specs/tech.md",
       "missing": "{{section}}: Abschnitt fehlt in tech.md",
       "missingLabel": "In tech.md fehlende Abschnitte",
       "sections": {
@@ -2840,7 +2845,9 @@
         "implement": "Umsetzung",
         "done": "Abschluss",
         "status": "Status",
-        "drift": "Drift"
+        "drift": "Drift",
+        "doc": "Tech-Dokumentation",
+        "tldr": "TL;DR"
       },
       "steps": {
         "dispatch": "Verteilen",

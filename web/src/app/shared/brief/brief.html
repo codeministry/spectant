@@ -16,6 +16,10 @@
       @if (brief.stale) {
         <ui-chip class="brief-stale" data-brief-stale tone="warning" icon="clock">{{ 'brief.stale' | transloco }}</ui-chip>
       }
+      @if (tldrCommand(); as command) {
+        <!-- Spec 074 (ISC-627): the model's command that brings tldr.md up to date, beside the stale chip. -->
+        <ng-container [ngTemplateOutlet]="commandChip" [ngTemplateOutletContext]="{ $implicit: command }" />
+      }
     </div>
     @if (sectioned()) {
       <!-- Spec 021 (T26, ISC-246): the first section stands whole; one toggle in the footer opens the others. -->
@@ -52,7 +56,26 @@
       <ng-container [ngTemplateOutlet]="moreButton" />
     }
   </ui-card>
+} @else if (tldrCommand(); as command) {
+  <!-- Spec 074 (ISC-627): no specs/tldr.md yet: the compact card, the label, one line of hint and the command. -->
+  <ui-card class="brief brief-missing" data-ui="brief" data-brief-missing role="region" [padding]="0" [attr.aria-label]="'brief.title' | transloco">
+    <div class="brief-head" data-brief-head>
+      <span class="brief-label" data-brief-label>{{ 'brief.label' | transloco }}</span>
+      <span class="brief-missing-hint" data-brief-missing-hint>{{ 'brief.missing' | transloco }}</span>
+      <ng-container [ngTemplateOutlet]="commandChip" [ngTemplateOutletContext]="{ $implicit: command }" />
+    </div>
+  </ui-card>
 }
+
+<ng-template #commandChip let-command>
+  <ui-command-chip
+    class="brief-command"
+    data-brief-command
+    [command]="command"
+    [copyLabel]="'common.copyCommand' | transloco"
+    [context]="'brief.commandContext' | transloco"
+  />
+</ng-template>
 
 <!-- "More" / "Less" over the clipped text block `bodyId`: the clip view's, and a stale single-section brief's. -->
 <ng-template #moreButton>
