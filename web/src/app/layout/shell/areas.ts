@@ -43,7 +43,8 @@ export interface SpecArea {
   readonly singleTabBar?: true;
   /**
    * The area runs without the context column (spec 017 design.md § Across viewports), so
-   * the Library's list and reader have the width of the workspace Library.
+   * the Library's list and reader have the width of the workspace Library; the Live tabs Board and Matrix (spec 075)
+   * draw no rail either and take the full width, while zen keeps its footer there.
    */
   readonly noRail?: true;
 }
@@ -51,7 +52,7 @@ export interface SpecArea {
 export const SPEC_AREAS: readonly SpecArea[] = [
   { id: 'dashboard', tabs: [], icon: 'layout-dashboard', built: true, goKey: null },
   { id: 'status', tabs: ['status', 'timeline'], icon: 'activity', built: true, goKey: 's' },
-  { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: true, goKey: 'l' },
+  { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: true, goKey: 'l', noRail: true },
   { id: 'data', tabs: ['claims', 'tasks'], icon: 'table', built: true, goKey: 'd' },
   // Spec 017 (T45, ISC-158): the Library where Docs stood, with Docs' `g o`; one tab, Documents, at `…/library`.
   { id: 'library', tabs: ['library'], icon: 'book', built: true, goKey: 'o', singleTabBar: true, noRail: true },

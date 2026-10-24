@@ -17,12 +17,10 @@ import { UiSegmented } from '../../../../shared/ui/segmented/segmented';
 import { toneMark } from '../../../../shared/ui/tone';
 import { UiWaitsChip } from '../../../../shared/ui/waits-chip/waits-chip';
 import { CardContext } from '../card/card-context';
-import { CardDetail } from '../card/card-detail';
 import { FlowView } from '../flow/flow-view';
 import { taskActorsOf } from '../live-frame';
 import { LiveStore } from '../live.store';
 import { TaskActors } from '../task-actors/task-actors';
-import { barKey, LiveRail, registerLiveRail } from '../this-frame/live-rail';
 import { YourSteps } from '../this-frame/your-steps';
 import { BoardCard } from './board-card';
 import { type LaneView, runChanges, runStates, specWaitOf } from './board-model';
@@ -51,24 +49,20 @@ function flipTiming(el: Element): { duration: number; easing: string } {
  * and scrubbing writes no file: every control is a query param (`?view`, `?frame`, `?q`, `?hide`, `?lanes`,
  * `?density`), so reload and back land on the same board (the keyboard service writes `?view` and `?frame` too).
  * The frames live in the tab's `LiveStore`, the query params, lanes and toggles in its `LiveBoardStore` (spec 061,
- * ISC-436); the page keeps the DOM work: the run announcer, playback, the FLIP and the hand-over to the shell's rail.
+ * ISC-436); the page keeps the DOM work: the run announcer, playback and the FLIP.
  *
  * Lanes come in constitution order (the spec model's `lanes`), then lanes only the cards name, `operator` last. Each
- * lane holds four sections (Needs you, In flight with the lock's session, Waiting grouped by reason, Landed). At wide
- * the operator lane is "Your steps", rendered with "This frame" and "Needs you" in the shell rail (T88); below wide
- * and in zen a sticky bottom bar steps frames and opens both lists in a sheet. In zen the scrub row (scrubber, play,
- * frame chip, progress line) leaves the board, so the bar is the only frame control there (spec 047).
+ * lane holds four sections (Needs you, In flight with the lock's session, Waiting grouped by reason, Landed). The
+ * operator lane is "Your steps". Spec 075: the Live tabs draw no rail (no This frame, no Needs you, no bottom bar or
+ * its sheet) at any width, zen included, and register nothing with the shell's rail; the scrub row stands in zen too.
  *
- * Each card owns its detail dialog, opened from its id button (T83, `card/card.ts`). The board opens the same
- * `app-card-detail` only for a row of This frame or Needs you, which are rows and not cards.
+ * Each card owns its detail dialog, opened from its id button (T83, `card/card.ts`).
  */
 @Component({
   selector: 'app-board-tab',
   imports: [
     BoardCard,
-    CardDetail,
     FlowView,
-    LiveRail,
     RouterLink,
     UiWaitsChip,
     NgTemplateOutlet,
@@ -86,7 +80,7 @@ function flipTiming(el: Element): { duration: number; easing: string } {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [CardContext, LiveStore, LiveBoardStore],
-  host: { 'data-page': 'board', '[attr.data-tier]': 'tier()', '(document:keydown)': 'onKey($event)' },
+  host: { 'data-page': 'board', '[attr.data-tier]': 'tier()' },
   templateUrl: './board-tab.html',
   // The controls' rules come first, then the lanes'; two sheets keep each under the per-stylesheet budget.
   styleUrls: ['./_board-controls.css', './board-tab.css'],
@@ -107,8 +101,6 @@ export class BoardTab {
    */
   protected readonly specWaitOf = specWaitOf;
   private readonly announcer = viewChild(UiLiveRegion);
-  /** This frame, Needs you and the bottom bar (T88), handed to the shell's rail. */
-  private readonly rail = viewChild(LiveRail);
 
   constructor() {
     // spec 027 (ISC-179.1): one polite announcement per refresh that moved a run chip ("T3: patch ready; T5:
@@ -181,19 +173,11 @@ export class BoardTab {
       places = next;
       placedIndex = index;
     });
-
-    // T88: This frame, Needs you and Your steps go to the shell's rail at wide; the bar below wide and in zen.
-    registerLiveRail(this.rail, this.live.railBadges);
   }
 
   /** Whether core named an agent or sub-agent for the card (T135, ISC-131.1); only live cards carry them. */
   protected hasTaskActors(card: FrameCard): boolean {
     return taskActorsOf(card) !== null;
-  }
-
-  /** `o` opens This frame / Needs you below wide; `f` is the shell's search key. */
-  protected onKey(event: KeyboardEvent): void {
-    if (barKey(event, this.wide(), this.state.zen())) this.live.barOpen.set(true);
   }
 
   protected setSearch(event: Event): void {

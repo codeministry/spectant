@@ -1,6 +1,7 @@
 import type { Stage } from '../../../../../core/src/stage';
 import type { StatusResponse, StatusSpec, StatusWorkspace } from '../../../../../server/src/contracts/status.contract';
 import {
+  activeCount,
   EMPTY_FILTER,
   loadWidgetFilter,
   pruneFilter,
@@ -48,7 +49,7 @@ const BODY: StatusResponse = {
   ],
 };
 
-const filter = (workspaces: readonly string[], stages: readonly Stage[]): WidgetFilter => ({ workspaces, stages });
+const filter = (workspaces: readonly string[], stages: readonly Stage[], active = false): WidgetFilter => ({ workspaces, stages, active });
 
 /** Each visible group as `slug: id id …`, for readable comparisons. */
 const shape = (f: WidgetFilter): readonly string[] =>
@@ -75,7 +76,7 @@ describe('widget filter (spec 072, T17, ISC-603)', () => {
   });
 
   it('shows everything with the empty filter, the unreadable workspace included, the empty one left out', () => {
-    expect(EMPTY_FILTER).toEqual({ workspaces: [], stages: [] });
+    expect(EMPTY_FILTER).toEqual({ workspaces: [], stages: [], active: false });
     expect(shape(EMPTY_FILTER)).toEqual(['harbor: 001 002 003', 'atlas: 010 011', 'quarry: 020 021', 'broken:']);
   });
 
@@ -147,6 +148,7 @@ describe('widget filter storage (spec 072, T27, ISC-606)', () => {
     expect(JSON.parse(win.localStorage.getItem(WIDGET_FILTER_KEY) ?? 'null')).toEqual({
       workspaces: ['atlas', 'broken'],
       stages: ['review', 'done'],
+      active: false,
     });
     expect(loadWidgetFilter(win)).toEqual(filter(['atlas', 'broken'], ['review', 'done']));
   });
@@ -288,5 +290,87 @@ describe('widget filter facet counts (spec 072, T21, ISC-611)', () => {
     for (const stages of stageSelections) {
       expect(record(stageCounts(BODY, filter(['harbor'], stages)))).toEqual({ plan: 1, review: 0, build: 1, done: 1 });
     }
+  });
+});
+
+// Spec 075 (C1, ISC-630 to ISC-633): "Active" is a pseudo-option of the stage dimension, the specs with an open agent
+// run (item state `running`). Its count honours the workspace selection only; selected, it narrows the list to the
+// running rows, intersected with the stage and workspace selections; it survives a prune and a reload, and a stored
+// filter in the old two-list shape loads with it off.
+describe('widget filter "Active" option (spec 075, C1, ISC-630 to ISC-633)', () => {
+  const running = (s: StatusSpec): StatusSpec => ({ ...s, state: 'running' });
+  /** harbor: 002 build running, 003 plan idle; atlas: 010 review running, 011 build idle; quarry: nothing running. */
+  const RUN: StatusResponse = {
+    ...BODY,
+    workspaces: [
+      ws('harbor', [spec('001', 'done'), running(spec('002', 'build')), spec('003', 'plan')]),
+      ws('atlas', [running(spec('010', 'review')), spec('011', 'build')]),
+      ws('quarry', [spec('020', 'plan'), spec('021', 'review')]),
+      ws('broken', [], false),
+      ws('empty', []),
+    ],
+  };
+  const ONE: StatusResponse = { ...BODY, workspaces: BODY.workspaces.map((w) => (w.slug === 'quarry' ? ws('quarry', [running(spec('020', 'plan')), spec('021', 'review')]) : w)) };
+  const shapeOf = (body: StatusResponse, f: WidgetFilter): readonly string[] =>
+    visibleGroups(body, f).map((g) => `${g.slug}:${g.specs.map((s) => ` ${s.id}`).join('')}`);
+  const record = (counts: ReadonlyMap<string, number>): Record<string, number> => Object.fromEntries(counts);
+
+  it('ISC-630: counts the running specs, 0, 1 and 2, under the workspace selection, never under the stage selection', () => {
+    expect(activeCount(BODY, EMPTY_FILTER)).toBe(0);
+    expect(activeCount(ONE, EMPTY_FILTER)).toBe(1);
+    expect(activeCount(RUN, EMPTY_FILTER)).toBe(2);
+    expect(activeCount(RUN, filter(['atlas'], []))).toBe(1);
+    expect(activeCount(RUN, filter(['quarry', 'broken'], []))).toBe(0);
+    expect(activeCount(RUN, filter([], ['plan']))).toBe(2);
+    expect(activeCount(RUN, filter([], ['done'], true))).toBe(2);
+    expect(activeCount(RUN, filter(['harbor'], ['review'], true))).toBe(1);
+  });
+
+  it('ISC-630: leaves the stage options and their counts untouched by "Active" (same dimension, ISC-611 held)', () => {
+    expect(stageOptions(RUN)).toEqual(['plan', 'review', 'build', 'done']);
+    expect(record(stageCounts(RUN, filter([], [], true)))).toEqual(record(stageCounts(RUN, EMPTY_FILTER)));
+    expect(record(stageCounts(RUN, filter(['atlas'], [], true)))).toEqual({ plan: 0, review: 1, build: 1, done: 0 });
+  });
+
+  it('ISC-631: shows exactly the running rows alone, with a stage, with a workspace and with both selections', () => {
+    expect(shapeOf(RUN, filter([], [], true))).toEqual(['harbor: 002', 'atlas: 010', 'broken:']);
+    expect(shapeOf(RUN, filter([], ['build'], true))).toEqual(['harbor: 002', 'broken:']);
+    expect(shapeOf(RUN, filter(['atlas'], [], true))).toEqual(['atlas: 010']);
+    expect(shapeOf(RUN, filter(['atlas', 'quarry'], ['review', 'plan'], true))).toEqual(['atlas: 010']);
+    expect(shapeOf(BODY, filter([], [], true))).toEqual(['broken:']);
+    expect(shapeOf(ONE, filter([], [], true))).toEqual(['quarry: 020', 'broken:']);
+  });
+
+  it('ISC-631: narrows the workspace counts to the running rows that pass the stage selection', () => {
+    expect(record(workspaceCounts(RUN, filter([], [], true)))).toEqual({ harbor: 1, atlas: 1, quarry: 0 });
+    expect(record(workspaceCounts(RUN, filter(['harbor'], ['build'], true)))).toEqual({ harbor: 1, atlas: 0, quarry: 0 });
+  });
+
+  it('ISC-632: never shows an idle row with "Active", and a stage beside it narrows instead of adding', () => {
+    // atlas 011 (build) is idle beside harbor 002 (build), running.
+    const rows = (f: WidgetFilter): readonly StatusSpec[] => visibleGroups(RUN, f).flatMap((g) => g.specs);
+    for (const stages of [[], ['build'], ['review'], ['plan', 'done'], ['build', 'review']] as ReadonlyArray<readonly Stage[]>) {
+      const shown = rows(filter([], stages, true));
+      expect(shown.every((s) => s.state === 'running')).toBe(true);
+      expect(shown.length).toBeLessThanOrEqual(rows(filter([], [], true)).length);
+    }
+    expect(rows(filter([], ['build'], true)).map((s) => s.id)).toEqual(['002']);
+    expect(rows(filter([], ['plan'], true))).toEqual([]);
+  });
+
+  it('ISC-633: never prunes "Active", even when no spec runs', () => {
+    const selected = filter([], [], true);
+    expect(pruneFilter(selected, BODY)).toBe(selected);
+    expect(pruneFilter(filter(['gone'], [], true), BODY)).toEqual(filter([], [], true));
+  });
+
+  it('ISC-633: stores "Active", loads it back, and loads a stored filter of the old shape with "Active" off', () => {
+    const win = fakeWindow();
+    saveWidgetFilter(filter(['atlas'], ['build'], true), win);
+    expect(JSON.parse(win.localStorage.getItem(WIDGET_FILTER_KEY) ?? 'null')).toEqual({ workspaces: ['atlas'], stages: ['build'], active: true });
+    expect(loadWidgetFilter(win)).toEqual(filter(['atlas'], ['build'], true));
+    expect(loadWidgetFilter(stored('{"workspaces":["atlas"],"stages":["plan"]}'))).toEqual(filter(['atlas'], ['plan']));
+    expect(loadWidgetFilter(stored('{"workspaces":[],"stages":[],"active":"yes"}'))).toEqual(EMPTY_FILTER);
+    expect(loadWidgetFilter(fakeWindow('throws'))).toEqual(EMPTY_FILTER);
   });
 });

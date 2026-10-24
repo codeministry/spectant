@@ -9,7 +9,7 @@
  *   the frame's cards, at 390 and 1440.
  * - The scrubber steps `?frame` and the frame chip follows; under the `frontier` lock fixture the locked task is in flight
  *   with its session (ISC-90); no horizontal overflow and no lane scrolling on its own at 390, 600 and 1440, at 1440
- *   also under the `frontier` locks; below wide the open rail sheet fits under them too (ISC-93).
+ *   also under the `frontier` locks (ISC-93).
  * - `bun run e2e -- board -g flow` (T82, ISC-87): the Flow view's four columns hold every card of the frame once, the
  *   band headers name the lanes in constitution order with n/m, scrubbing moves a card between columns, and at 390 the
  *   segmented control shows the four counts and switches the group.
@@ -159,9 +159,7 @@ test.describe('locks', () => {
   });
 });
 
-// 1440 is the wide layout, where the rail is its own column; before ed718b7 its rows pushed the page past 1440 px. At
-// 1440 the frontier locks add the agents row to This frame and the stale-agent alert to Needs you; below wide both sit
-// in the closed sheet, which `rail sheet at …` opens.
+// 1440 is the wide layout; the frontier locks add the agents and their session chips to the cards in flight.
 const OVERFLOW = [
   [390, 'none'],
   [600, 'none'],
@@ -348,118 +346,140 @@ test.describe('scrub changes no file', () => {
   });
 });
 
-/**
- * T88 (ISC-87): This frame, Needs you and Your steps. At wide they are the shell rail's blocks (and the collapsed
- * strip's two badges); below wide the sticky bottom bar and its sheet; in zen the bar sits inside the zen footer, so
- * the board route shows exactly one bottom bar. Every count is read from the goldens.
- */
-const PREVIOUS = FRAMES.at(-1);
-if (!PREVIOUS) throw new Error('the frames golden is empty');
-const BEFORE = new Map(PREVIOUS.cards.map((c) => [c.task, c.state]));
-/** "This frame" of the live frame: the cards new in it or in another state than in the last history frame. */
-const EVENTS = LIVE.cards.filter((c) => BEFORE.get(c.task) !== c.state).map((c) => c.task);
+/** The operator steps of the live frame: the board's own lane "Your steps" (spec 024). */
 const OPERATOR = LIVE.cards.filter((c) => c.lane === 'operator');
 
-test.describe('rail', () => {
-  // One stub session per test: the collapsed-strip case stores `railCollapsed`, and a session shared with the
-  // cases running beside it (fullyParallel) would collapse their rail or reset it under them.
-  useStubSession('board-rail');
+/**
+ * Spec 075 (ISC-634, ISC-635): the Live tabs Board and Matrix draw no This frame, no Needs you, no 48 px frame bar
+ * and no sheet of it, and register nothing in the shell's rail, at any width and in zen; from 1120 px their content
+ * takes the full width the rail column held, with no sideways scroll, and the scrubber still steps the frame.
+ */
+test.describe('live without rail', () => {
+  const MATRIX = '/w/harbor/s/002/matrix';
+  /** Every trace of the former live rail: its blocks, the bar, the bar's sheet, the strip's counts and the rail column. */
+  const RAIL_TRACES = [
+    'app-live-rail',
+    'app-this-frame',
+    'app-needs-you',
+    'app-frame-bar',
+    '[data-bottom-bar]',
+    '[data-bar-open]',
+    '[data-frame-event]',
+    '[data-needs-card]',
+    '[data-rail-count]',
+    '[data-rail-blocks]',
+    'aside.shell-rail',
+  ] as const;
+  const ready = async (page: Page, route: string): Promise<void> => {
+    await page.goto(route);
+    if (route === BOARD) await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+    else await expect(page.locator('[data-matrix] tbody tr[data-row]').first()).toBeVisible();
+  };
+  const expectNoRail = async (page: Page, where: string): Promise<void> => {
+    for (const trace of RAIL_TRACES) await expect(page.locator(trace), `${where}: ${trace}`).toHaveCount(0);
+    // The bar's former key `o` opens no sheet either.
+    await page.locator('main').click({ position: { x: 2, y: 2 } });
+    await page.keyboard.press('o');
+    await expect(page.locator('ui-sheet dialog[open]'), `${where}: sheet after o`).toHaveCount(0);
+  };
 
-  test.describe('at 1440', () => {
+  for (const width of [390, 820, 1440] as const) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      for (const route of [BOARD, MATRIX]) {
+        test(`live without rail: ${route.split('/').at(-1) ?? ''} at ${String(width)} shows no rail block, bar, sheet or count`, async ({ page }) => {
+          await ready(page, route);
+          await expectNoRail(page, `${route} at ${String(width)}`);
+        });
+      }
+    });
+  }
+
+  test.describe('in zen', () => {
     test.use(atWidth(1440));
 
-    test('rail: This frame and Needs you are the rail blocks, Your steps the operator lane; a tick posts through the checkbox write', async ({ page }) => {
-      await page.goto(BOARD);
-      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-      const rail = page.locator('aside.shell-rail [data-rail-blocks]');
-      await expect(page.locator('[data-bottom-bar]')).toHaveCount(0);
-
-      const events = await rail.locator('app-this-frame [data-frame-event]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-frame-event')));
-      expect(events).toEqual(EVENTS);
-      await expect(rail.locator('app-needs-you [data-needs-count]')).toHaveText(String(LIVE.needsYou.length));
-      await expect(rail.locator('app-needs-you [data-needs-card]')).toHaveCount(LIVE.needsYou.length);
-      const edge = await rail.locator('app-needs-you [data-needs-card]').first().evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
-      expect(edge).toBe('4px');
-
-      // spec 024: design.md § Live · Operator lane (Principal 2026-10-13), the
-      // operator steps are their own lane in the grid, each a compact 36 px card; the Needs you card lists them (.op-mini).
-      const lane = page.locator('app-board-tab [data-lanes] app-your-steps');
-      const steps = await lane.locator('[data-step]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-step')));
-      expect(steps).toEqual(OPERATOR.map((c) => c.task));
-      await expect(rail.locator('app-your-steps')).toHaveCount(0);
-      await expect(rail.locator('app-needs-you [data-op-mini]')).toHaveCount(OPERATOR.length);
-      await expect(page.locator('[data-lanes] section[data-lane="operator"]')).toHaveCount(0);
-      for (const height of await lane.locator('article[data-card]').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))) {
-        expect(height).toBe(36);
-      }
-
-      const open = OPERATOR.find((c) => c.state === 'operatorOpen');
-      if (!open) throw new Error('the live golden holds no open operator step');
-      const row = lane.locator(`[data-step="${open.task}"]`);
-      const box = row.locator('input[type="checkbox"]');
-      await expect(box).toBeEnabled();
-      await expect(box).not.toBeChecked();
-      const written = page.waitForResponse((res) => res.request().method() === 'POST' && res.url().includes(`/${open.task}`));
-      await box.check();
-      expect((await written).status()).toBe(200);
-      await expect(row).toHaveAttribute('data-check', 'written');
-      await expect(box).toBeChecked();
-    });
-
-    test('rail: the collapsed strip shows the This frame and Needs you counts', async ({ page }) => {
-      await page.goto(BOARD);
-      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-      await page.locator('aside.shell-rail [data-control="rail-collapse"]').click();
-      await expect(page.locator('aside.shell-rail[data-rail-strip]')).toBeVisible();
-      await expect(page.locator('[data-rail-count="thisFrame"]')).toHaveText(String(EVENTS.length));
-      await expect(page.locator('[data-rail-count="needsYou"]')).toHaveText(String(LIVE.needsYou.length));
-      await expect(page.locator('[data-rail-count="waiting"]')).toHaveCount(0);
-      await page.locator('aside.shell-rail [data-control="rail-expand"]').click();
-      await expect(page.locator('aside.shell-rail [data-rail-blocks] app-this-frame')).toBeVisible();
-    });
-
-    test('rail: in zen the board route shows exactly one bottom bar, the zen footer holding the frame bar', async ({ page }) => {
-      await page.goto(BOARD);
-      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-      await page.locator('header [data-control="zen"]').click();
-      const footer = page.locator('[data-zen-footer]');
-      await expect(footer).toBeVisible();
-      await expect(page.locator('[data-bottom-bar]')).toHaveCount(1);
-      await expect(footer.locator('[data-bottom-bar]')).toHaveCount(1);
-      await expect(footer.locator('[data-zen-part="id"]')).toHaveText('002');
-      await expect(footer.locator('[data-bar-count="needsYou"]')).toHaveText(`Needs you ${String(LIVE.needsYou.length)}`);
-      expect((await footer.boundingBox())?.height).toBe(48);
-
-      await footer.locator('[data-bar-open]').click();
-      await expect(page.locator('ui-sheet dialog[open] app-this-frame [data-frame-event]')).toHaveCount(EVENTS.length);
-    });
+    for (const route of [BOARD, MATRIX]) {
+      test(`live without rail: ${route.split('/').at(-1) ?? ''} in zen shows no rail block, bar, sheet or count`, async ({ page }) => {
+        await ready(page, route);
+        await page.locator('header [data-control="zen"]').click();
+        await expect(page.locator('[data-zen-footer]')).toBeVisible();
+        await expectNoRail(page, `${route} in zen`);
+      });
+    }
   });
 
-  test.describe('at 390', () => {
-    test.use(atWidth(390));
+  test.describe('at 1440 the content takes the full width', () => {
+    test.use(atWidth(1440));
 
-    test('rail: the bottom bar names both counts and opens the sheet with both lists', async ({ page }) => {
-      await page.goto(BOARD);
-      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-      await expect(page.locator('aside.shell-rail')).toBeHidden();
-      const bar = page.locator('[data-bottom-bar]');
-      await expect(bar).toHaveCount(1);
-      await expect(bar.locator('[data-bar-count="thisFrame"]')).toHaveText(`This frame ${String(EVENTS.length)}`);
-      await expect(bar.locator('[data-bar-count="needsYou"]')).toHaveText(`Needs you ${String(LIVE.needsYou.length)}`);
+    for (const route of [BOARD, MATRIX]) {
+      test(`live without rail: ${route.split('/').at(-1) ?? ''} at 1440 fills the rail column and scrolls not sideways`, async ({ page }) => {
+        await ready(page, route);
+        await expect(page.locator('aside.shell-rail')).toHaveCount(0);
+        const widths = await page.evaluate(() => {
+          const bodyEl = document.querySelector('.shell-body');
+          const body = bodyEl?.getBoundingClientRect();
+          // The content box of the shell body: its right edge less the inline padding.
+          const pad = bodyEl ? parseFloat(getComputedStyle(bodyEl).paddingInlineEnd) : 0;
+          const main = document.querySelector('main#main')?.getBoundingClientRect();
+          const root = document.scrollingElement ?? document.documentElement;
+          return { body: body?.width ?? 0, bodyRight: (body?.right ?? 0) - pad, main: main?.width ?? 0, mainRight: main?.right ?? 0, scroll: root.scrollWidth, client: root.clientWidth };
+        });
+        expect(widths.main).toBeGreaterThan(0);
+        expect(Math.abs(widths.mainRight - widths.bodyRight), 'no empty column right of the content').toBeLessThanOrEqual(1);
+        expect(widths.scroll, 'no sideways scroll').toBe(widths.client);
 
-      await bar.locator('[data-bar-open]').click();
-      const sheet = page.locator('ui-sheet dialog[open]');
-      await expect(sheet.locator('app-this-frame [data-frame-event]')).toHaveCount(EVENTS.length);
-      await sheet.locator('ui-segmented [aria-checked]').filter({ hasText: 'Needs you' }).click();
-      await expect(sheet.locator('app-needs-you [data-needs-card]')).toHaveCount(LIVE.needsYou.length);
-    });
+        const last = FRAMES.at(-1);
+        if (!last) throw new Error('the frames golden is empty');
+        await page.locator('ui-scrubber [data-step="previous"]').click();
+        if (route === BOARD) {
+          await expect(page).toHaveURL(new RegExp(`[?&]frame=${String(last.index)}(&|$)`));
+          await expect(page.locator(CARDS)).toHaveCount(last.cards.length);
+        } else {
+          await expect(page.locator(`[data-matrix] th[data-column][data-current]`)).toHaveAttribute('data-frame', String(last.index));
+        }
+      });
+    }
+  });
+});
+
+test.describe('your steps', () => {
+  // One stub session per test: the tick writes through the checkbox route.
+  useStubSession('board-rail');
+  test.use(atWidth(1440));
+
+  test('your steps: the operator steps are their own lane; a tick posts through the checkbox write', async ({ page }) => {
+    await page.goto(BOARD);
+    await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+
+    // spec 024: design.md § Live · Operator lane (Principal 2026-10-13), the
+    // operator steps are their own lane in the grid, each a compact 36 px card.
+    const lane = page.locator('app-board-tab [data-lanes] app-your-steps');
+    const steps = await lane.locator('[data-step]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-step')));
+    expect(steps).toEqual(OPERATOR.map((c) => c.task));
+    await expect(page.locator('[data-lanes] section[data-lane="operator"]')).toHaveCount(0);
+    for (const height of await lane.locator('article[data-card]').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))) {
+      expect(height).toBe(36);
+    }
+
+    const open = OPERATOR.find((c) => c.state === 'operatorOpen');
+    if (!open) throw new Error('the live golden holds no open operator step');
+    const row = lane.locator(`[data-step="${open.task}"]`);
+    const box = row.locator('input[type="checkbox"]');
+    await expect(box).toBeEnabled();
+    await expect(box).not.toBeChecked();
+    const written = page.waitForResponse((res) => res.request().method() === 'POST' && res.url().includes(`/${open.task}`));
+    await box.check();
+    expect((await written).status()).toBe(200);
+    await expect(row).toHaveAttribute('data-check', 'written');
+    await expect(box).toBeChecked();
   });
 });
 
 /**
  * T85 (ISC-90): agent chips. Under the `frontier` lock fixture each card in flight shows its lock's session and the
- * time since the lock was taken (the clock pinned to the golden's `ts`, the stub's now), the stale marker where the
- * model set it, the lock source name in This frame and the stale-agent alert in Needs you.
+ * time since the lock was taken (the clock pinned to the golden's `ts`, the stub's now), and the stale marker where the
+ * model set it.
  */
 test.describe('agents', () => {
   test.use({ ...atWidth(1440), extraHTTPHeaders: FRONTIER_LOCKS, clockAt: LIVE.ts });
@@ -469,7 +489,7 @@ test.describe('agents', () => {
     return new Intl.RelativeTimeFormat('en', { numeric: 'always' }).format(-minutes, 'minute');
   };
 
-  test('agents: the in-flight card shows the agent chip with session and relative time, the source and the stale marker', async ({ page }) => {
+  test('agents: the in-flight card shows the agent chip with session, relative time and the stale marker', async ({ page }) => {
     const answer = page.waitForResponse((res) => /\/live(\?|$)/.test(res.url()));
     await page.goto(BOARD);
     const frame = (await (await answer).json()) as LiveFrame;
@@ -485,183 +505,6 @@ test.describe('agents', () => {
       await expect(chip.locator('time[data-agent-elapsed]')).toHaveText(ago(card.since ?? ''));
       await expect(chip.locator('[data-agent-stale]')).toHaveCount(card.stale === true ? 1 : 0);
     }
-
-    const source = page.locator('aside.shell-rail app-this-frame [data-lock-source]');
-    await expect(source).toHaveAttribute('data-lock-source', 'frontier');
-    await expect(source).toContainText('frontier');
-    await expect(page.locator('aside.shell-rail app-this-frame [data-agents] app-agent-chip')).toHaveCount(frame.agents.length);
-    for (const agent of frame.agents.filter((a) => a.stale)) {
-      await expect(page.locator(`aside.shell-rail app-needs-you [data-stale-agent][data-session="${agent.session}"]`)).toBeVisible();
-    }
-  });
-
-  test('agents: the stale alert keeps the session and each claim id on one line', async ({ page }) => {
-    const answer = page.waitForResponse((res) => /\/live(\?|$)/.test(res.url()));
-    await page.goto(BOARD);
-    const frame = (await (await answer).json()) as LiveFrame;
-    const stale = frame.agents.filter((a) => a.stale);
-    expect(stale.length).toBeGreaterThan(0);
-    for (const agent of stale) {
-      const ids = page.locator(`aside.shell-rail app-needs-you [data-stale-agent][data-session="${agent.session}"] [data-alert-id]`);
-      await expect(ids).toHaveText([agent.session, ...agent.claims]);
-      await expectIdsWhole(ids);
-    }
-  });
-});
-
-/**
- * The rail's rows wrap their text instead of cutting it, so the claim id at the end of a row stays readable, and the state
- * chip sits on the first text line. Under the frontier locks, so This frame carries its agents row and Needs you its alert.
- */
-test.describe('rail text', () => {
-  test.use({ ...atWidth(1440), extraHTTPHeaders: FRONTIER_LOCKS });
-  const ROWS = 'aside.shell-rail :is(app-this-frame [data-frame-event], app-needs-you [data-needs-card])';
-
-  test('rail text: This frame and Needs you show each row text in full, wrapped rather than cut', async ({ page }) => {
-    await page.goto(BOARD);
-    await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-    const texts = page.locator(`${ROWS} .text`);
-    expect(await texts.count()).toBeGreaterThan(0);
-    for (const clip of await texts.evaluateAll((els) => els.map((el) => el.scrollWidth - el.clientWidth))) expect(clip).toBeLessThanOrEqual(0);
-  });
-
-  test('rail text: the state chip centres on the first text line', async ({ page }) => {
-    await page.goto(BOARD);
-    await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-    // spec 024: This frame's rows are the compact .fevents lines without a chip.
-    const rows = await chipOffsets(page.locator('aside.shell-rail app-needs-you [data-needs-card]'));
-    expect(rows.length).toBeGreaterThan(0);
-    for (const row of rows) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
-  });
-});
-
-/** How far each rail row's state chip sits from the centre of its text's first line, and the row's height. */
-async function chipOffsets(rows: Locator): Promise<Array<{ task: string; offset: number; height: number }>> {
-  return rows.evaluateAll((els) =>
-    els.map((el) => {
-      const task = el.querySelector('.mono')?.textContent.trim() ?? el.textContent.trim().slice(0, 12);
-      const chip = el.querySelector('ui-state-chip ui-chip');
-      const text = el.querySelector('.text');
-      if (chip === null || text === null) return { task: `${task}: no chip or no text`, offset: Number.POSITIVE_INFINITY, height: 0 };
-      const range = document.createRange();
-      range.selectNodeContents(text);
-      const line = range.getClientRects()[0];
-      const box = chip.getBoundingClientRect();
-      if (line === undefined) return { task: `${task}: empty text`, offset: Number.POSITIVE_INFINITY, height: 0 };
-      return { task, offset: Math.abs(box.top + box.height / 2 - (line.top + line.height / 2)), height: el.getBoundingClientRect().height };
-    }),
-  );
-}
-
-/** Each id of the stale alert renders on one line: its box is no taller than one line of its own line height. */
-async function expectIdsWhole(ids: Locator): Promise<void> {
-  const boxes = await ids.evaluateAll((els) =>
-    els.map((el) => ({ id: el.textContent, height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) })),
-  );
-  expect(boxes.length).toBeGreaterThan(0);
-  for (const box of boxes) {
-    expect(Number.isFinite(box.line), `${box.id}: line height`).toBe(true);
-    expect(box.height, box.id).toBeLessThanOrEqual(box.line + 0.5);
-  }
-}
-
-/**
- * The page and the open sheet's scrolling body scroll on neither axis sideways, and every row text is shown in full with
- * room to read. The sheet's `.body` is its scroll container (`ui-sheet`), so it is measured, not the dialog.
- */
-async function expectSheetFits(page: Page, rows: Locator): Promise<void> {
-  const widths = await page.evaluate(() => {
-    const root = document.scrollingElement ?? document.documentElement;
-    const body = document.querySelector('ui-sheet dialog[open] .body');
-    return { page: root.scrollWidth - root.clientWidth, body: body === null ? null : body.scrollWidth - body.clientWidth };
-  });
-  expect(widths.page).toBeLessThanOrEqual(0);
-  expect(widths.body, 'the open sheet has a scrolling body').not.toBeNull();
-  expect(widths.body ?? 0).toBeLessThanOrEqual(0);
-  const texts = await rows.locator('.text').evaluateAll((els) => els.map((el) => ({ clip: el.scrollWidth - el.clientWidth, width: el.clientWidth })));
-  expect(texts.length).toBeGreaterThan(0);
-  for (const text of texts) {
-    expect(text.clip).toBeLessThanOrEqual(0);
-    expect(text.width).toBeGreaterThanOrEqual(80);
-  }
-}
-
-/** Opens the bottom bar's sheet and returns it with its two segments: This frame first, Needs you second. */
-async function openRailSheet(page: Page): Promise<{ sheet: Locator; needsYou: Locator }> {
-  await page.goto(BOARD);
-  await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-  await page.locator('[data-bottom-bar] [data-bar-open]').click();
-  const sheet = page.locator('ui-sheet dialog[open]');
-  await expect(sheet.locator('app-this-frame [data-frame-event]').first()).toBeVisible();
-  return { sheet, needsYou: sheet.locator('ui-segmented [aria-checked]').nth(1) };
-}
-
-/**
- * Below wide the rail lives in the bottom bar's sheet. Under the frontier locks This frame carries its agents row and
- * Needs you its stale alert, so both lists, the alert's whole ids and the chips on the first line are checked there, in
- * English and in German, the long case (state words and the alert sentence).
- */
-for (const lang of ['en', 'de'] as const) {
-  for (const width of [390, 600] as const) {
-    test.describe(`rail sheet at ${String(width)} in ${lang}`, () => {
-      test.use(atWidth(width));
-
-      // One stub session per test, so the language set here never leaks into a case running in another worker.
-      let session = '';
-      test.beforeEach(async ({ page, request }, info) => {
-        session = `rail-sheet-${lang}-${String(width)}-${info.testId}`;
-        await page.context().setExtraHTTPHeaders({ ...FRONTIER_LOCKS, [SESSION_HEADER]: session });
-        const saved = await request.put('/api/settings', { data: { language: lang }, headers: { [SESSION_HEADER]: session } });
-        expect(saved.ok()).toBe(true);
-      });
-      test.afterEach(async ({ request }) => {
-        await request.post('/api/__stub/reset', { headers: { [SESSION_HEADER]: session } });
-      });
-
-      test(`rail sheet: both lists fit the open sheet at ${String(width)} in ${lang}, texts in full and ids whole`, async ({ page }) => {
-        const { sheet, needsYou } = await openRailSheet(page);
-        const frameRows = sheet.locator('app-this-frame [data-frame-event]');
-        await expectSheetFits(page, frameRows);
-        // spec 024: This frame's rows are the compact .fevents lines without a chip;
-        // each still names its card.
-        const named = await frameRows.evaluateAll((els) => els.map((el) => [el.getAttribute('data-frame-event'), el.querySelector('.fid')?.textContent]));
-        expect(named.length).toBeGreaterThan(0);
-        for (const [task, id] of named) expect(id).toBe(task);
-
-        await needsYou.click();
-        await expect(sheet.locator('app-needs-you [data-stale-agent]').first()).toBeVisible();
-        const needsRows = sheet.locator('app-needs-you [data-needs-card]');
-        await expectSheetFits(page, needsRows);
-        for (const row of await chipOffsets(needsRows)) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
-        await expectIdsWhole(sheet.locator('app-needs-you [data-alert-id]'));
-      });
-    });
-  }
-}
-
-/** On a coarse pointer every rail row, in This frame and in Needs you, keeps its 44 px target and centres its chip. */
-test.describe('rail sheet on a coarse pointer', () => {
-  test.use({ ...atWidth(820), hasTouch: true, isMobile: true, extraHTTPHeaders: FRONTIER_LOCKS });
-
-  test('rail sheet: on a coarse pointer each row is at least 44 px, a Needs you row with its chip centred on the first line', async ({ page }) => {
-    const { sheet, needsYou } = await openRailSheet(page);
-    const check = async (rows: Locator): Promise<void> => {
-      const measured = await chipOffsets(rows);
-      expect(measured.length).toBeGreaterThan(0);
-      for (const row of measured) {
-        expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
-        expect(row.height, row.task).toBeGreaterThanOrEqual(44);
-      }
-    };
-    // spec 024: This frame's rows are the compact .fevents lines without a chip;
-    // each keeps its 44 px target and opens the card detail.
-    const frameRows = sheet.locator('app-this-frame [data-frame-event]');
-    const heights = await frameRows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
-    expect(heights.length).toBeGreaterThan(0);
-    for (const height of heights) expect(height).toBeGreaterThanOrEqual(44);
-    await needsYou.click();
-    await expect(sheet.locator('app-needs-you [data-needs-card]').first()).toBeVisible();
-    await check(sheet.locator('app-needs-you [data-needs-card]'));
   });
 });
 

@@ -189,9 +189,9 @@ describe('BoardTab agent steps (spec 015, ISC-232)', () => {
   });
 });
 
-// Spec 047 · ISC-278 · ISC-279: in zen the board has no scrub row (the zen footer's frame bar steps the frames);
-// out of zen the row is whole.
-describe('BoardTab scrub row in zen (spec 047)', () => {
+// Spec 047 · ISC-279, spec 075 · ISC-634: the scrub row stands whole in zen and out of it (the frame bar that stepped
+// the frames in zen is gone), and the board registers no rail blocks, bar or badges with the shell.
+describe('BoardTab scrub row in zen (spec 047, spec 075)', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'matchMedia',
@@ -203,10 +203,12 @@ describe('BoardTab scrub row in zen (spec 047)', () => {
   const scrubParts = (host: HTMLElement): number[] =>
     ['.scrub', 'ui-scrubber', '[data-frame-chip]', '[data-progress]'].map((sel) => host.querySelectorAll(sel).length);
 
-  it('ISC-278: in zen no scrub row, and the frame bar still goes to the zen footer', async () => {
+  it('ISC-634: in zen the scrub row stands whole and no rail block, bar or badge is registered', async () => {
     const { host } = await render('/', 'comfortable', true);
-    expect(scrubParts(host)).toEqual([0, 0, 0, 0]);
-    expect(TestBed.inject(RailContent).bar()).not.toBeNull();
+    expect(scrubParts(host)).toEqual([1, 1, 1, 1]);
+    const rail = TestBed.inject(RailContent);
+    expect([rail.blocks(), rail.bar(), rail.badges()]).toEqual([null, null, null]);
+    expect(host.querySelector('app-live-rail, app-frame-bar, [data-bottom-bar]')).toBeNull();
   });
 
   it('ISC-279: out of zen the scrub row stands whole', async () => {

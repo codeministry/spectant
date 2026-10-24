@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { CardState, MatrixCell, MatrixColumn } from '../../../../../../../core/src/files';
@@ -8,9 +8,7 @@ import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { stateKey } from '../../../../shared/ui/glyph/states';
 import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
 import { LANE_COLORS } from '../board/board-model';
-import { CardDetail } from '../card/card-detail';
 import { LiveStore } from '../live.store';
-import { barKey, LiveRail, registerLiveRail } from '../this-frame/live-rail';
 import { boardQuery, glyphOf, laneGroups, matrixOf } from './matrix-model';
 
 /**
@@ -25,16 +23,15 @@ import { boardQuery, glyphOf, laneGroups, matrixOf } from './matrix-model';
  * Tiers (design.md § Live, Matrix): compact 64 px ids and 44 × 44 cells; medium 64 px ids and 32 × 32 cells; wide a
  * 224 px id and claim column, 32 px rows, dispatch 16 px (dimmed), result 28 px, live 40 px, re-cut 8 px.
  *
- * The matrix belongs to the round board, so it keeps the board's rail and
- * bottom bar (`app-live-rail`): This frame and Needs you of the scrubbed frame in the shell rail at wide, the 48 px bar
- * with Kbd `o` and its sheet below wide and in zen.
+ * Spec 075: like the board, the matrix draws no rail (no This frame, no Needs you, no bottom bar or its sheet) at any
+ * width, zen included, and registers nothing with the shell's rail.
  */
 @Component({
   selector: 'app-matrix-tab',
-  imports: [CardDetail, LiveRail, RouterLink, TranslocoPipe, UiGlyph, UiScrubber],
+  imports: [RouterLink, TranslocoPipe, UiGlyph, UiScrubber],
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [LiveStore],
-  host: { 'data-page': 'matrix', '[attr.data-tier]': 'state.tier()', '(document:keydown)': 'onKey($event)' },
+  host: { 'data-page': 'matrix', '[attr.data-tier]': 'state.tier()' },
   templateUrl: './matrix-tab.html',
   styleUrl: './matrix-tab.css',
 })
@@ -63,17 +60,9 @@ export class MatrixTab {
   /** The legend row under the grid: glyph and word per state, in state order. */
   protected readonly legendStates: readonly CardState[] = ['waiting', 'dispatched', 'question', 'concerns', 'fail', 'done', 'closed'];
   protected readonly stateKey = stateKey;
-  protected readonly wide = computed(() => this.state.tier() === 'wide');
-  private readonly rail = viewChild(LiveRail);
 
   constructor() {
     this.live.useIndex(() => this.picked() ?? this.live.lastIndex());
-    registerLiveRail(this.rail, this.live.railBadges);
-  }
-
-  /** `o` opens This frame / Needs you below wide, as on the board. */
-  protected onKey(event: KeyboardEvent): void {
-    if (barKey(event, this.wide(), this.state.zen())) this.live.barOpen.set(true);
   }
 
   /** The lane dot of a lane group: the board's lane colours in constitution order. */

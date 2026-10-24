@@ -13,9 +13,18 @@
  * and nothing else: the opener keeps its URL and receives no `spectant:navigate`, the widget stays on `/widget` and no
  * page opens; in tab mode (no opener) the tab stays on `/widget`. No row holds a button inside its link (`a button`),
  * and every chip sits outside its row's `a.entry-link`.
+ *
+ * Spec 075 (C9-C11, ISC-638, ISC-639, ISC-640): `bun run e2e -- status-widget-row -g "dot inside ring"`. On `/widget`
+ * under `X-Spectant-Stub-Locks: runs` (beacon's 003 and 005 carry an open run), at 360, 480 and 820 px: the ring
+ * of every row measures 32 px, stands vertically centred in its row (top and bottom gap equal ±1 px, one- and two-line
+ * rows alike), keeps ≥ 8 px to the row's top, bottom and start edge and ≥ 12 px to the spec number; the agent dot of
+ * a running row (its own 8 px box; the ping halo is an animation and not measured) is centred on the ring ±1 px and
+ * lies wholly inside its inner circle, with and without reduced motion. Geometry is theme-independent; the light
+ * theme runs.
  */
 import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, headerControl, menusReady, test } from './fixtures';
+import { LOCKS_HEADER } from './stub-api';
 
 test.use(atWidth(1440));
 
@@ -151,4 +160,87 @@ test.describe('status widget row', () => {
     expect(context.pages()).toHaveLength(pagesBefore);
     expect(widget.isClosed()).toBe(false);
   });
+});
+
+/** The ring size, its stroke and the row clearances of spec 075 (ISC-638, ISC-640). */
+const RING = { size: 32, stroke: 3, edge: 8, toNumber: 12 } as const;
+
+type Box = { top: number; bottom: number; left: number; right: number; width: number; height: number };
+
+test.describe('dot inside ring', () => {
+  test.use({ extraHTTPHeaders: { [LOCKS_HEADER]: 'runs' } });
+
+  for (const width of [360, 480, 820] as const) {
+    test.describe(`at ${width} px`, () => {
+      test.use(atWidth(width));
+
+      test(`ring in row (ISC-639, ISC-640): 32 px, centred, clear of the edges and the number · ${width}`, async ({ page }) => {
+        await page.goto('/widget');
+        await page.locator('[data-spec] a.entry-link').first().waitFor();
+        const rows = await page.locator('[data-spec] .entry').evaluateAll((entries) =>
+          entries.map((entry) => {
+            const box = (el: Element | null): Box | null => {
+              if (el === null) return null;
+              const r = el.getBoundingClientRect();
+              return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+            };
+            return {
+              id: entry.closest('[data-spec]')?.getAttribute('data-spec') ?? '?',
+              twoLine: entry.getBoundingClientRect().height > 52,
+              row: box(entry),
+              ring: box(entry.querySelector('ui-ring')),
+              num: box(entry.querySelector('.entry-id')),
+            };
+          }),
+        );
+        expect(rows.length, 'the widget lists rows').toBeGreaterThan(0);
+        expect(rows.some((r) => r.twoLine), 'a two-line row').toBe(true);
+        if (width === 820) expect(rows.some((r) => !r.twoLine), 'a one-line row').toBe(true);
+        for (const { id, row, ring, num } of rows) {
+          if (row === null || ring === null || num === null) throw new Error(`row ${id} lacks a part`);
+          const top = ring.top - row.top;
+          const bottom = row.bottom - ring.bottom;
+          expect.soft([ring.width, ring.height], `row ${id}: ring size`).toEqual([RING.size, RING.size]);
+          expect.soft(Math.abs(top - bottom), `row ${id}: |top ${top} − bottom ${bottom}|`).toBeLessThanOrEqual(1);
+          expect.soft(Math.min(top, bottom), `row ${id}: ring to top/bottom edge`).toBeGreaterThanOrEqual(RING.edge);
+          expect.soft(ring.left - row.left, `row ${id}: ring to start edge`).toBeGreaterThanOrEqual(RING.edge);
+          expect.soft(num.left - ring.right, `row ${id}: ring to number`).toBeGreaterThanOrEqual(RING.toNumber);
+        }
+      });
+
+      for (const motion of ['no-preference', 'reduce'] as const) {
+        test(`dot inside ring (ISC-638): the agent dot centred in the ring's inner circle · ${width} · ${motion}`, async ({ page }) => {
+          await page.emulateMedia({ reducedMotion: motion });
+          await page.goto('/widget');
+          const running = page.locator('[data-workspace="beacon"] [data-spec] .entry:has(ui-agent-dot)');
+          await running.first().waitFor();
+          const seen = await running.evaluateAll((entries) =>
+            entries.map((entry) => {
+              const host = entry.querySelector('ui-agent-dot');
+              const ring = entry.querySelector('ui-ring')?.getBoundingClientRect();
+              // The dot's own 8 px box; its ping halo `.ring` is an animation and is not measured.
+              const dot = host?.getBoundingClientRect();
+              return {
+                id: entry.closest('[data-spec]')?.getAttribute('data-spec') ?? '?',
+                ring: ring && { x: ring.left + ring.width / 2, y: ring.top + ring.height / 2 },
+                dot: dot && { x: dot.left + dot.width / 2, y: dot.top + dot.height / 2, w: dot.width, h: dot.height },
+                visible: host !== null && dot !== undefined && dot.width > 0 && getComputedStyle(host).visibility === 'visible',
+              };
+            }),
+          );
+          expect(seen.length, 'running rows').toBeGreaterThan(0);
+          const inner = (RING.size - 2 * RING.stroke) / 2;
+          for (const { id, ring, dot, visible } of seen) {
+            if (!ring || !dot) throw new Error(`row ${id} lacks ring or dot`);
+            expect.soft(visible, `row ${id}: the dot is visible`).toBe(true);
+            expect.soft(Math.abs(dot.x - ring.x), `row ${id}: dot centre x off ring centre`).toBeLessThanOrEqual(1);
+            expect.soft(Math.abs(dot.y - ring.y), `row ${id}: dot centre y off ring centre`).toBeLessThanOrEqual(1);
+            // The dot is a circle in its box: its farthest point from the ring centre stays inside the inner radius.
+            const reach = Math.hypot(dot.x - ring.x, dot.y - ring.y) + Math.max(dot.w, dot.h) / 2;
+            expect.soft(reach, `row ${id}: dot reach ${reach} within inner radius ${inner}`).toBeLessThan(inner);
+          }
+        });
+      }
+    });
+  }
 });

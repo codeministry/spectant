@@ -131,7 +131,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     expect(chips(root, 0).map(labelOf)).toEqual(['harbor-app', 'lantern', 'beacon', 'reef']);
     expect(chips(root, 0).map((chip) => chip.getAttribute('aria-label'))).toEqual([null, null, 'beacon, not readable', null]);
     expect(chips(root, 0).map((chip) => chip.querySelector('.dot') !== null)).toEqual([false, false, true, false]);
-    expect(chips(root, 1).map(labelOf)).toEqual(['Plan', 'Review', 'Build', 'Done']);
+    expect(chips(root, 1).map(labelOf)).toEqual(['Active', 'Plan', 'Review', 'Build', 'Done']);
     expect(chips(root, 1).every((chip) => chip.querySelector('.dot') !== null)).toBe(true);
     expect([...chips(root, 0), ...chips(root, 1)].every((chip) => chip.getAttribute('aria-pressed') === 'false')).toBe(true);
   });
@@ -140,7 +140,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     const root = await land(MIXED, 'de');
     expect(chips(root, 0).map(labelOf)).toEqual(['harbor-app', 'lantern', 'beacon', 'reef']);
     expect(chips(root, 0)[2]?.getAttribute('aria-label')).toBe('beacon, nicht lesbar');
-    expect(chips(root, 1).map(labelOf)).toEqual(['Plan', 'Review', 'Bauen', 'Fertig']);
+    expect(chips(root, 1).map(labelOf)).toEqual(['Aktiv', 'Plan', 'Review', 'Bauen', 'Fertig']);
   });
 
   it('shows everything without a selection', async () => {
@@ -155,7 +155,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     await press(root, 0, 'reef');
     expect(visible(root)).toEqual(['lantern: 010 011', 'reef: 020']);
     expect(chips(root, 0).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'true']);
-    expect(chips(root, 1).map(labelOf)).toEqual(['Plan', 'Review', 'Build', 'Done']);
+    expect(chips(root, 1).map(labelOf)).toEqual(['Active', 'Plan', 'Review', 'Build', 'Done']);
     await press(root, 0, 'lantern');
     await press(root, 0, 'reef');
     expect(visible(root)).toEqual(['harbor: 002 005 001', 'lantern: 010 011', 'beacon: !notice', 'reef: 020']);
@@ -264,31 +264,31 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     const root = await land();
     expect(counted(root, 0)).toEqual(['harbor-app 3', 'lantern 2', 'beacon', 'reef 1']);
     expect(chips(root, 0)[2]?.querySelector('.count')).toBeNull();
-    expect(counted(root, 1)).toEqual(['Plan 1', 'Review 2', 'Build 2', 'Done 1']);
+    expect(counted(root, 1)).toEqual(['Active 0', 'Plan 1', 'Review 2', 'Build 2', 'Done 1']);
   });
 
   it('narrows the stage counts on a workspace press and leaves the workspace counts unchanged', async () => {
     const root = await land();
     await press(root, 0, 'lantern');
     expect(counted(root, 0)).toEqual(['harbor-app 3', 'lantern 2', 'beacon', 'reef 1']);
-    expect(counted(root, 1)).toEqual(['Plan 1', 'Review 0', 'Build 1', 'Done 0']);
+    expect(counted(root, 1)).toEqual(['Active 0', 'Plan 1', 'Review 0', 'Build 1', 'Done 0']);
   });
 
   it('narrows the workspace counts on a stage press and leaves the stage counts unchanged', async () => {
     const root = await land();
     await press(root, 1, 'Review');
     expect(counted(root, 0)).toEqual(['harbor-app 1', 'lantern 0', 'beacon', 'reef 1']);
-    expect(counted(root, 1)).toEqual(['Plan 1', 'Review 2', 'Build 2', 'Done 1']);
+    expect(counted(root, 1)).toEqual(['Active 0', 'Plan 1', 'Review 2', 'Build 2', 'Done 1']);
   });
 
   it('counts each dimension under the other with both selections, and a 0 chip stays visible and pressable', async () => {
     const root = await land();
     await press(root, 0, 'lantern');
     await press(root, 1, 'Review');
-    expect(chips(root, 1).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
+    expect(chips(root, 1).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true', 'false', 'false']);
     expect(root.querySelector('div.no-match')).not.toBeNull();
     expect(counted(root, 0)).toEqual(['harbor-app 1', 'lantern 0', 'beacon', 'reef 1']);
-    expect(counted(root, 1)).toEqual(['Plan 1', 'Review 0', 'Build 1', 'Done 0']);
+    expect(counted(root, 1)).toEqual(['Active 0', 'Plan 1', 'Review 0', 'Build 1', 'Done 0']);
     await press(root, 0, 'beacon');
     expect(counted(root, 0)).toEqual(['harbor-app 1', 'lantern 0', 'beacon', 'reef 1']);
     expect(chips(root, 0).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'true', 'false']);
@@ -313,16 +313,16 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     const root = await land();
     expect(visible(root)).toEqual(['lantern: 011']);
     expect(pressedOf(root, 0)).toEqual(['false', 'true', 'false', 'false']);
-    expect(pressedOf(root, 1)).toEqual(['false', 'false', 'true', 'false']);
-    expect(stored()).toEqual({ workspaces: ['lantern'], stages: ['build'] });
+    expect(pressedOf(root, 1)).toEqual(['false', 'false', 'false', 'true', 'false']);
+    expect(stored()).toEqual({ workspaces: ['lantern'], stages: ['build'], active: false });
   });
 
   it('stores every press under spectant.statusWidget.filter', async () => {
     const root = await land();
     await press(root, 0, 'lantern');
-    expect(stored()).toEqual({ workspaces: ['lantern'], stages: [] });
+    expect(stored()).toEqual({ workspaces: ['lantern'], stages: [], active: false });
     await press(root, 1, 'Review');
-    expect(stored()).toEqual({ workspaces: ['lantern'], stages: ['review'] });
+    expect(stored()).toEqual({ workspaces: ['lantern'], stages: ['review'], active: false });
   });
 
   it('keeps the selection through a live reload that adds a spec', async () => {
@@ -334,7 +334,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     });
     expect(visible(root)).toEqual(['lantern: 010 011 012']);
     expect(pressedOf(root, 0)).toEqual(['false', 'true', 'false', 'false']);
-    expect(stored()).toEqual({ workspaces: ['lantern'], stages: [] });
+    expect(stored()).toEqual({ workspaces: ['lantern'], stages: [], active: false });
   });
 
   it('drops a selected workspace that vanished in a live reload, on screen and in storage', async () => {
@@ -345,7 +345,7 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     expect(chips(root, 0).map(labelOf)).toEqual(['harbor-app', 'lantern', 'beacon']);
     expect(pressedOf(root, 0)).toEqual(['false', 'true', 'false']);
     expect(visible(root)).toEqual(['lantern: 010 011']);
-    expect(stored()).toEqual({ workspaces: ['lantern'], stages: [] });
+    expect(stored()).toEqual({ workspaces: ['lantern'], stages: [], active: false });
   });
 
   it('starts without a selection from broken stored JSON', async () => {
@@ -365,5 +365,122 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     expect(visible(root)).toEqual(['harbor: 002 005 001', 'lantern: 010 011', 'beacon: !notice', 'reef: 020']);
     await press(root, 0, 'reef');
     expect(visible(root)).toEqual(['reef: 020']);
+  });
+
+  // Spec 075 (C1, ISC-630 to ISC-633): the stage row opens with the pseudo-option "Active" (de "Aktiv"), the specs
+  // with an open agent run. Its number counts them under the workspace selection only; pressed, it narrows the list to
+  // the running rows, intersected with the other selections, and it survives a live update and a reload.
+  const running = (s: Spec): Spec => ({ ...s, state: 'running' });
+  /** MIXED with two runs: harbor 002 (build) and lantern 010 (plan); 005, 011 and 020 stay idle. */
+  const RUN: StatusResponse = {
+    ...MIXED,
+    workspaces: MIXED.workspaces.map((ws) =>
+      ws.slug === 'harbor' || ws.slug === 'lantern' ? { ...ws, specs: ws.specs.map((s) => (s.id === '002' || s.id === '010' ? running(s) : s)) } : ws,
+    ),
+  };
+  const ONE: StatusResponse = { ...MIXED, workspaces: MIXED.workspaces.map((ws) => (ws.slug === 'reef' ? { ...ws, specs: ws.specs.map(running) } : ws)) };
+  const readableOnly = (body: StatusResponse): StatusResponse => ({ ...body, workspaces: body.workspaces.filter((ws) => ws.readable) });
+
+  it('ISC-630: opens the stage row with "Active" and counts the running specs, 0 visible and pressable (en)', async () => {
+    const root = await land(MIXED);
+    expect(chips(root, 1).map(labelOf)[0]).toBe('Active');
+    expect(counted(root, 1)[0]).toBe('Active 0');
+    await press(root, 1, 'Active');
+    expect(pressedOf(root, 1)[0]).toBe('true');
+    expect(visible(root)).toEqual(['beacon: !notice']);
+  });
+
+  it('ISC-630: counts one and two running specs, under the workspace selection, never under the stage selection', async () => {
+    const one = await land(ONE);
+    expect(counted(one, 1)[0]).toBe('Active 1');
+    TestBed.resetTestingModule();
+    const root = await land(RUN);
+    expect(counted(root, 1)).toEqual(['Active 2', 'Plan 1', 'Review 2', 'Build 2', 'Done 1']);
+    await press(root, 1, 'Review');
+    expect(counted(root, 1)[0]).toBe('Active 2');
+    await press(root, 0, 'lantern');
+    expect(counted(root, 1)[0]).toBe('Active 1');
+    await press(root, 0, 'reef');
+    expect(counted(root, 1)[0]).toBe('Active 1');
+  });
+
+  it('ISC-630: words the chip "Aktiv" in German, with its number', async () => {
+    const root = await land(RUN, 'de');
+    expect(counted(root, 1)).toEqual(['Aktiv 2', 'Plan 1', 'Review 2', 'Bauen 2', 'Fertig 1']);
+  });
+
+  it('ISC-631: shows the running rows alone, with a stage, with a workspace and with both, and counts exactly them', async () => {
+    const root = await land(RUN);
+    await press(root, 1, 'Active');
+    expect(visible(root)).toEqual(['harbor: 002', 'lantern: 010', 'beacon: !notice']);
+    expect(figures(root)).toEqual(['2', '2', '2/6']);
+    expect(counted(root, 0)).toEqual(['harbor-app 1', 'lantern 1', 'beacon', 'reef 0']);
+    await press(root, 1, 'Build');
+    expect(visible(root)).toEqual(['harbor: 002', 'beacon: !notice']);
+    expect(figures(root)).toEqual(['1', '1', '1/3']);
+    await press(root, 1, 'Build');
+    await press(root, 0, 'lantern');
+    expect(visible(root)).toEqual(['lantern: 010']);
+    expect(figures(root)).toEqual(['1', '1', '1/3']);
+    await press(root, 1, 'Plan');
+    expect(visible(root)).toEqual(['lantern: 010']);
+    await press(root, 1, 'Active');
+    expect(visible(root)).toEqual(['lantern: 010']);
+    expect(pressedOf(root, 1)).toEqual(['false', 'true', 'false', 'false', 'false']);
+  });
+
+  it('ISC-632: shows no idle row with "Active", and a stage beside it narrows instead of adding', async () => {
+    const root = await land(RUN);
+    await press(root, 1, 'Active');
+    const before = root.querySelectorAll('[data-spec]').length;
+    await press(root, 1, 'Build');
+    // lantern 011 is build too, but idle: it stays out.
+    expect(visible(root)).toEqual(['harbor: 002', 'beacon: !notice']);
+    await press(root, 1, 'Build');
+    await press(root, 1, 'Review');
+    expect(root.querySelectorAll('[data-spec]')).toHaveLength(0);
+    expect(root.querySelectorAll('[data-spec]').length).toBeLessThanOrEqual(before);
+  });
+
+  it('ISC-633: keeps "Active" through a live update without a running spec, then shows the no-match line and resets', async () => {
+    const root = await land(readableOnly(RUN));
+    await press(root, 1, 'Active');
+    expect(stored()).toEqual({ workspaces: [], stages: [], active: true });
+    await reload(readableOnly(MIXED));
+    expect(pressedOf(root, 1)[0]).toBe('true');
+    expect(counted(root, 1)[0]).toBe('Active 0');
+    expect(stored()).toEqual({ workspaces: [], stages: [], active: true });
+    const reset = root.querySelector<HTMLButtonElement>('div.no-match button');
+    if (!reset) throw new Error('no reset button');
+    reset.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(pressedOf(root, 1)[0]).toBe('false');
+    expect(visible(root)).toEqual(['harbor: 002 005 001', 'lantern: 010 011', 'reef: 020']);
+    expect(stored()).toEqual({ workspaces: [], stages: [], active: false });
+  });
+
+  it('ISC-633: applies a stored "Active" after a reload; the old two-list shape loads with it off', async () => {
+    localStorage.setItem(WIDGET_FILTER_KEY, JSON.stringify({ workspaces: [], stages: [], active: true }));
+    const root = await land(RUN);
+    expect(pressedOf(root, 1)[0]).toBe('true');
+    expect(visible(root)).toEqual(['harbor: 002', 'lantern: 010', 'beacon: !notice']);
+    TestBed.resetTestingModule();
+    localStorage.setItem(WIDGET_FILTER_KEY, JSON.stringify({ workspaces: ['lantern'], stages: [] }));
+    const old = await land(RUN);
+    expect(pressedOf(old, 1)[0]).toBe('false');
+    expect(visible(old)).toEqual(['lantern: 010 011']);
+  });
+
+  it('ISC-633: filters by "Active" with a throwing storage', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError');
+    });
+    const root = await land(RUN);
+    await press(root, 1, 'Active');
+    expect(visible(root)).toEqual(['harbor: 002', 'lantern: 010', 'beacon: !notice']);
   });
 });
