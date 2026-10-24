@@ -44,6 +44,22 @@ app-brief .brief-as-of {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Spec 074 (ISC-627): the command that writes or refreshes tldr.md, pushed to the end of the head; without the file the
+ * compact card is the head alone, one muted line of hint between the label and the chip.
+ */
+app-brief .brief-command {
+  margin-inline-start: auto;
+}
+
+app-brief .brief-missing-hint {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
 app-brief .brief-prose {
   padding: 0 16px 8px;
   font-size: 15px;

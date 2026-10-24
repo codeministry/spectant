@@ -48,8 +48,9 @@ const CATALOG: LibraryCatalog = {
   fog: [],
   missing: 0,
   stale: 1,
+  commands: { tech: null, tldr: null },
 };
-const EMPTY: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
+const EMPTY: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0, commands: { tech: null, tldr: null } };
 const PAGE: DocsPage = { html: '<p>Rendered</p>', toc: [], frontmatter: null, figures: [], sections: [], wordCount: 1 };
 
 type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'library' | 'libraryDoc' | 'librarySearch'>;
@@ -245,6 +246,7 @@ const CONTROL: LibraryCatalog = {
   fog: [],
   missing: 2,
   stale: 2,
+  commands: { tech: null, tldr: null },
 };
 
 const control = (root: HTMLElement, key: string): HTMLButtonElement => {
@@ -428,6 +430,7 @@ describe('LibraryPage archived documents (spec 034, ISC-187.1)', () => {
     fog: [],
     missing: 0,
     stale: 0,
+    commands: { tech: null, tldr: null },
   };
 
   const groupsOf = (root: HTMLElement): Array<string | null> =>

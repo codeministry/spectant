@@ -25,18 +25,32 @@
   @if (doc.state === 'stale') {
     <ui-notice tone="warning" data-library-stale-notice>
       <strong>{{ 'library.reader.staleHeading' | transloco }}</strong>
+      @if (techCommand(); as command) {
+        <!-- Spec 074 (ISC-627): a stale tech.md names the command that brings it up to date, core's `command`. -->
+        <span class="lib-stale-hint" data-library-stale-hint>{{ 'library.tech.staleCommand' | transloco }}</span>
+        <ui-command-chip
+          action
+          [command]="command"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [context]="'library.tech.commandContext' | transloco"
+        />
+      }
     </ui-notice>
   }
 
   @if (techAbsent()) {
-    <!-- design.md 017 § 8: no specs/tech.md yet, the empty state; it names no command (the Spec plugin has none that writes it, spec 031). -->
+    <!-- design.md 017 § 8: no specs/tech.md yet, the empty state; spec 074 (ISC-627): with the catalog's command. -->
     <ui-empty-state
       class="lib-missing-reader"
       data-library-tech-empty
       icon="book-open"
       [heading]="'library.tech.emptyHeading' | transloco"
-      [body]="'library.tech.emptyBody' | transloco"
-    />
+      [body]="(techCommand() ? 'library.tech.emptyBodyCommand' : 'library.tech.emptyBody') | transloco"
+    >
+      @if (techCommand(); as command) {
+        <ui-command-chip [command]="command" [copyLabel]="'common.copyCommand' | transloco" [context]="'library.tech.commandContext' | transloco" />
+      }
+    </ui-empty-state>
   } @else if (doc.state === 'missing') {
     <!-- The empty state with the command that writes the file. -->
     <ui-empty-state

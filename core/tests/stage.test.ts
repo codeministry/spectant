@@ -39,6 +39,7 @@ import {
   stageMismatchOf,
   SPEC_SUBCOMMANDS,
   commandFor,
+  commandKey,
   commandWith,
   stageOf,
   storyStep,
@@ -1570,7 +1571,7 @@ describe('plugin commands (spec 031, ISC-265)', () => {
   const PLUGIN_FORM = /^\/spec(?: (?:new|plan|tasks|implement|review|done))? (?:\d{3}|NNN)$|^\/spec review (?:\d{3}|NNN) code$/;
 
   test('plugin commands: commandFor names /spec <sub> NNN, /spec <sub> without an id, and the bare /spec', () => {
-    expect(SPEC_SUBCOMMANDS).toEqual(['init', 'idea', 'new', 'plan', 'tasks', 'implement', 'review', 'done']);
+    expect(SPEC_SUBCOMMANDS).toEqual(['init', 'idea', 'new', 'plan', 'tasks', 'implement', 'review', 'done', 'doc', 'tldr']);
     expect(commandFor('tasks', '003')).toBe('/spec tasks 003');
     expect(commandFor('review', '003', 'code')).toBe('/spec review 003 code');
     expect(commandFor('init')).toBe('/spec init');
@@ -1642,6 +1643,33 @@ describe('plugin commands: recorded commands as the app shows them (spec 031, IS
     expect(pluginCommand('/spec-tasks 003')).toBe('/spec tasks 003');
     expect(pluginCommand('/spec-code-review 004')).toBe('/spec review 004 code');
     expect(pluginCommand('/spec tasks 003')).toBe('/spec tasks 003');
-    expect(pluginCommand('/spec-tldr')).toBe('/spec-tldr');
+    expect(pluginCommand('/spec-drift')).toBe('/spec-drift');
+  });
+});
+
+// Spec 074 (ISC-617): the repo docs commands `/spec doc` and `/spec tldr` are subcommands of their own, after `done`;
+// the old skill's `/spec-doc` and `/spec-tldr`, which run lines in `.spectant/activity.jsonl` still hold, read as them.
+describe('repo docs commands (spec 074, ISC-617)', () => {
+  test('repo docs: doc and tldr are subcommands, each once, after done', () => {
+    expect(SPEC_SUBCOMMANDS.slice(-2)).toEqual(['doc', 'tldr']);
+    expect(SPEC_SUBCOMMANDS.filter((sub) => sub === 'doc' || sub === 'tldr')).toEqual(['doc', 'tldr']);
+    expect(commandFor('doc')).toBe('/spec doc');
+    expect(commandFor('tldr')).toBe('/spec tldr');
+  });
+
+  test('repo docs: commandKey reads the plugin form, the namespaced form and the old names as doc and tldr', () => {
+    expect(commandKey('/spec doc')).toBe('doc');
+    expect(commandKey('/spec tldr')).toBe('tldr');
+    expect(commandKey('/spectant:spec doc')).toBe('doc');
+    expect(commandKey('/spec-doc')).toBe('doc');
+    expect(commandKey('/spec-tldr')).toBe('tldr');
+  });
+
+  test('repo docs: an old run name reads in the plugin form; an unknown word is still no subcommand', () => {
+    expect(pluginCommand('/spec-doc')).toBe('/spec doc');
+    expect(pluginCommand('/spec-tldr')).toBe('/spec tldr');
+    expect(commandKey('/spec docs')).toBeNull();
+    expect(commandKey('/spec tl')).toBeNull();
+    expect(pluginCommand('/spec-docs')).toBe('/spec-docs');
   });
 });

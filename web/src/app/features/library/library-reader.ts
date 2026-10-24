@@ -123,6 +123,7 @@ export class LibraryReader {
   protected readonly opened = this.store.opened;
   protected readonly techMissing = this.store.techMissing;
   protected readonly techAbsent = this.store.techAbsent;
+  protected readonly techCommand = this.store.techCommand;
   protected readonly assetUrl = this.store.assetUrl;
   protected readonly preview = this.store.preview;
   protected readonly openLink = this.store.openLink;

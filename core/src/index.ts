@@ -36,6 +36,8 @@
 // Spec 071's status-board.ts (`statusBoard`, open specs only since spec 073, and `statusKpis`) takes one dashboard model
 // per workspace from the caller, imports types only and rides it whole; the server route and the web e2e stub both
 // build on it, and the widget counts its filtered rows with `statusKpis` (spec 072).
+// Spec 074's tldr-facts.ts (`tldrFacts`) derives through `buildDashboard`, so like dashboard.ts it exports its types
+// here and the plugin imports the function from the module itself.
 export * from './files.ts';
 export * from './spec-ref.ts';
 export * from './spec-edges.ts';
@@ -75,3 +77,4 @@ export * from './status-board.ts';
 export type * from './gates.ts';
 export type * from './dashboard.ts';
 export type * from './library.ts';
+export type * from './tldr-facts.ts';

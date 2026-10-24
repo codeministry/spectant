@@ -28,13 +28,13 @@ function git(cwd: string, ...args: string[]): void {
 }
 
 /** A fresh git repository with the fixture committed and one activity line in `.spectant/`, so both dirs are hashed. */
-function repo(): string {
+function repo(fixture: string = FIXTURE): string {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'spec-check-readonly-')));
   dirs.push(dir);
   git(dir, 'init', '-q', '-b', 'main');
   git(dir, 'config', 'user.email', 'builder@example.invalid');
   git(dir, 'config', 'user.name', 'Builder');
-  cpSync(FIXTURE, dir, { recursive: true });
+  cpSync(fixture, dir, { recursive: true });
   git(dir, 'add', '-A');
   git(dir, 'commit', '-q', '-m', 'fixture');
   mkdirSync(join(dir, '.spectant'));
@@ -91,6 +91,32 @@ describe('spec-check pack and tick readonly (ISC-342)', () => {
     expect(run(root, 'pack', '001', 'T9', '--json').code).toBe(1);
     expect(run(root, 'tick', '001', 'T9').code).toBe(1);
     expect(changed(before, tree(root))).toEqual([]);
+  });
+});
+
+describe('spec-check repo docs readonly (spec 074, T22)', () => {
+  const REPO_DOCS = join(import.meta.dir, 'fixtures', 'repo-docs');
+  const RUNS: ReadonlyArray<readonly [readonly string[], readonly string[]]> = [
+    [['doc', 'target', '--keep', '--json'], []],
+    [['doc', 'check', '--json'], []],
+    [['doc', 'check'], []],
+    [['tldr', 'target', '--json'], []],
+    [['tldr', 'check', '--json'], []],
+    [['tldr', 'check'], []],
+    [['tldr', 'facts', '--json'], []],
+    // The one write of the six commands: an existing tech.md copied to tech.prev.md.
+    [['doc', 'target', '--json'], ['specs/tech.prev.md']],
+  ];
+
+  test('readonly: repo docs commands change nothing but doc target\'s specs/tech.prev.md, .git/ included', () => {
+    const root = repo(REPO_DOCS);
+    for (const [argv, writes] of RUNS) {
+      const before = tree(root);
+      expect(Object.keys(before).some((p) => p.startsWith('.git/objects/'))).toBe(true);
+      const { code } = run(root, ...argv);
+      expect({ argv, ok: code === 0 || code === 3 }).toEqual({ argv, ok: true });
+      expect({ argv, changed: changed(before, tree(root)) }).toEqual({ argv, changed: [...writes] });
+    }
   });
 });
 

@@ -306,6 +306,12 @@ export interface DashboardModel {
   readonly archive: readonly ArchivedSpec[];
   /** Null when the workspace has no `specs/tldr.md`. */
   readonly brief: DashboardBrief | null;
+  /**
+   * `/spec tldr` (`commandFor('tldr')`, spec 074, ISC-626) while `specs/tldr.md` is absent or `tldrState` reads it
+   * stale (`brief.stale`); null while it is there and fresh. Always present, beside `brief`, which stays null without
+   * the file.
+   */
+  readonly tldrCommand: string | null;
   readonly services: readonly LocalService[];
   readonly diagnostics: readonly FileDiagnostic[];
   /**
@@ -1092,6 +1098,8 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
       ...(input.tldrSource?.kind === 'worktree' ? { source: input.tldrSource } : {}),
     };
   }
+  // The command that writes or refreshes `specs/tldr.md` (spec 074, ISC-626): absent, or stale by `tldrState`.
+  const tldrCommand = brief === null || brief.stale ? commandFor('tldr') : null;
 
   const stageCounts = Object.fromEntries(STAGES.map((stage) => [stage, rows.filter((r) => r.stage === stage).length])) as Record<Stage, number>;
   const open = rows.filter((r) => r.stage !== 'done');
@@ -1141,6 +1149,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     warningGroups,
     archive,
     brief,
+    tldrCommand,
     services,
     diagnostics,
     ideas: ideasOf(input.ideas, master),

@@ -325,6 +325,7 @@ describe('ShellComponent', () => {
       fog: [],
       missing: 1,
       stale: 1,
+      commands: { tech: null, tldr: null },
     };
     setUp(fakeApi({ library: () => Promise.resolve(ok(catalog)) }));
     const { root } = await open('/w/harbor/s/002/library');

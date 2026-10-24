@@ -2106,6 +2106,22 @@ export interface LibraryDoc {
    * and for every document of a spec folder, whose source the spec's own row carries.
    */
   readonly source?: RepoFileSource;
+  /**
+   * `tech` and `tldr` only, and always present on those two (spec 074, ISC-626): the command that brings the file up to
+   * date while it reads `stale`, `/spec doc` for `tech.md` and `/spec tldr` for `tldr.md` (`commandFor`), else null.
+   * Absent on every other document. An absent file is no entry; `LibraryCatalog.commands` names its command.
+   */
+  readonly command?: string | null;
+}
+
+/**
+ * The commands that bring the two derived workspace documents up to date (spec 074, ISC-626): `tech` is `/spec doc`
+ * while `specs/tech.md` is absent or reads `stale`, `tldr` is `/spec tldr` while `specs/tldr.md` is absent or reads
+ * `stale`; each null while its file is there and fresh.
+ */
+export interface LibraryDocCommands {
+  readonly tech: string | null;
+  readonly tldr: string | null;
 }
 
 /** The head of one spec's group in the library: the values of the former tech tabs Status and Specs (ISC-157). */
@@ -2147,6 +2163,11 @@ export interface LibraryCatalog {
   /** The count of `docs` whose state is `missing`, and of those whose state is `stale`: the two control numbers. */
   readonly missing: number;
   readonly stale: number;
+  /**
+   * The commands for `specs/tech.md` and `specs/tldr.md` (spec 074, ISC-626), the absent file included, which has no
+   * entry in `docs`; equal to the `command` of an entry that is listed.
+   */
+  readonly commands: LibraryDocCommands;
 }
 
 /** The kind of an actor id: `u:` a person, `a:<kind>:<id>` an agent, `a:<kind>:<id>/<task>` its sub-agent. */

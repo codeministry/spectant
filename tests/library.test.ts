@@ -126,7 +126,8 @@ describe("GET /api/workspaces/:ws/library", () => {
   test("a workspace without documents: 200 and an empty catalog", async () => {
     const res = await call(workspaceRoutes.library("bare"));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ docs: [], groups: [], fog: [], missing: 0, stale: 0 });
+    // spec 074 (ISC-626): neither tech.md nor tldr.md is there, so both commands are named.
+    expect(await res.json()).toEqual({ docs: [], groups: [], fog: [], missing: 0, stale: 0, commands: { tech: "/spec doc", tldr: "/spec tldr" } });
   });
 
   test("304 on a matching If-None-Match; HEAD gets the headers without a body", async () => {

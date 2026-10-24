@@ -1,7 +1,7 @@
 ---
 name: spec
-description: "Spec-driven feature folders: specs/NNN-slug/ with spec.md, plan.md, tasks.md, one master ISA.md and one specs/constitution.md. Sets a repo up, shapes an idea into a spec, plans it, breaks it into tasks, reviews it, implements the tasks until each claim closes on its probe's evidence, closes and archives it, and reports status and drift. USE WHEN spec, spec idea, shape an idea, write a spec, new spec, plan the spec, plan.md, break into tasks, tasks.md, review the spec, implement the spec, work the tasks, spec done, close the spec, spec status, spec drift, specs/NNN, constitution, spec-driven."
-argument-hint: "[init | idea <sentences> | new <type> [notes] | new NNN | plan|tasks|review|implement|done [NNN]]"
+description: "Spec-driven feature folders: specs/NNN-slug/ with spec.md, plan.md, tasks.md, one master ISA.md and one specs/constitution.md. Sets a repo up, shapes an idea into a spec, plans it, breaks it into tasks, reviews it, implements the tasks until each claim closes on its probe's evidence, closes and archives it, reports status and drift, and writes the repository's tech documentation and TL;DR. USE WHEN spec, spec idea, shape an idea, write a spec, new spec, plan the spec, plan.md, break into tasks, tasks.md, review the spec, implement the spec, work the tasks, spec done, close the spec, spec status, spec drift, specs/NNN, constitution, spec-driven, tech documentation, tech.md, tldr, tldr.md."
+argument-hint: "[init | idea <sentences> | new <type> [notes] | new NNN | plan|tasks|review|implement|done [NNN] | doc [--keep] | tldr]"
 ---
 
 # Spec
@@ -28,6 +28,8 @@ Arguments: `$ARGUMENTS`. The first word (`$0`) picks the row; the rest is passed
 | `review` | `[NNN]` | `workflows/review.md` | review a spec before `implement` and set the review mark on a yes; the code review of a finished feature |
 | `implement` | `[NNN]` | `workflows/implement.md` | work the tasks in rounds until claims close on probe evidence |
 | `done` | `[NNN]` | `workflows/done.md` | check every close condition, close the spec, reconcile the master, archive finished specs |
+| `doc` | `[--keep]` | `workflows/doc.md` | rewrite the repository's tech documentation `specs/tech.md` (overview, architecture, stack, risks) and check it |
+| `tldr` | none | `workflows/tldr.md` | write `specs/tldr.md`, the short TL;DR of what the open specs build and what can be tried now, and check it |
 
 - An empty `$0`, `help`, `status`, `drift`, `sync` or a bare number (`/spec 031`) routes to the `/spec` row.
 - Any other unknown word: show the help from `workflows/status.md` and stop; never guess a subcommand.
@@ -80,6 +82,8 @@ prose (Goal, Context, plan text, task text, `context.md`) is written directly.
 | `transition <spec> <to>` | one `events.jsonl` line per stage change |
 | `run start <spec\|idea> --session <actor> --command "<…>"` · `run end <run-id> --outcome ok\|error` | the run pair the app shows |
 | `rounds record <spec> …` · `activity <event> …` | the round log line · one step line (dispatch, build, patch, apply, probe, question) |
+| `doc target [--keep]` · `doc check` | where `/spec doc` writes `specs/tech.md`, an existing one first copied to `specs/tech.prev.md` · its four section keys present |
+| `tldr facts` · `tldr target` · `tldr check` | the open specs' facts for `/spec tldr` · the path `specs/tldr.md` · its `generated:`, five section keys and every open spec named |
 
 `<actor>` follows the actor grammar in the repository's `FORMAT.md` when it has one: `a:<kind>:<id>` for an agent
 session, `a:<kind>:<id>/T<n>` for a sub-agent on one task.

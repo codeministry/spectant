@@ -221,10 +221,10 @@ describe("ISC-28 live: a change to a watched file reaches an open page within 2 
     // The status widget reads `/api/status` and follows the same stream as the app: every frame carries that view,
     // last, so a change in any registered workspace reaches the open widget without a reload.
     const STAGE_SPEC = { folder: "006-partial-push", id: "006" } as const;
-    const stageOf = (body: unknown): string | undefined =>
+    const stageIn = (body: unknown): string | undefined =>
       (body as StatusResponse).workspaces.find((w) => w.slug === slug)?.specs.find((s) => s.id === STAGE_SPEC.id)?.stage;
     const before = (await (await fetch(`${url}${STATUS_PATH}`)).json()) as StatusResponse;
-    expect(stageOf(before)).toBe("review");
+    expect(stageIn(before)).toBe("review");
 
     const file = join(repo, "specs", STAGE_SPEC.folder, "spec.md");
     const { stream, update, latency } = await changeAndWait(
@@ -236,7 +236,7 @@ describe("ISC-28 live: a change to a watched file reaches an open page within 2 
       expect(latency).toBeLessThanOrEqual(LIVE_MS);
       expect(paths(update ?? { ws: "", views: [] }).at(-1)).toBe(STATUS_PATH);
       const view = update?.views.find((v) => v.path === STATUS_PATH);
-      expect(stageOf(view?.body)).toBe("build");
+      expect(stageIn(view?.body)).toBe("build");
       const res = await fetch(`${url}${STATUS_PATH}`);
       expect({ status: res.status, etag: res.headers.get("etag") }).toEqual({ status: 200, etag: view?.etag ?? null });
       expect(await res.json()).toEqual(view?.body);

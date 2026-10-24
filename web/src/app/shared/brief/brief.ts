@@ -7,7 +7,7 @@ import type { RepoFileSource } from '../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../core/src/markdown';
 import { OpenState } from '../open-state';
 import { UiTimeLabel } from '../time';
-import { UiCard, UiChip, UiDisclosure, UiSourceChip } from '../ui';
+import { UiCard, UiChip, UiCommandChip, UiDisclosure, UiSourceChip } from '../ui';
 import { nextId } from '../ui/overlay/ids';
 
 /**
@@ -39,13 +39,17 @@ export interface BriefModel {
 /**
  * The Brief (T62, restyled in T88): the workspace's TL;DR
  * under the KPI band, a card with a violet 3 px left edge. The header reads "TL;DR" (mono), "as of <date>" from
- * `generated:` and, when the model says so, a "stale" chip. No command chip: the Spec plugin has no command that writes
- * `specs/tldr.md` (spec 031, ISC-265), so the card names none. The
+ * `generated:` and, when the model says so, a "stale" chip. The
  * body holds the whole TL;DR, clipped to a few lines until the "More" button (`aria-expanded`, `aria-controls`)
  * expands it; the clip is visual only, so a screen reader reads the full text either way.
  *
  * - Fed only by the dashboard model's `brief` (`core/src/dashboard.ts`); staleness is core's verdict, never recomputed
- *   here. A workspace without `specs/tldr.md` (`brief: null`) renders nothing and the host is `hidden`.
+ *   here. A workspace without `specs/tldr.md` (`brief: null`) and without a command renders nothing and the host is
+ *   `hidden`.
+ * - Spec 074 (ISC-627): `tldrCommand` is the model's command that writes or refreshes `specs/tldr.md` (`/spec tldr`),
+ *   core's verdict, never derived here. With it and no brief (the file absent) the card stands compact: the label, one
+ *   line of hint and the copy chip (`data-brief-missing`); with a stale brief the chip stands beside the "stale" chip.
+ *   Null (a fresh brief) shows no chip.
  * - The markdown goes through core's one renderer (`core/src/markdown.ts`), which escapes every string and never
  *   passes raw HTML through; that is why its output may be trusted here, as the Notes and Docs views do.
  * - `open` (expanded) is a two-way model, so the page can bind it to a query param.
@@ -69,11 +73,11 @@ export interface BriefModel {
  */
 @Component({
   selector: 'app-brief',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiCard, UiChip, UiDisclosure, UiSourceChip, UiTimeLabel],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDisclosure, UiSourceChip, UiTimeLabel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
-    '[attr.hidden]': "brief() ? null : ''",
+    '[attr.hidden]': "brief() || tldrCommand() ? null : ''",
     '[attr.data-stale]': "brief()?.stale ? '' : null",
   },
   templateUrl: './brief.html',
@@ -81,6 +85,8 @@ export interface BriefModel {
 })
 export class Brief {
   readonly brief = input.required<BriefModel | null>();
+  /** The dashboard model's `tldrCommand`: `/spec tldr` while tldr.md is absent or stale, else null (spec 074). */
+  readonly tldrCommand = input<string | null>(null);
   readonly open = model(false);
 
   protected readonly bodyId = nextId('brief-body');

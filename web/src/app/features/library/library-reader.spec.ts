@@ -4,7 +4,7 @@ import { Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
 import techContract from '../../../../../core/fixtures/tech-sections.contract.json';
@@ -17,6 +17,7 @@ import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { formatInstant } from '../../shared/time';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';
+import { techPlaceholderOf } from './library-view';
 import { folderOf, LibraryReader, type ProseLinks, type ReaderContext, resolveRelative, rewriteProse, techReading } from './library-reader';
 
 // T34 · ISC-156.3: the library's reader as its own component: Docs prose with its table of contents and mermaid as a
@@ -547,11 +548,69 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
     reader.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(fixture.componentInstance.backs).toBe(2);
   });
+
+  // Spec 074 · ISC-627: the command that writes or refreshes specs/tech.md, read from the catalog (`commands.tech`,
+  // threaded into the placeholder) and from the stale entry (`command`), never derived here.
+  describe('repo docs chip (spec 074, ISC-627)', () => {
+    const COMMANDS = { tech: '/spec doc', tldr: null };
+    const TECH = doc('tech.md', 'tech', 'Tech', { command: null });
+    const chip = (root: Element | null) => root?.querySelector<HTMLElement>('ui-command-chip') ?? null;
+
+    afterEach(() => {
+      TestBed.inject(TranslocoService).setActiveLang('en');
+      Reflect.deleteProperty(navigator, 'clipboard');
+    });
+
+    it('repo docs chip: the empty state without tech.md names /spec doc, in en and de', async () => {
+      const reader = await render((host) => host.doc.set(techPlaceholderOf({ docs: [CONSTITUTION], commands: COMMANDS })));
+      const empty = reader.querySelector('[data-library-tech-empty]');
+      expect(chip(empty)?.querySelector('code')?.textContent.trim()).toBe('/spec doc');
+      expect(empty?.textContent).toContain('the command below writes it');
+      expect(chip(reader)?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy /spec doc · writes specs/tech.md');
+
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      const german = await render((host) => host.doc.set(techPlaceholderOf({ docs: [CONSTITUTION], commands: COMMANDS })));
+      expect(german.querySelector('[data-library-tech-empty]')?.textContent).toContain('der Befehl unten schreibt sie');
+      expect(chip(german)?.querySelector('button')?.getAttribute('aria-label')).toBe('/spec doc kopieren · schreibt specs/tech.md');
+    });
+
+    it('repo docs chip: the empty state names no command while the catalog has none', async () => {
+      const reader = await render((host) => host.doc.set(techPlaceholderOf({ docs: [CONSTITUTION], commands: { tech: null, tldr: null } })));
+      expect(reader.querySelector('[data-library-tech-empty]')).not.toBeNull();
+      expect(chip(reader)).toBeNull();
+    });
+
+    it('repo docs chip: a stale tech.md names /spec doc in its notice, in en and de', async () => {
+      const reader = await render((host) => host.doc.set({ ...TECH, state: 'stale', command: '/spec doc' }));
+      const notice = reader.querySelector('[data-library-stale-notice]');
+      expect(chip(notice)?.querySelector('code')?.textContent.trim()).toBe('/spec doc');
+      expect(notice?.textContent).toContain('the command below brings it up to date');
+
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      const german = await render((host) => host.doc.set({ ...TECH, state: 'stale', command: '/spec doc' }));
+      expect(german.querySelector('[data-library-stale-notice]')?.textContent).toContain('der Befehl unten bringt sie auf den aktuellen Stand');
+    });
+
+    it('repo docs chip: a fresh tech.md shows no chip', async () => {
+      const reader = await render((host) => host.doc.set(TECH));
+      expect(reader.querySelector('[data-library-stale-notice]')).toBeNull();
+      expect(chip(reader)).toBeNull();
+    });
+
+    it('repo docs chip: a click copies exactly the command', async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const reader = await render((host) => host.doc.set({ ...TECH, state: 'stale', command: '/spec doc' }));
+      chip(reader)?.querySelector<HTMLButtonElement>('button')?.click();
+      await fixture.whenStable();
+      expect(writeText).toHaveBeenCalledExactlyOnceWith('/spec doc');
+    });
+  });
 });
 
 // The page's way back below 1120 px (DS-APP-35), through the real route.
 describe('LibraryPage with the reader below 1120 px (T34)', () => {
-  const CATALOG: LibraryCatalog = { docs: DOCS, groups: [], fog: [], missing: 0, stale: 0 };
+  const CATALOG: LibraryCatalog = { docs: DOCS, groups: [], fog: [], missing: 0, stale: 0, commands: { tech: null, tldr: null } };
   let harness: RouterTestingHarness;
 
   afterEach(() => {
@@ -620,7 +679,7 @@ describe('LibraryPage with the reader below 1120 px (T34)', () => {
 // reader scrolls there and focuses its heading; opening another document drops the section from the address.
 describe('LibraryPage on a former tech address (T42, ISC-157.1)', () => {
   const TECH = doc('tech.md', 'tech', 'Tech');
-  const CATALOG: LibraryCatalog = { docs: [TECH, ...DOCS], groups: [], fog: [], missing: 0, stale: 0 };
+  const CATALOG: LibraryCatalog = { docs: [TECH, ...DOCS], groups: [], fog: [], missing: 0, stale: 0, commands: { tech: null, tldr: null } };
   // The route's answer for tech.md: each marker's part marked (ISC-355), core's section heads beside the toc the
   // renderer lists (ISC-157.2).
   const TECH_PAGE: LibraryDocPage = {

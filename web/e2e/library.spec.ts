@@ -1203,7 +1203,7 @@ const TECH_EN = read('../src/i18n/en.json') as {
   common: { noValue: string };
   types: Readonly<Record<string, string>>;
   stages: Readonly<Record<string, string>>;
-  library: { tech: { emptyHeading: string; emptyBody: string } };
+  library: { tech: { emptyHeading: string; emptyBody: string; emptyBodyCommand: string } };
 };
 
 /** A row of the dashboard golden, as far as the former Status tab read it. */
@@ -1434,13 +1434,14 @@ test.describe('tech', () => {
     }
   });
 
-  test('tech · without tech.md: the dimmed tech.md row opens the empty state without a command chip', async ({ page, request }) => {
+  test('tech · without tech.md: the dimmed tech.md row opens the empty state with the catalog\'s command chip', async ({ page, request }) => {
     expect(LANTERN.pages, 'the lantern tech golden has no tech.md').toBeNull();
     const answer = await request.get(`/api/workspaces/${LANTERN_WS}/library`);
     expect(answer.status()).toBe(200);
     const catalog = (await answer.json()) as LibraryCatalog;
     expect(catalog.docs.length).toBeGreaterThan(0);
     expect(catalog.docs.filter((doc) => doc.type === 'tech')).toEqual([]);
+    expect(catalog.commands.tech, 'the catalog names the command for the absent tech.md').toBe('/spec doc');
 
     await page.goto(`/w/${LANTERN_WS}/library`);
     const row = page.locator('[data-library-group="workspace"] [data-library-placeholder="tech.md"]');
@@ -1450,9 +1451,9 @@ test.describe('tech', () => {
     const empty = page.locator('[data-library-reader] ui-empty-state[data-library-tech-empty]');
     await expect(empty).toBeVisible();
     await expect(empty.locator('.title')).toHaveText(TECH_EN.library.tech.emptyHeading);
-    await expect(empty.locator('.body')).toHaveText(TECH_EN.library.tech.emptyBody);
-    // No plugin command writes specs/tech.md (spec 031), so the empty state offers no chip.
-    await expect(empty.locator('ui-command-chip')).toHaveCount(0);
+    await expect(empty.locator('.body')).toHaveText(TECH_EN.library.tech.emptyBodyCommand);
+    // Spec 074 (ISC-627): the catalog's `commands.tech` writes specs/tech.md, offered as a copy chip.
+    await expect(empty.locator('ui-command-chip code')).toHaveText('/spec doc');
     await expect(page.locator('[data-library-reader] [data-library-prose]')).toHaveCount(0);
     await expect(page.locator('[data-library-reader] section[data-library-tech-section]')).toHaveCount(0);
 

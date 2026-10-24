@@ -36,6 +36,7 @@ import type {
   FileKind,
   LibraryCatalog,
   LibraryDoc,
+  LibraryDocCommands,
   LibraryDocType,
   LibraryFogLine,
   LibraryMedia,
@@ -49,7 +50,7 @@ import { parseFrontmatter } from './frontmatter.ts';
 import { readLockSources } from './locks.ts';
 import { listSpecs } from './resolve.ts';
 import type { Stage, StageInput } from './stage.ts';
-import { CLAIMLESS_RULE, SPEC_RULES } from './stage.ts';
+import { CLAIMLESS_RULE, commandFor, SPEC_RULES } from './stage.ts';
 import { techSourcesOf } from './tech.ts';
 import { parseWorkflow } from './workflow.ts';
 import { WORKTREE_COPY_KINDS } from './worktrees.ts';
@@ -444,10 +445,34 @@ function derivesFrom(d: LibraryDoc): 'spec' | 'newest' | null {
   return FROM_SPEC.has(d.path.slice(d.spec.length + 1)) ? 'spec' : null;
 }
 
-/** `d` judged against its source's mtime: `stale` when the source was modified more than the tolerance after it. */
+/**
+ * `d` judged against its source's mtime: `stale` when the source was modified more than the tolerance after it. A
+ * workspace `tech.md` or `tldr.md` also gets its `command` from that verdict (spec 074, ISC-626).
+ */
 function judgeStale(d: LibraryDoc, source: number | null): LibraryDoc {
   const stale = d.state === 'ok' && d.modified !== null && source !== null && source - Date.parse(d.modified) > STALE_TOLERANCE_MS;
-  return stale ? { ...d, state: 'stale' } : d;
+  return withCommand(stale ? { ...d, state: 'stale' } : d);
+}
+
+/** The `/spec` subcommand that writes each derived workspace document (spec 074): `doc` for tech.md, `tldr` for tldr.md. */
+const WRITER = { tech: 'doc', tldr: 'tldr' } as const;
+
+/** The command of a workspace `tech.md` or `tldr.md` (ISC-626): its writer's while it is not `ok`, else null; others unchanged. */
+function withCommand(d: LibraryDoc): LibraryDoc {
+  if (d.spec !== WORKSPACE || (d.type !== 'tech' && d.type !== 'tldr')) return d;
+  return { ...d, command: d.state === 'ok' ? null : commandFor(WRITER[d.type]) };
+}
+
+/**
+ * The commands for `specs/tech.md` and `specs/tldr.md` over the judged documents (ISC-626): a listed file's own
+ * `command`, the writer's command for a file the catalog does not list (absent).
+ */
+function commandsOf(docs: readonly LibraryDoc[]): LibraryDocCommands {
+  const of = (type: 'tech' | 'tldr'): string | null => {
+    const doc = docs.find((d) => d.spec === WORKSPACE && d.type === type);
+    return doc === undefined ? commandFor(WRITER[type]) : (doc.command ?? null);
+  };
+  return { tech: of('tech'), tldr: of('tldr') };
 }
 
 /** The documents a spec's type can ask for (ISC-155.2), in the order of the spec's own files. */
@@ -640,6 +665,7 @@ export async function readCatalog(root: string, input?: DashboardInput, options:
     fog,
     missing: docs.filter((d) => d.state === 'missing').length,
     stale: docs.filter((d) => d.state === 'stale').length,
+    commands: commandsOf(docs),
   };
 }
 

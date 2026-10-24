@@ -124,7 +124,9 @@
     "lessName": "Less of the TL;DR",
     "showWhole": "Show whole TL;DR",
     "showWholeName": "Show whole TL;DR, all sections of the brief",
-    "lang": "Language of the text: {{lang}}"
+    "lang": "Language of the text: {{lang}}",
+    "missing": "No TL;DR of this repository yet; the command writes specs/tldr.md.",
+    "commandContext": "writes specs/tldr.md"
   },
   "specs": {
     "title": "Specs",
@@ -2688,6 +2690,9 @@
       "notCreated": "{{path}} · not created yet",
       "emptyHeading": "No tech documentation yet",
       "emptyBody": "Overview, stack, architecture and risks of the repository live in one file, specs/tech.md.",
+      "emptyBodyCommand": "Overview, stack, architecture and risks of the repository live in one file, specs/tech.md; the command below writes it.",
+      "staleCommand": "specs/tech.md lags behind the repository; the command below brings it up to date.",
+      "commandContext": "writes specs/tech.md",
       "missing": "{{section}}: section missing in tech.md",
       "missingLabel": "Sections missing in tech.md",
       "sections": {
@@ -2840,7 +2845,9 @@
         "implement": "implement",
         "done": "closing",
         "status": "status",
-        "drift": "drift"
+        "drift": "drift",
+        "doc": "tech docs",
+        "tldr": "TL;DR"
       },
       "steps": {
         "dispatch": "dispatching",

@@ -26,6 +26,10 @@
  *                 imported one (`const stageOf = core.stageOf`) is not a definition and is not reported.
  *   test-strategy A second Test Strategy reader. Hits a search call or RegExp naming "Test Strategy", and, in a
  *                 file that mentions `.md`, markdown or Test Strategy, a `.split` on `|` (a `"|"` string or a regex of only `\|` and optional `\s`).
+ *   section-marker A second reader of the `<!-- section: key -->` markers in tech.md and tldr.md. Hits a RegExp
+ *                 whose pattern names the `section:` marker (`/<!--\s*section:\s*(\w+)/`, `/section\s*:/`), and a
+ *                 search, split or replace call with a `<!-- section` string (`body.split("<!-- section:")`).
+ *                 `core/src/tldr.ts` exports `MARKER` and `sectionsByMarker` for every other lane.
  *
  * The heuristics are line-based and deliberately coarse: a false positive costs one comment, a silent second
  * parser costs a wrong dashboard. Comment lines are skipped, and generated files (`*.gen.*`) are skipped
@@ -65,6 +69,8 @@ const CHECKBOX_STRING = /\[[ xX]\]/; // single-core: allow — detector pattern
 const TEST_STRATEGY = /test\s*strategy/i;
 const PIPE_PATTERN = /^(?:\\s[*+?]?)*\\\|(?:\\s[*+?]?)*$/;
 const MD_CONTEXT = /\.md\b|markdown|test\s*strategy/i;
+const SECTION_MARKER_PATTERN = /section(?:\\s[*+?]?|\s)*:|<!--(?:\\s[*+?]?|\s)*section/; // single-core: allow — detector pattern
+const SECTION_MARKER_STRING = /<!--\s*section\b/; // single-core: allow — detector pattern
 
 const STAGE_NAMES = "stageOf|nextCommand|deriveStage";
 const STAGE_DEFINITIONS = [
@@ -111,6 +117,7 @@ function reasonsFor(line: string, mdContext: boolean): string[] {
     if (CLAIM_ID_PATTERN.test(p)) reasons.add("claim-line: RegExp matches variable claim IDs (ISC-…)");
     if (CHECKBOX_PATTERN.test(p)) reasons.add("claim-line: RegExp matches a checkbox line");
     if (TEST_STRATEGY.test(p)) reasons.add("test-strategy: RegExp locates the Test Strategy table");
+    if (SECTION_MARKER_PATTERN.test(p)) reasons.add("section-marker: RegExp matches the `<!-- section: key -->` marker");
   }
 
   for (const m of line.matchAll(STRING_CALL)) {
@@ -118,6 +125,7 @@ function reasonsFor(line: string, mdContext: boolean): string[] {
     if (arg.includes("---")) reasons.add(`frontmatter: .${method}() on the \`---\` delimiter`); // single-core: allow — detector pattern
     if (CHECKBOX_STRING.test(arg)) reasons.add(`claim-line: .${method}() on a checkbox string`);
     if (TEST_STRATEGY.test(arg)) reasons.add(`test-strategy: .${method}() locates the Test Strategy table`);
+    if (SECTION_MARKER_STRING.test(arg)) reasons.add(`section-marker: .${method}() on the \`<!-- section\` marker`);
     if (method === "split" && arg === "|" && mdContext) reasons.add("test-strategy: .split() on `|` in a markdown context");
   }
   if (mdContext && line.includes(".split(")) {

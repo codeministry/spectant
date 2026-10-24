@@ -2,7 +2,7 @@
 // types accept the golden snapshots the stub will serve, the error spelling is one convention across the API, and the
 // module stays importable by the browser bundle.
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import type {
@@ -32,7 +32,7 @@ import type { DashboardIdea, DashboardIdeas, DashboardModel } from "../core/src/
 import type { PlanningModel } from "../core/src/planning.ts";
 import type { Relation, RelationFacts, RelationRef } from "../core/src/relations.ts";
 import type { TechSectionHead, TechSectionKey } from "../core/src/tech.ts";
-import type { EventLine, IdeaRef, LibraryCatalog, LibraryDoc, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
+import type { EventLine, IdeaRef, LibraryCatalog, LibraryDoc, LibraryDocCommands, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary, type UnreadableCode as LoaderUnreadableCode } from "../server/src/workspace/index.ts";
 import { dashboardApi } from "../server/src/cli/index.ts";
 import type { ActorRow } from "../server/src/infra/db/db.ts";
@@ -513,7 +513,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     const api = dashboardApi({
       registry: { list: () => [workspace], get: (slug) => (slug === workspace.slug ? workspace : undefined) },
       loadWorkspace: () => Promise.resolve({ readable: false, error: "missing" }),
-      loadCatalog: () => Promise.resolve({ readable: true, catalog: { docs: [], groups: [], fog: [], missing: 0, stale: 0 } }),
+      loadCatalog: () => Promise.resolve({ readable: true, catalog: { docs: [], groups: [], fog: [], missing: 0, stale: 0, commands: { tech: "/spec doc", tldr: "/spec tldr" } } }),
     });
     const answers: Record<string, { status: number | undefined; body: unknown }> = {};
     for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) {
@@ -522,7 +522,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       answers[route] = { status: answer?.status, body: await answer?.json() };
     }
     expect(answers).toEqual({
-      library: { status: 200, body: { docs: [], groups: [], fog: [], missing: 0, stale: 0 } },
+      library: { status: 200, body: { docs: [], groups: [], fog: [], missing: 0, stale: 0, commands: { tech: "/spec doc", tldr: "/spec tldr" } } },
       // An empty catalog lists no document, so no path is ever read.
       libraryDoc: { status: 404, body: { error: "not-found" } },
       librarySearch: { status: 200, body: { query: "beacon", hits: [] } },
@@ -949,7 +949,8 @@ describe("the dashboard golden (core/fixtures/<tree>.golden.json) is a Dashboard
     const value = JSON.parse(readFileSync(join(FIXTURES, "harbor.golden.json"), "utf8")) as DashboardModel;
     const model = keysOf<DashboardModel>({
       kpis: "req", stageCounts: "req", specs: "req", nextUp: "req", warningGroups: "req", archive: "req", brief: "req",
-      services: "req", diagnostics: "req", ideas: "req", guidance: "opt",
+      // spec 074 (ISC-626): the command for an absent or stale tldr.md, beside `brief`.
+      tldrCommand: "req", services: "req", diagnostics: "req", ideas: "req", guidance: "opt",
     });
     // spec 040: `state`, the story's item state (ISC-224), set by the server's loader at its clock.
     const idea = keysOf<DashboardIdea>({ feature: "req", featureName: "req", milestone: "req", slug: "req", title: "req", priority: "req", state: "opt" });
@@ -1141,6 +1142,103 @@ describe("status board (spec 071 T15): one path beside the actors, GET and HEAD,
     } finally {
       registry.close();
       rmSync(data, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("repo docs command (spec 074, ISC-626): the library and the dashboard name the command for an absent or stale tech.md or tldr.md", () => {
+  type Docs = "absent" | "stale" | "fresh";
+  const STATES: readonly Docs[] = ["absent", "stale", "fresh"];
+  const OLD = new Date("2000-01-01T00:00:00Z");
+  const FUTURE = new Date("2099-01-01T00:00:00Z");
+
+  /** A copy of the harbor tree with `specs/tech.md` and `specs/tldr.md` absent, older than every spec.md, or newer. */
+  function repoWith(base: string, docs: Docs): string {
+    const repo = join(base, `repo-${docs}`);
+    cpSync(join(FIXTURES, "harbor"), repo, { recursive: true });
+    const tech = join(repo, "specs", "tech.md");
+    const tldr = join(repo, "specs", "tldr.md");
+    if (docs === "absent") {
+      rmSync(tech);
+      rmSync(tldr);
+      return repo;
+    }
+    const at = docs === "stale" ? OLD : FUTURE;
+    // The dashboard judges tldr.md by its `generated:` against the specs, the library both files by their mtime.
+    writeFileSync(tldr, readFileSync(tldr, "utf8").replace(/^generated: .*$/m, `generated: ${at.toISOString()}`));
+    for (const path of [tech, tldr]) utimesSync(path, at, at);
+    return repo;
+  }
+
+  test("repo docs command: the compile-time pins of the new fields", () => {
+    const commandsPinned: Equal<LibraryCatalog["commands"], LibraryDocCommands> = true;
+    const commandsShape: Equal<LibraryDocCommands, { readonly tech: string | null; readonly tldr: string | null }> = true;
+    const docCommand: Equal<LibraryDoc["command"], string | null | undefined> = true;
+    const tldrCommandPinned: Equal<DashboardModel["tldrCommand"], string | null> = true;
+    expect([commandsPinned, commandsShape, docCommand, tldrCommandPinned]).toEqual([true, true, true, true]);
+  });
+
+  test("repo docs command: GET library and dashboard over a workspace without, with a stale and with a fresh tech.md and tldr.md", async () => {
+    const base = mkdtempSync(join(tmpdir(), "spectant-repo-docs-"));
+    const registry = openRegistry(join(base, "db"));
+    try {
+      for (const docs of STATES) registry.add(repoWith(base, docs));
+      const api = dashboardApi({ registry, services: () => Promise.resolve([]) });
+      const get = async (path: string): Promise<unknown> => {
+        const url = new URL(path, "http://127.0.0.1:7717");
+        const answer = await api(new Request(url.href, { headers: HOST }), url);
+        expect(answer?.status).toBe(200);
+        return answer?.json();
+      };
+      const catalogSpec = keysOf<LibraryCatalog>({ docs: "req", groups: "req", fog: "req", missing: "req", stale: "req", commands: "req" });
+      const docSpec = keysOf<LibraryDoc>({
+        path: "req", type: "req", spec: "req", title: "req", modified: "req", state: "req", media: "req",
+        pages: "opt", preview: "opt", archived: "opt", source: "opt", command: "opt",
+      });
+      const modelSpec = keysOf<DashboardModel>({
+        kpis: "req", stageCounts: "req", specs: "req", nextUp: "req", warningGroups: "req", archive: "req", brief: "req",
+        tldrCommand: "req", services: "req", diagnostics: "req", ideas: "req", guidance: "opt",
+      });
+      const seen: Record<string, unknown> = {};
+      for (const [i, entry] of registry.list().entries()) {
+        const docs = STATES[i] ?? "absent";
+        const catalog = (await get(workspaceRoutes.library(entry.slug))) as LibraryCatalog;
+        const model = (await get(`/api/workspaces/${encodeURIComponent(entry.slug)}/dashboard`)) as DashboardModel;
+        const derived = catalog.docs.filter((d) => d.spec === "workspace" && (d.type === "tech" || d.type === "tldr"));
+        expect([
+          ...shapeProblems(`${docs}: library`, catalog, catalogSpec),
+          ...shapeProblems(`${docs}: library.commands`, catalog.commands, keysOf<LibraryDocCommands>({ tech: "req", tldr: "req" })),
+          ...catalog.docs.flatMap((d, j) => shapeProblems(`${docs}: library.docs[${j}]`, d, docSpec)),
+          ...shapeProblems(`${docs}: dashboard`, model, modelSpec),
+        ]).toEqual([]);
+        // `command` sits on the workspace tech.md and tldr.md, always, and on no other document; it is the catalog's.
+        expect(catalog.docs.filter((d) => "command" in d).map((d) => d.path).sort()).toEqual(derived.map((d) => d.path).sort());
+        for (const d of derived) expect(d.command).toBe(catalog.commands[d.type as keyof LibraryDocCommands]);
+        seen[docs] = {
+          commands: catalog.commands,
+          listed: Object.fromEntries(derived.map((d) => [d.type, { state: d.state, command: d.command }])),
+          tldrCommand: model.tldrCommand,
+          brief: model.brief === null ? null : { stale: model.brief.stale },
+        };
+      }
+      expect(seen).toEqual({
+        absent: { commands: { tech: "/spec doc", tldr: "/spec tldr" }, listed: {}, tldrCommand: "/spec tldr", brief: null },
+        stale: {
+          commands: { tech: "/spec doc", tldr: "/spec tldr" },
+          listed: { tech: { state: "stale", command: "/spec doc" }, tldr: { state: "stale", command: "/spec tldr" } },
+          tldrCommand: "/spec tldr",
+          brief: { stale: true },
+        },
+        fresh: {
+          commands: { tech: null, tldr: null },
+          listed: { tech: { state: "ok", command: null }, tldr: { state: "ok", command: null } },
+          tldrCommand: null,
+          brief: { stale: false },
+        },
+      });
+    } finally {
+      registry.close();
+      rmSync(base, { recursive: true, force: true });
     }
   });
 });

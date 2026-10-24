@@ -231,6 +231,7 @@
     }
   ],
   "brief": null,
+  "tldrCommand": "/spec tldr",
   "services": [],
   "diagnostics": [
     {

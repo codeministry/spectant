@@ -31,6 +31,9 @@ import {
 } from '../../core/src/activity-text.ts';
 import { ActivityLogError, appendActivity, appendClaim, appendRelease, appendRunEvent, readActivity, repoRoot } from './activity-log.ts';
 import { runHook } from './hook.ts';
+import { docCheck, docTarget, tldrCheck, tldrFacts, tldrTarget } from './repo-docs.ts';
+import type { RepoDocFinding } from './repo-docs.ts';
+import { readIfExists, specFiles } from './spec-files.ts';
 import { specReadDirs, specTreeDirs, worktreeListing, worktreeOnlyRefs } from './worktree-source.ts';
 import { listArchive } from '../../core/src/archive.ts';
 import { parseClaims } from '../../core/src/claims.ts';
@@ -38,8 +41,7 @@ import type { Claim } from '../../core/src/claims.ts';
 import { buildDashboard } from '../../core/src/dashboard.ts';
 import type { DashboardInput } from '../../core/src/dashboard.ts';
 import { parseEvents, validateEventLine } from '../../core/src/events.ts';
-import { FILE_KINDS } from '../../core/src/files.ts';
-import type { EventLine, ItemRun, LockReading, RunEvent, RunOutcome, SpecFiles, TextFileKind, WorkflowStage } from '../../core/src/files.ts';
+import type { EventLine, ItemRun, LockReading, RunEvent, RunOutcome, SpecFiles, WorkflowStage } from '../../core/src/files.ts';
 import { SPEC_TYPES, parseFrontmatter } from '../../core/src/frontmatter.ts';
 import { REVIEWED_FILES, codeReviewedMarkText, gateState, hashForGate, readGateMark, reviewedGate, reviewedMarkText, treeIdOf } from '../../core/src/gates.ts';
 import type { GateCheck, ReviewedFile, TreeEntry, TreeEntryMode } from '../../core/src/gates.ts';
@@ -109,6 +111,8 @@ export const ERROR_CODES = [
   'claim-required',
   'unknown-task',
   'no-claim',
+  // `doc check` and `tldr check` on a document with findings (spec 074).
+  'incomplete',
   // An error no command foresaw (a file that cannot be read, …): under --json still one object, never a stack.
   'internal',
 ] as const;
@@ -192,29 +196,6 @@ interface Context {
 function git(cwd: string, args: readonly string[]): string | null {
   const r = Bun.spawnSync(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
-}
-
-function readIfExists(path: string): string | null {
-  try {
-    return readFileSync(path, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw error;
-  }
-}
-
-/** The text file kinds inside a spec folder, as the app's loader reads them. */
-const FOLDER_KINDS = (Object.keys(FILE_KINDS) as Array<keyof typeof FILE_KINDS>).filter(
-  (kind): kind is TextFileKind => !FILE_KINDS[kind].directory && !FILE_KINDS[kind].path.startsWith('..'),
-);
-
-function specFiles(ref: Pick<SpecRef, 'dir' | 'slug'>): SpecFiles {
-  const texts: Partial<Record<TextFileKind, string>> = {};
-  for (const kind of FOLDER_KINDS) {
-    const text = readIfExists(join(ref.dir, FILE_KINDS[kind].path));
-    if (text !== null) texts[kind] = text;
-  }
-  return { folder: ref.slug, texts };
 }
 
 /** Per command context, the spec folders `listedOf` found and the worktree listing they were found on. */
@@ -1852,6 +1833,63 @@ function tick(ctx: Context, args: Args): number {
   return EXIT.ok;
 }
 
+// ── doc and tldr ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** A finding as one line for a person: its subject, then its sentence. */
+const findingLine = (f: RepoDocFinding): string => `  ${f.subject ?? '-'}: ${f.message} (${f.code})`;
+
+/**
+ * A check's answer (spec 074, ISC-619, ISC-620): complete exits 0 and prints the result; incomplete exits 3 with
+ * `{"error": "incomplete", "command", "detail": <every finding>}` under `--json`, else the findings on stderr.
+ */
+function checkAnswer(ctx: Context, args: Args, target: string, result: { readonly ok: boolean; readonly findings: readonly RepoDocFinding[] }, okLine: string): number {
+  if (result.ok) {
+    emit(ctx, args, result, [okLine]);
+    return EXIT.ok;
+  }
+  if (args.flags.has('json')) return refuse(ctx, args, EXIT.drift, 'incomplete', result.findings, []);
+  process.stderr.write(`spec-check: ${ctx.command}: ${target} is incomplete\n${result.findings.map(findingLine).join('\n')}\n`);
+  return EXIT.drift;
+}
+
+/** `spec-check doc target [--keep] | doc check` (spec 074, ISC-618, ISC-619): specs/tech.md. */
+function docCommand(ctx: Context, args: Args): number {
+  const sub = required(args, 0, 'sub-command (target or check)');
+  if (args.positional.length > 1) throw bad(`unexpected argument "${args.positional[1] ?? ''}"`);
+  if (sub === 'target') {
+    const result = docTarget(ctx.root, { keep: args.flags.has('keep') });
+    emit(ctx, args, result, [`target: ${result.target}`, ...(result.previous === null ? [] : [`previous: ${result.previous}`])]);
+    return EXIT.ok;
+  }
+  if (args.flags.has('keep')) throw bad('--keep belongs to doc target');
+  if (sub === 'check') return checkAnswer(ctx, args, 'specs/tech.md', docCheck(ctx.root), 'specs/tech.md is complete');
+  throw bad(`unknown doc sub-command "${sub}"; use target or check`);
+}
+
+/** `spec-check tldr target | tldr check | tldr facts` (spec 074, ISC-620, ISC-621): specs/tldr.md and its facts. */
+async function tldrCommand(ctx: Context, args: Args): Promise<number> {
+  const sub = required(args, 0, 'sub-command (target, check or facts)');
+  if (args.positional.length > 1) throw bad(`unexpected argument "${args.positional[1] ?? ''}"`);
+  if (sub === 'target') {
+    const result = tldrTarget();
+    emit(ctx, args, result, [`target: ${result.target}`]);
+    return EXIT.ok;
+  }
+  if (sub === 'check') {
+    const result = tldrCheck(ctx.root);
+    // A complete but stale TL;DR passes (ISC-620): staleness is reported, never refused.
+    const okLine = result.stale ? 'specs/tldr.md is complete but stale: run /spec tldr' : 'specs/tldr.md is complete and fresh';
+    return checkAnswer(ctx, args, 'specs/tldr.md', result, okLine);
+  }
+  if (sub === 'facts') {
+    const facts = await tldrFacts(ctx.root);
+    const lines = facts.specs.map((s) => `${s.number}  ${s.stage}  ${s.progress}  ${s.title}`);
+    emit(ctx, args, facts, lines.length === 0 ? ['no open specs'] : lines);
+    return EXIT.ok;
+  }
+  throw bad(`unknown tldr sub-command "${sub}"; use target, check or facts`);
+}
+
 // ── the router ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 interface Command {
@@ -1970,6 +2008,19 @@ const COMMANDS: Readonly<Record<string, Command>> = {
       'append one step line to .spectant/activity.jsonl (dispatch, build, patch and apply need --claim, patch and apply also --worktree; probe --claim and --result; question --text); a run event without --claim exits 1, nothing written',
     values: ['task', 'claim', 'session', 'result', 'text', 'worktree'],
     run: activity,
+  },
+  doc: {
+    usage: 'doc target [--keep] [--json] | doc check [--json]',
+    summary:
+      'the technical documentation specs/tech.md: target names it and first copies an existing one to specs/tech.prev.md (--keep: nothing written); check exits 0 when its four sections stand, 3 (incomplete) with every finding otherwise',
+    flags: ['keep'],
+    run: docCommand,
+  },
+  tldr: {
+    usage: 'tldr target [--json] | tldr check [--json] | tldr facts --json',
+    summary:
+      'the TL;DR specs/tldr.md: target names it; check exits 0 when complete (and says when it is stale), 3 (incomplete) on a missing file, section, generated: or open spec; facts prints per open spec its number, title, stage, progress, open claims, fog lines, prototypes and artifacts. Writes nothing',
+    run: tldrCommand,
   },
   hook: {
     usage: 'hook',

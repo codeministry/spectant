@@ -89,6 +89,11 @@
   justify-self: stretch;
 }
 
+/* Spec 074 (ISC-627): the stale notice's hint stands on its own line under the heading, the chip in the action slot. */
+.lib-stale-hint {
+  display: block;
+}
+
 /* spec 021 § Library reader (ISC-251, ISC-251.1): each `##` a disclosure, the heading in the brand face 15/24, the
    first sentence whole under it, 13/20 muted, both aligned past the chevron. A collapsed section is 57 px (1 + 36 - 8
    + 20 + 8), not the 73 px of the primitive's 48 px head, so twenty of them fit three screens; the whole collapsed

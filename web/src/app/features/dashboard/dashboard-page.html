@@ -15,8 +15,8 @@
     <!-- One order at every tier: KPI band, TL;DR (fresh or stale, always second), the row of Waits on you and In
          progress (spec 064), Next up, the warnings. -->
     <app-kpi-band [model]="view" [ws]="page.ws()" [changed]="refresh.changedKpis()" />
-    @if (view.brief) {
-      <app-brief [brief]="view.brief" />
+    @if (view.brief || view.tldrCommand) {
+      <app-brief [brief]="view.brief" [tldrCommand]="view.tldrCommand ?? null" />
     }
     @if (view.guidance || view.working.length > 0) {
       <div class="lists" data-lists>

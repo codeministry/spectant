@@ -118,6 +118,28 @@ describe('activity text: round trip through the readers', () => {
     ]);
   });
 
+  test('repo docs (spec 074): the doc and tldr runs work on the repository like init, written as spec, touching no item', () => {
+    const since = Date.parse('2026-03-08T12:00:00Z');
+    const base = { session: 'a:claude:sess-1', ts: '2026-03-08T12:00:00Z' };
+    const doc = runStartLine({ ...base, run: 'r-doc', target: 'doc', command: '/spec doc' });
+    const tldr = runStartLine({ ...base, run: 'r-tldr', target: 'tldr', command: '/spec tldr' });
+    expect(JSON.parse(doc)).toMatchObject({ spec: 'doc' });
+    expect(JSON.parse(doc)).not.toHaveProperty('idea');
+    expect(JSON.parse(tldr)).toMatchObject({ spec: 'tldr' });
+    expect(JSON.parse(tldr)).not.toHaveProperty('idea');
+    const ended = runEndLine({ ...base, run: 'r-doc', target: 'doc', command: '/spec doc', outcome: 'ok', ts: '2026-03-08T12:05:00Z' });
+    expect(JSON.parse(ended)).toMatchObject({ spec: 'doc', outcome: 'ok' });
+    const reading = activityReading(doc + tldr);
+    expect(reading.diagnostics).toEqual([]);
+    expect(reading.openRuns?.map((r) => [r.run, r.spec, r.idea])).toEqual([
+      ['r-doc', 'doc', undefined],
+      ['r-tldr', 'tldr', undefined],
+    ]);
+    expect(activityReading(doc + tldr + ended).openRuns?.map((r) => r.run)).toEqual(['r-tldr']);
+    const strip = (items: readonly ItemStateInfo[]) => items.map((i) => [i.kind, i.spec, i.id, i.state]);
+    expect(strip(beaconStates(doc + tldr, since + 5 * MIN))).toEqual(strip(beaconStates('', since + 5 * MIN)));
+  });
+
   test('a start and its end with the same run id leave no open run, for every outcome the planner writes', () => {
     for (const outcome of ['ok', 'error'] as const) {
       const run = { run: `r-${outcome}`, target: '003', command: '/spec tasks 003', session: 'a:claude:sess-1' };

@@ -137,6 +137,7 @@
   ],
   "archive": [],
   "brief": null,
+  "tldrCommand": "/spec tldr",
   "services": [],
   "diagnostics": [],
   "ideas": {

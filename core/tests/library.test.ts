@@ -994,3 +994,59 @@ describe('worktree copy (spec 027, ISC-181)', () => {
     expect(catalogSourceOf(root, { path: `${S1}/plan.md`, spec: S1 })).toEqual({ dir: specs, rel: `${S1}/plan.md` });
   });
 });
+
+// The command that brings `specs/tech.md` and `specs/tldr.md` up to date (spec 074, ISC-626): `/spec doc` for tech.md
+// and `/spec tldr` for tldr.md, both through `commandFor`, exactly when the file is absent or reads stale (ISC-155.1);
+// null while it is there and fresh. A present entry carries it as `command`; an absent file is no entry, so the
+// catalog names both in `commands`, which the web reads for the absent case too.
+describe('repo docs command (ISC-626)', () => {
+  const roots: string[] = [];
+  const fresh = { 'specs/tldr.md': '2026-03-14T09:00:00Z' };
+
+  async function catalogOf(overrides: Readonly<Record<string, string>> = {}, removed: readonly string[] = []): Promise<LibraryCatalog> {
+    const root = workspaceCopy(overrides, removed);
+    roots.push(root);
+    return readCatalog(root);
+  }
+  const entry = (c: LibraryCatalog, path: string): LibraryDoc | undefined => c.docs.find((d) => d.path === path);
+
+  afterAll(() => {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  });
+
+  test('repo docs command: fresh tech.md and tldr.md carry no command, nor does the catalog', async () => {
+    const c = await catalogOf(fresh);
+    expect([entry(c, 'tech.md')?.state, entry(c, 'tldr.md')?.state]).toEqual(['ok', 'ok']);
+    expect([entry(c, 'tech.md')?.command, entry(c, 'tldr.md')?.command]).toEqual([null, null]);
+    expect(c.commands).toEqual({ tech: null, tldr: null });
+    // Every other document carries no `command` field at all.
+    expect(c.docs.filter((d) => d.type !== 'tech' && d.type !== 'tldr' && 'command' in d).map((d) => d.path)).toEqual([]);
+  });
+
+  test('repo docs command: a stale tech.md names /spec doc, a stale tldr.md /spec tldr', async () => {
+    const c = await catalogOf({ [`specs/${S4}/spec.md`]: '2026-03-14T10:00:00Z' });
+    expect([entry(c, 'tech.md')?.state, entry(c, 'tldr.md')?.state]).toEqual(['stale', 'stale']);
+    expect([entry(c, 'tech.md')?.command, entry(c, 'tldr.md')?.command]).toEqual(['/spec doc', '/spec tldr']);
+    expect(c.commands).toEqual({ tech: '/spec doc', tldr: '/spec tldr' });
+    // Only tldr.md stale (the fixture's own times): only its command.
+    const only = await catalogOf();
+    expect(only.commands).toEqual({ tech: null, tldr: '/spec tldr' });
+    expect(entry(only, 'tech.md')?.command).toBeNull();
+  });
+
+  test('repo docs command: an absent tech.md or tldr.md is no entry, and the catalog names its command', async () => {
+    const c = await catalogOf(fresh, ['specs/tech.md', 'specs/tldr.md']);
+    expect([entry(c, 'tech.md'), entry(c, 'tldr.md')]).toEqual([undefined, undefined]);
+    expect(c.commands).toEqual({ tech: '/spec doc', tldr: '/spec tldr' });
+    const noTech = await catalogOf(fresh, ['specs/tech.md']);
+    expect(noTech.commands).toEqual({ tech: '/spec doc', tldr: null });
+  });
+
+  test('repo docs command: catalogDocAt carries the same command as the catalog entry', async () => {
+    const root = workspaceCopy({ [`specs/${S4}/spec.md`]: '2026-03-14T10:00:00Z' });
+    roots.push(root);
+    const listed = await readCatalog(root);
+    for (const path of ['tech.md', 'tldr.md']) expect(await catalogDocAt(root, path)).toEqual(entry(listed, path) ?? null);
+    expect((await catalogDocAt(root, 'constitution.md'))?.command).toBeUndefined();
+  });
+});

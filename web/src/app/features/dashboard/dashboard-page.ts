@@ -86,7 +86,8 @@ export class DashboardPage {
   }
 }
 
-type DashboardPageView = DashboardView & KpiBandModel & { readonly brief: BriefModel | null };
+/** `tldrCommand` is core's (spec 074, ISC-627); absent in a model older than it, which the Brief reads as null. */
+type DashboardPageView = DashboardView & KpiBandModel & { readonly brief: BriefModel | null; readonly tldrCommand?: string | null };
 
 /** The body as the components' view, `working` included (`dashboardViewOf`); null while it lacks what they all read. */
 function readView(body: unknown): DashboardPageView | null {

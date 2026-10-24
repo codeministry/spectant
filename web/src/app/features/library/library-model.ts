@@ -238,6 +238,8 @@ export function specScope(catalog: LibraryCatalog, spec: string): LibraryCatalog
     fog: catalog.fog.filter((line) => specRefMatches(line.spec, spec)),
     missing: own.filter((doc) => doc.state === 'missing').length,
     stale: own.filter((doc) => doc.state === 'stale').length,
+    // tech.md and tldr.md are workspace documents a spec's area does not list, so it names no command for them.
+    commands: { tech: null, tldr: null },
   };
 }
 

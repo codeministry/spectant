@@ -29,7 +29,7 @@ const WIDTHS = [1440, 600, 390] as const;
 
 /** The text of one `<!-- section: id -->` of the stub's TL;DR, its lines joined as the rendered paragraph joins them. */
 function tldrSection(id: string): string {
-  const match = new RegExp(`<!-- section: ${id} -->\\n([\\s\\S]*?)(?:\\n\\n|$)`, 'u').exec(STUB_DENSE.tldr);
+  const match = new RegExp(`<!-- section: ${id} -->\\n([\\s\\S]*?)(?:\\n\\n|$)`, 'u').exec(STUB_DENSE.tldr); // single-core: allow — test oracle: first paragraph of a stub fixture section, independent of core
   if (!match?.[1]) throw new Error(`STUB_DENSE.tldr has no section ${id}`);
   return match[1].replace(/\s+/gu, ' ').trim();
 }
