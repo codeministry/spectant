@@ -109,12 +109,20 @@
 
 /*
  * The filter button: at the head's end, centred on the 40 px row like the mark and the figures; a 6 px primary dot
- * at its top-right corner marks a set selection, so a hidden filter never narrows the list unseen.
+ * at its top-right corner marks a set selection, so a hidden filter never narrows the list unseen. While the rows
+ * show, the icon is `--disp-ink` on the `--disp-t` tint, hover included, so open and closed differ at a glance; the
+ * `.head` prefix outweighs the ghost button's own colour and hover tint.
  */
 .filter-toggle {
   position: relative;
   flex: none;
   margin-inline-start: auto;
+}
+
+.head .filter-toggle[aria-expanded="true"] {
+  --btn-bg: var(--disp-t);
+
+  color: var(--disp-ink);
 }
 
 .filter-toggle[data-filtering]::after {

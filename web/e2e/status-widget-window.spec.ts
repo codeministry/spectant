@@ -14,7 +14,7 @@
  *   is one flat row at most 48 px high: the brand mark first, the three figures (`dl.kpis` > `div.kpi`) right of it on
  *   the same line, no `ui-kpi-tile` card, nothing wrapping or overflowing. The filter button (`button.filter-toggle`)
  *   stands last, flush with the head's right edge and on the centre line of mark and figures; a click hides both
- *   filter rows and a second shows them again.
+ *   filter rows and a second shows them again, and the open button differs in icon and background colour.
  * - `bun run e2e -- status-widget-window -g layout` (ISC-607): the layout tests above, in light and dark theme, with
  *   the head, the filter (`section.widget-filter`, two `ui-filter-chips`) and the command lines (`div.entry-cmd` >
  *   `ui-command-chip`): nothing scrolls sideways (page, filter, chip rows, rows), every row's title and copy chip stay
@@ -277,13 +277,26 @@ for (const width of [360, 480, 820] as const) {
         expect(g.head.height).toBeLessThanOrEqual(HEAD_MAX);
         for (const [i, o] of g.overflow.entries()) expect(o.scrollWidth, `overflow of box ${String(i)}`).toBeLessThanOrEqual(o.clientWidth);
 
-        // One click hides both filter rows together, a second shows them again.
+        // One click hides both filter rows together, a second shows them again; open and closed differ in colour.
         const toggle = head.locator('button.filter-toggle');
         const filter = page.locator('app-status-widget-page section.widget-filter');
+        // Read after the button's colour transitions settle, never mid-way.
+        const colours = (): Promise<string> =>
+          toggle.evaluate(async (el) => {
+            await Promise.all(el.getAnimations().map((animation) => animation.finished));
+            const style = getComputedStyle(el);
+            return `${style.color} on ${style.backgroundColor}`;
+          });
         await expect(filter).toBeVisible();
+        await page.mouse.move(0, 0);
+        const open = await colours();
         await toggle.click();
         await expect(toggle).toHaveAttribute('aria-expanded', 'false');
         await expect(filter).toBeHidden();
+        await page.mouse.move(0, 0);
+        const closed = await colours();
+        expect(open.split(' on ')[0], 'icon colour open vs closed').not.toBe(closed.split(' on ')[0]);
+        expect(open.split(' on ')[1], 'background open vs closed').not.toBe(closed.split(' on ')[1]);
         await toggle.click();
         await expect(toggle).toHaveAttribute('aria-expanded', 'true');
         await expect(filter.locator('ui-filter-chips')).toHaveCount(2);
