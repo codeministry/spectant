@@ -19,9 +19,23 @@
           </div>
         </dl>
       }
+      @if (hasFilter()) {
+        <button
+          #filterToggle
+          ui-icon-button
+          icon="filter"
+          size="sm"
+          class="filter-toggle"
+          aria-controls="widget-filter"
+          [label]="(filtering() ? 'statusWidget.filter.toggleSet' : 'statusWidget.filter.toggle') | transloco"
+          [attr.aria-expanded]="filterOpen()"
+          [attr.data-filtering]="filtering() ? '' : null"
+          (click)="toggleFilter()"
+        ></button>
+      }
     </header>
     @if (hasFilter()) {
-      <section class="widget-filter">
+      <section id="widget-filter" class="widget-filter" [hidden]="!filterOpen()">
         <span class="filter-label" aria-hidden="true">{{ 'statusWidget.filter.workspace' | transloco }}</span>
         <ui-filter-chips
           #workspaceRow

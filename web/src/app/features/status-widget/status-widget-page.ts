@@ -21,6 +21,7 @@ import { reloadOnRefresh } from '../../layout/shell/reload-on-refresh';
 import { isTabMode, saveWidgetBounds } from '../../layout/shell/widget-window';
 import { UiBrandMark } from '../../shared/ui/brand-mark/brand-mark';
 import { UiButton } from '../../shared/ui/button/button';
+import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { isToneStage, toneOfStage } from '../../shared/ui/stage-tone';
@@ -29,9 +30,12 @@ import {
   ACTIVE_KEY,
   activeCount,
   EMPTY_FILTER,
+  isFiltering,
   loadWidgetFilter,
+  loadWidgetFilterOpen,
   pruneFilter,
   saveWidgetFilter,
+  saveWidgetFilterOpen,
   stageCounts,
   stageOptions,
   visibleGroups,
@@ -58,7 +62,8 @@ export const BOUNDS_SETTLE_MS = 400;
  * Between head and list stands the filter (spec 072, T19, ISC-603): two multi-select chip rows, workspace and stage,
  * over the options of the unfiltered body (`widget-filter.ts`), so a toggle never removes the chip under the focus.
  * The list renders `visibleGroups` of the selection; an empty selection is the unfiltered list. Without a listed spec
- * there is no filter, only the empty line. `filter` is the selection's single source.
+ * there is no filter, only the empty line. `filter` is the selection's single source. The filter button at the head's
+ * end shows and hides both rows together; a hidden filter keeps its selection, and the button marks it while one is set.
  *
  * It stays current over the app's own live path (T34, ISC-587): injecting `RefreshService` starts the root
  * `LiveStreamService` (one `EventSource`, in this window without a shell too) and its fallback poll; each frame's
@@ -69,7 +74,7 @@ export const BOUNDS_SETTLE_MS = 400;
  */
 @Component({
   selector: 'app-status-widget-page',
-  imports: [TranslocoPipe, UiBrandMark, UiButton, UiFilterChips, UiNotice, StatusWidgetRow],
+  imports: [TranslocoPipe, UiBrandMark, UiButton, UiIconButton, UiFilterChips, UiNotice, StatusWidgetRow],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-widget-page.html',
   styleUrl: './status-widget-page.css',
@@ -114,6 +119,19 @@ export class StatusWidgetPage {
 
   /** Whether the filter shows: only while the body lists a spec. */
   readonly hasFilter = computed(() => this.status()?.workspaces.some((ws) => ws.specs.length > 0) ?? false);
+
+  /** Whether the filter rows are shown; the head's filter button toggles both together, and the choice is stored. */
+  readonly filterOpen = signal(loadWidgetFilterOpen());
+
+  /** Whether a selection narrows the list, so the filter button marks it while the rows are hidden. */
+  readonly filtering = computed(() => isFiltering(this.filter()));
+
+  /** Shows or hides both filter rows and stores the choice. */
+  toggleFilter(): void {
+    const open = !this.filterOpen();
+    this.filterOpen.set(open);
+    saveWidgetFilterOpen(open);
+  }
 
   /**
    * The workspace chips: the path tail and its facet count under the stage selection (ISC-611), 0 included; an
@@ -171,10 +189,17 @@ export class StatusWidgetPage {
   /** The workspace chip row, whose first chip takes the focus after a reset. */
   private readonly workspaceRow = viewChild<string, ElementRef<HTMLElement>>('workspaceRow', { read: ElementRef });
 
-  /** Clears both selections from the no-match line and moves the focus to the first workspace chip (ISC-605). */
+  /** The head's filter button, which takes the focus after a reset while the rows are hidden. */
+  private readonly filterToggle = viewChild<string, ElementRef<HTMLElement>>('filterToggle', { read: ElementRef });
+
+  /**
+   * Clears both selections from the no-match line and moves the focus to the first workspace chip (ISC-605), or to the
+   * filter button while the rows are hidden.
+   */
   resetFilter(): void {
     this.setFilter(EMPTY_FILTER);
-    this.workspaceRow()?.nativeElement.querySelector<HTMLButtonElement>('button')?.focus();
+    if (this.filterOpen()) this.workspaceRow()?.nativeElement.querySelector<HTMLButtonElement>('button')?.focus();
+    else this.filterToggle()?.nativeElement.focus();
   }
 
   /** Replaces the workspace selection. */
