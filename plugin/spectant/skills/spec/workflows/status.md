@@ -30,6 +30,8 @@ Print the output header from `SKILL.md`, then this block as it stands. It follow
 | Close | `/spec done <NNN> [archive]` | check every close condition, set `phase: complete`; `archive` moves it to `specs/archive/` |
 | Keep track | `/spec` | this help, the status of every spec, the drift audit |
 | | `/spec sync <NNN>` | reconcile one spec with the master `ISA.md` |
+| | `/spec doc [--keep]` | rewrite the tech documentation `specs/tech.md`: overview, architecture, stack, risks |
+| | `/spec tldr` | write the TL;DR `specs/tldr.md`: what the open specs build and what can be tried now |
 
 ## 2 · Status
 

@@ -109,7 +109,8 @@ export interface RunIdInput {
 const CLAIM_ID = /^ISC-\d+(\.\d+)*$/u;
 const TASK_ID = /^[TC]\d+$/u; // a tasks.md task `T<k>` or a frontier claim unit `C<k>` of a spec without tasks.md (spec 056)
 const IDEA_SLUG = /^[a-z0-9][a-z0-9-]*$/u;
-const INIT_TARGET = 'init';
+/** The targets of runs on the repository rather than one spec or idea: `init`, and the repo docs `doc` and `tldr` (spec 074). */
+const REPO_TARGETS: ReadonlySet<string> = new Set(['init', 'doc', 'tldr']);
 const RUN_EVENTS: ReadonlySet<string> = new Set<RunEvent>(['dispatch', 'build', 'patch', 'apply']);
 const OUTCOMES: ReadonlySet<string> = new Set<RunOutcome>(['ok', 'error', 'released']);
 const PROBE_RESULTS: ReadonlySet<string> = new Set<ProbeResult>(['red', 'green']);
@@ -152,12 +153,12 @@ const lineOf = (entry: Record<string, string>): string => `${JSON.stringify(entr
 
 const optional = (key: string, value: string | undefined): Record<string, string> => (value === undefined ? {} : { [key]: value });
 
-/** The key a run's target is written under: a spec (`NNN`, `NNN-slug`, or `init`) or an idea slug. */
+/** The key a run's target is written under: a spec (`NNN`, `NNN-slug`, or a repository target `init`, `doc`, `tldr`) or an idea slug. */
 function targetOf(target: string): { spec: string } | { idea: string } {
   oneLine(target, 'the target', true);
-  if (SPEC_ID.test(target) || SPEC_FOLDER.test(target) || target === INIT_TARGET) return { spec: target };
+  if (SPEC_ID.test(target) || SPEC_FOLDER.test(target) || REPO_TARGETS.has(target)) return { spec: target };
   if (IDEA_SLUG.test(target)) return { idea: target };
-  throw new ActivityTextError('bad-target', `the target ${JSON.stringify(target)} is no spec NNN, idea slug or init`);
+  throw new ActivityTextError('bad-target', `the target ${JSON.stringify(target)} is no spec NNN, idea slug, init, doc or tldr`);
 }
 
 function claimEvent(event: 'claim' | 'release', input: ClaimLineInput): string {

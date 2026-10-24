@@ -236,10 +236,13 @@ export function fillReason(template: string, values: Readonly<Record<string, str
 
 // ─── Commands in the plugin's form (spec 031, ISC-265) ──────────────────────────────────────────────────────────────
 
-/** The plugin's eight subcommands of `/spec`, in its help order; the bare `/spec` is help, status, drift and sync. */
-export type SpecSubcommand = 'init' | 'idea' | 'new' | 'plan' | 'tasks' | 'implement' | 'review' | 'done';
+/**
+ * The plugin's ten subcommands of `/spec`, in its help order; the bare `/spec` is help, status, drift and sync. `doc`
+ * and `tldr` (spec 074) write the repository's `specs/tech.md` and `specs/tldr.md`.
+ */
+export type SpecSubcommand = 'init' | 'idea' | 'new' | 'plan' | 'tasks' | 'implement' | 'review' | 'done' | 'doc' | 'tldr';
 
-export const SPEC_SUBCOMMANDS: readonly SpecSubcommand[] = ['init', 'idea', 'new', 'plan', 'tasks', 'implement', 'review', 'done'];
+export const SPEC_SUBCOMMANDS: readonly SpecSubcommand[] = ['init', 'idea', 'new', 'plan', 'tasks', 'implement', 'review', 'done', 'doc', 'tldr'];
 
 const isSubcommand = (word: string | undefined): word is SpecSubcommand => SPEC_SUBCOMMANDS.includes(word as SpecSubcommand);
 
@@ -282,6 +285,8 @@ const OLD_KEYS: Readonly<Record<string, string>> = {
   'code-review': 'review code',
   complete: 'done',
   archive: 'done',
+  doc: 'doc',
+  tldr: 'tldr',
 };
 
 /**

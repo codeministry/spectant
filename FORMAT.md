@@ -1428,7 +1428,11 @@ story's file name without `.md`; the command allocates the number (§ `idea`, Al
 plugin's form, `/spec <subcommand> NNN`, built by one function (`commandFor`, `stage.ts`): the bare `/spec NNN` is the
 plugin's status row (status, drift and sync of one spec), and the code review is `/spec review NNN code`. A recorded
 command (a run's `command` in `.spectant/activity.jsonl`, an event's in `events.jsonl`) may still carry an old
-`spec-<name>` command of the skill the plugin replaced; `commandKey` reads both forms as the same subcommand.
+`spec-<name>` command of the skill the plugin replaced; `commandKey` reads both forms as the same subcommand. The
+plugin's subcommands (`SPEC_SUBCOMMANDS`, `stage.ts`) are, in its help order, `init`, `idea`, `new`, `plan`, `tasks`,
+`implement`, `review`, `done`, `doc` and `tldr` (spec 074); `/spec doc` writes `specs/tech.md` and `/spec tldr` writes
+`specs/tldr.md`, and an old run's `/spec-doc` and `/spec-tldr` read as them. Any other word after `/spec` is no
+subcommand: `commandKey` reads it as no key, and the plugin shows its help.
 
 The placeholders of the Reason column:
 
@@ -2011,7 +2015,9 @@ to the millisecond and eight hex digits of a digest over the start's time, sessi
 `r-20260308T120000123Z-1a2b3c4d`, deterministic for the same inputs. A target of three digits or a folder name is
 written as `spec`, a story slug as `idea`. `/spec init` works on the repository rather than one spec or idea, and the
 line must name exactly one of the two, so its run names `spec: "init"`, a name no spec folder carries: the pair is read
-like any other, and while open the run puts no item into `running`.
+like any other, and while open the run puts no item into `running`. The repo docs commands `/spec doc` and
+`/spec tldr` (spec 074) work on the repository too and are written the same way, `spec: "doc"` and `spec: "tldr"`,
+never as an idea slug: `init`, `doc` and `tldr` are the three repository targets.
 
 From `core/fixtures/beacon/.spectant/activity.jsonl`: a run that ended with an error, one that ended `ok`, and two
 open runs, one on a spec and one on an idea:
@@ -2118,7 +2124,7 @@ the `/spec` subcommand of its command as `phase` (`plan`, `tasks`, `review`, `im
 mapped as the item states map it, the code review read as `review`; `null` for a command the plugin has no subcommand
 for), the command in the plugin's form (`/spec review 006 code`), the start's `ts` as `since` and its `session` as
 written, for every subcommand alike. Its age does not matter here: whether the run still counts as running is the
-item state's (`state`). A run of `/spec init` names no spec and lands on no row. On an `implement` run only, `step` is
+item state's (`state`). A run of `/spec init`, `/spec doc` or `/spec tldr` names no spec and lands on no row. On an `implement` run only, `step` is
 the newest run event (`dispatch`, `build`, `patch`, `apply`) or `probe` on the spec at or after the run's start, as
 `{kind, at, task, claim?, session, result?}` (`result` on a probe); a `question` is no step. A line counts for the spec
 by its claim, one of the spec's own, or without a claim by its spec session or spec worktree (ISC-213), whatever its

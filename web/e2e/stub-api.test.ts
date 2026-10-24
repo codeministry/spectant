@@ -3146,7 +3146,7 @@ describe('stub API: the dense workspace via X-Spectant-Stub-Dense (spec 021, T5,
     const served = await dashboard(on());
     const [first] = Object.entries(served.brief?.sections ?? {});
     expect(first?.[0]).toBe('overview');
-    const raw = /<!-- section: overview -->\n([\s\S]*?)\n\n/u.exec(STUB_DENSE.tldr)?.[1] ?? '';
+    const raw = /<!-- section: overview -->\n([\s\S]*?)\n\n/u.exec(STUB_DENSE.tldr)?.[1] ?? ''; // single-core: allow — test oracle: first paragraph of a stub fixture section, independent of core
     const text = raw.replace(/\s+/gu, ' ').trim();
     expect(text.length).toBeGreaterThan(200);
     expect(text.length).toBeLessThanOrEqual(400);

@@ -779,7 +779,7 @@ async function plantRepoFiles(): Promise<PlantedWorktreeRepo> {
     if (!from.test(text)) throw new Error(`repo files: ${from.source} not found in ${file}`);
     writeFileSync(path, text.replace(from, to));
   };
-  edit("tldr.md", /^<!-- section: overview -->$/m, `<!-- section: overview -->\n${COPY_TLDR_LINE}`);
+  edit("tldr.md", /^<!-- section: overview -->$/m, `<!-- section: overview -->\n${COPY_TLDR_LINE}`); // single-core: allow — edit anchor in a fixture copy, not a reader
   edit("tech.md", /^# Harbor — technical documentation$/m, `# ${COPY_TECH_TITLE}`);
   expect((await repo.git(repo.worktrees.spec, "commit", "-q", "-m", "specs: tldr and tech in the worktree", "--", "specs/tldr.md", "specs/tech.md")).code).toBe(0);
   appendFileSync(join(specs, "ideas", "registry-webhooks.md"), `\n${COPY_IDEA_LINE}\n`);

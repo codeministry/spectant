@@ -45,11 +45,27 @@ function runSection(text: string, start: number): string {
 }
 
 describe('every workflow opens and closes its run (ISC-574)', () => {
-  test('the workflow directory holds the nine subcommands, done and implement included', () => {
-    for (const name of ['done.md', 'idea.md', 'implement.md', 'init.md', 'new.md', 'plan.md', 'review.md', 'status.md', 'tasks.md']) {
+  test('the workflow directory holds the eleven subcommands, done, implement, doc and tldr included', () => {
+    for (const name of ['doc.md', 'done.md', 'idea.md', 'implement.md', 'init.md', 'new.md', 'plan.md', 'review.md', 'status.md', 'tasks.md', 'tldr.md']) {
       expect(files).toContain(name);
     }
+    expect(files).toHaveLength(11);
   });
+
+  // Spec 074 (ISC-617): doc and tldr work on the whole repository, not on one spec, so their run names the literal
+  // subject as init does; SKILL.md routes each to its own workflow file, and the help lists both commands.
+  for (const sub of ['doc', 'tldr']) {
+    test(`${sub}.md opens a repo-wide run named ${sub}, SKILL.md routes /spec ${sub} to it and the help lists it`, () => {
+      const file = `${sub}.md`;
+      expect(files).toContain(file);
+      const text = readFileSync(join(WORKFLOWS, file), 'utf8');
+      expect(RUN_START.exec(text)?.[1]).toBe(sub);
+      const skill = readFileSync(join(SKILL_DIR, 'SKILL.md'), 'utf8');
+      expect(skill).toMatch(new RegExp(`^\\| \`${sub}\` \\|[^\\n]*\\| \`workflows/${sub}\\.md\` \\|`, 'mu'));
+      const help = readFileSync(join(WORKFLOWS, 'status.md'), 'utf8');
+      expect(help).toMatch(new RegExp(`^\\|[^\\n]*\\| \`/spec ${sub}[\` ]`, 'mu'));
+    });
+  }
 
   for (const name of files) {
     describe(name, () => {
