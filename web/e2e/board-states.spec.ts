@@ -162,17 +162,4 @@ test.describe('states', () => {
       await expect(rows.nth(i)).toContainText(EN.states.card[state as CardState]);
     }
   });
-
-  test('states: a Needs you row in the rail opens the same card detail, with its state word', async ({ page }) => {
-    const card = LIVE.needsYou[0];
-    if (card === undefined) throw new Error('the live golden holds no Needs you card');
-    await page.goto(BOARD);
-    await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-    await page.locator(`aside.shell-rail app-needs-you [data-needs-card="${card.task}"]`).click();
-    const detail = page.locator(`dialog[open] [data-card-detail][data-task="${card.task}"]`);
-    await expect(detail.locator('ui-state-chip').first()).toHaveText(EN.states.card[card.state]);
-    await expect(detail.locator('[data-history] li').last()).toHaveAttribute('data-history-state', card.state);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('dialog[open] [data-card-detail]')).toHaveCount(0);
-  });
 });

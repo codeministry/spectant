@@ -126,15 +126,13 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: NOTES_VIEW, place: 'note delete', route: '/w/harbor/s/002/notes/00000000-0000-4000-8000-000000000003', at: '[data-note-delete]', icon: 'trash' },
   { section: NOTES_VIEW, place: 'note back (single column)', width: 390, route: '/w/harbor/s/002/notes/00000000-0000-4000-8000-000000000003', at: '[data-notes-editor]', icon: 'arrow-left' },
 
-  // Live board (Lanes; Flow and History share the toolbar), matrix rail
+  // Live board (Lanes; Flow and History share the toolbar)
   { section: BOARD_VIEW, place: 'toolbar Lanes', route: '/w/harbor/s/002/board', at: '[data-control="view"] button >> nth=0', icon: 'rows-3' },
   { section: BOARD_VIEW, place: 'toolbar Flow', route: '/w/harbor/s/002/board', at: '[data-control="view"] button >> nth=1', icon: 'workflow' },
   { section: BOARD_VIEW, place: 'toolbar filter', route: '/w/harbor/s/002/board', at: '[data-board-controls] [data-lane-filter-open]', icon: 'layers' },
   { section: BOARD_VIEW, place: 'toolbar search', route: '/w/harbor/s/002/board', at: '[data-board-controls] .bsearch', icon: 'search' },
   { section: BOARD_VIEW, place: 'lane hide', route: '/w/harbor/s/002/board', at: '[data-lane] [data-hide-lane]', icon: 'x' },
   { section: BOARD_VIEW, place: 'waiting group summary', route: '/w/harbor/s/002/board', at: '[data-reason-group]', icon: 'chevron-down' },
-  { section: BOARD_VIEW, place: 'rail Needs you', route: '/w/harbor/s/002/board', at: '[data-stale-agent]', icon: 'triangle-alert' },
-  { section: 'board matrix', place: 'rail Needs you', route: '/w/harbor/s/002/matrix', at: '[data-stale-agent]', icon: 'triangle-alert' },
 
   // Help: the lifecycle figure (the map's other help keys have no place of their own on /help)
   { section: 'help', place: 'lifecycle file', route: '/help', at: '[data-lifecycle-stage="plan"] .wf-file', icon: 'file' },

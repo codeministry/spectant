@@ -84,39 +84,36 @@
         <ng-container [ngTemplateOutlet]="filteredTpl" />
       }
 
-      <!-- Spec 047 (ISC-278): in zen the scrub row leaves; the zen footer's frame bar steps the frames. -->
-      @if (!state.zen()) {
-        <div class="scrub">
-          <ui-scrubber
-            class="scrubber"
-            [frames]="live.stops()"
-            [markers]="live.markers()"
-            [value]="live.index()"
-            [playing]="board.playing()"
-            [ariaLabel]="'board.frame.scrubber' | transloco"
-            (valueChange)="board.setFrame($event)"
-            (playingChange)="board.playing.set($event)"
-          />
-          <div class="frame-meta">
-            @if (live.isLive()) {
-              <span class="flabel" data-frame-chip="live"
-                ><i class="live-i" aria-hidden="true"></i>{{ 'board.frame.live' | transloco }}<span class="updated" data-frame-updated>
-                  · {{ 'board.frame.updated' | transloco: board.ago() }}</span
-                ></span
-              >
-            } @else {
-              <span class="history" data-frame-chip="history">
-                <span class="flabel" data-frame-label>{{ 'board.frame.replay' | transloco: { label: f.label, kind: ('board.frame.kinds.' + f.kind | transloco) } }}</span>
-                <span class="hist-chip" data-history-chip>{{ 'board.frame.historyChip' | transloco }}</span>
-                <button type="button" class="btn btn-sm tool back" data-back-to-live (click)="board.setFrame(live.lastIndex())">{{ 'board.frame.backToLive' | transloco }}</button>
-              </span>
-            }
-            <p class="progress-line" data-progress>
-              {{ 'board.progress' | transloco: { closed: f.progress.claims.closed, claims: f.progress.claims.total, landed: f.progress.tasks.landed, tasks: f.progress.tasks.total } }}
-            </p>
-          </div>
+      <div class="scrub">
+        <ui-scrubber
+          class="scrubber"
+          [frames]="live.stops()"
+          [markers]="live.markers()"
+          [value]="live.index()"
+          [playing]="board.playing()"
+          [ariaLabel]="'board.frame.scrubber' | transloco"
+          (valueChange)="board.setFrame($event)"
+          (playingChange)="board.playing.set($event)"
+        />
+        <div class="frame-meta">
+          @if (live.isLive()) {
+            <span class="flabel" data-frame-chip="live"
+              ><i class="live-i" aria-hidden="true"></i>{{ 'board.frame.live' | transloco }}<span class="updated" data-frame-updated>
+                · {{ 'board.frame.updated' | transloco: board.ago() }}</span
+              ></span
+            >
+          } @else {
+            <span class="history" data-frame-chip="history">
+              <span class="flabel" data-frame-label>{{ 'board.frame.replay' | transloco: { label: f.label, kind: ('board.frame.kinds.' + f.kind | transloco) } }}</span>
+              <span class="hist-chip" data-history-chip>{{ 'board.frame.historyChip' | transloco }}</span>
+              <button type="button" class="btn btn-sm tool back" data-back-to-live (click)="board.setFrame(live.lastIndex())">{{ 'board.frame.backToLive' | transloco }}</button>
+            </span>
+          }
+          <p class="progress-line" data-progress>
+            {{ 'board.progress' | transloco: { closed: f.progress.claims.closed, claims: f.progress.claims.total, landed: f.progress.tasks.landed, tasks: f.progress.tasks.total } }}
+          </p>
         </div>
-      }
+      </div>
       @if (f.stop; as stop) {
         <p class="stop" data-stop>{{ 'board.frame.stop' | transloco: { reason: stop } }}</p>
       }
@@ -164,21 +161,6 @@
       <span class="mono">rounds.jsonl</span> {{ 'board.foot.live' | transloco }} <span class="mono">.spectant/activity.jsonl</span>.
     </p>
 
-    <!-- This frame and Needs you (T88): the shell's rail at wide (registered with RailContent); below wide
-         the bottom bar and its sheet; in zen the bar renders inside the zen footer, so there is one bar. -->
-    <app-live-rail
-      [frame]="f"
-      [events]="live.events()"
-      [needsYou]="live.needsYou()"
-      [steps]="board.operatorLane() ? board.operatorCards() : []"
-      [index]="live.index()"
-      [last]="live.lastIndex()"
-      [live]="live.isLive()"
-      [(barOpen)]="live.barOpen"
-      (opened)="live.openCard($event)"
-      (step)="board.setFrame($event)"
-    />
-
     @if (compact()) {
       <ui-sheet [open]="board.filterOpen()" tier="compact" [heading]="'board.filter.heading' | transloco" (openChange)="board.filterOpen.set($event)">
         <fieldset class="lane-filter" data-lane-filter>
@@ -194,11 +176,6 @@
           <ng-container [ngTemplateOutlet]="legendChips" />
         </div>
       </ui-sheet>
-    }
-
-    <!-- A row of This frame or Needs you opens the same card detail the card opens from its id. -->
-    @if (live.selected(); as c) {
-      <app-card-detail [card]="c" [history]="live.selectedHistory()" [open]="true" (openChange)="live.closeDetail($event)" />
     }
   } @else if (live.failed()) {
     <p class="empty" data-failed>{{ 'board.failed' | transloco }}</p>

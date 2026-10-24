@@ -10,7 +10,6 @@ import {
   frameEvents,
   laneOrder,
   matchesQuery,
-  needsYouOf,
   parseList,
   recutMarkers,
   resolveFrameIndex,
@@ -162,15 +161,6 @@ describe('frameEvents', () => {
     const after = frame(1, 'result', [card('T1', 'done'), card('T2', 'waiting'), card('T3', 'waiting')]);
     expect(frameEvents(before, after).map((c) => c.task)).toEqual(['T1', 'T3']);
     expect(frameEvents(null, before).map((c) => c.task)).toEqual(['T1', 'T2']);
-  });
-});
-
-describe('needsYouOf', () => {
-  it('takes the live model list as it is and applies the same rule to history frames', () => {
-    const live = { ...frame(1, 'live', [card('T1', 'question')]), needsYou: [card('T1', 'question')] };
-    expect(needsYouOf(live).map((c) => c.task)).toEqual(['T1']);
-    const history = frame(0, 'result', [card('T1', 'fail'), card('T2', 'operatorOpen'), card('T3', 'question'), card('T4', 'concerns')]);
-    expect(needsYouOf(history).map((c) => c.task)).toEqual(['T3', 'T4', 'T2']);
   });
 });
 

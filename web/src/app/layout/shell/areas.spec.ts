@@ -28,7 +28,9 @@ describe('SPEC_AREAS (spec 017, T45, ISC-158)', () => {
     expect(areaById('data').tabs).toEqual(['claims', 'tasks']);
     expect(areaById('library')).toMatchObject({ tabs: ['library'], icon: 'book', goKey: 'o', built: true, singleTabBar: true, noRail: true });
     expect(areaPath(areaById('library'))).toBe('library');
-    expect(SPEC_AREAS.filter((area) => area.noRail === true || area.singleTabBar === true).map((area) => area.id)).toEqual(['library']);
+    expect(SPEC_AREAS.filter((area) => area.singleTabBar === true).map((area) => area.id)).toEqual(['library']);
+    // Spec 075 (ISC-635): the Live tabs Board and Matrix run without the rail column too.
+    expect(SPEC_AREAS.filter((area) => area.noRail === true).map((area) => area.id)).toEqual(['live', 'library']);
   });
 
   it('lists no former Docs or Evidence tab in an area, and counts their routes as the Library until T48', () => {
