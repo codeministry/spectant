@@ -803,6 +803,7 @@
     },
     "lang": null
   },
+  "tldrCommand": "/spec tldr",
   "services": [],
   "diagnostics": [
     {

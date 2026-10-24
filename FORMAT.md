@@ -2176,6 +2176,18 @@ generated: 2026-03-08T12:00:00Z
 lang: de
 ```
 
+The plugin writes and refreshes the file with `/spec tldr` (spec 074, ISC-626). The dashboard model carries that command
+as `tldrCommand` (`commandFor('tldr')`): `/spec tldr` while `specs/tldr.md` is absent or `tldrState` reads it stale
+(`brief.stale`), `null` while it is there and fresh. The field is always present; `brief` stays as it was, `null`
+without the file. The library catalog judges the same file by its mtime against the newest `spec.md` (ISC-155.1) and
+names the command on its entry and in `commands.tldr` (§ The tech page).
+
+The TL;DR is drafted from facts, not from the files directly: `spec-check tldr facts --json` prints, per open spec
+(not `phase: complete`, not archived), sorted by number, `number`, `title`, `stage`, `progress` (`M/N`), `openClaims`,
+`fog` (the `- fog:` lines of `## Not yet specified`, without their marks), `prototypes` (files under the spec's
+`.design/`) and `artifacts` (files under its `artifacts/`), the paths relative to `specs/`. Stage and progress are
+those of `spec-check status`; the command reads through `core/` and writes nothing.
+
 ## The tech page
 
 `specs/tech.md` (`tech.ts`, spec 023): the repository's technical documentation, written by hand or by a documentation
@@ -2206,6 +2218,12 @@ repeated key appends its parts in file order, and text before the first marker b
   from the frontmatter, the title the dashboard row shows (frontmatter `task:`, else the slug without its number,
   read through the archive listing as the row does), the `## Goal` section, the first paragraph of plan.md's
   `## Approach` and the open `- fog:` lines (none once `phase: complete`).
+- **Command** (`library.ts`, spec 074, ISC-626): the plugin writes and refreshes the file with `/spec doc`, and the
+  TL;DR with `/spec tldr`. The library catalog entries of type `tech` and `tldr` always carry `command`:
+  `commandFor('doc')` (`/spec doc`) resp. `commandFor('tldr')` (`/spec tldr`) while the entry reads `stale`
+  (ISC-155.1), else `null`; no other entry has the field. An absent file is no entry, so the catalog also carries
+  `commands: { tech, tldr }`, each the writer's command while its file is absent or stale and `null` while it is there
+  and fresh, equal to the entry's `command` when one is listed. `catalogDocAt` returns the same `command` as the list.
 
 Harbor carries the four sections, a stack table, a mermaid fence in `architecture` and one image,
 `specs/tech/overview.png`, in `overview`; lantern has no tech.md, the `pages: null` case.

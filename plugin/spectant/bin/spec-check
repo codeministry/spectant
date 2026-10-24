@@ -2,8 +2,8 @@
 // @bun
 
 // plugin/src/spec-check.ts
-import { appendFileSync as appendFileSync2, existsSync as existsSync2, lstatSync as lstatSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync3, readdirSync as readdirSync3, readlinkSync, renameSync as renameSync2, statSync, writeFileSync as writeFileSync2 } from "fs";
-import { basename as basename2, dirname as dirname3, join as join6, relative, resolve as resolve5, sep as sep2 } from "path";
+import { appendFileSync as appendFileSync2, existsSync as existsSync3, lstatSync as lstatSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync5, readdirSync as readdirSync4, readlinkSync, renameSync as renameSync2, statSync, writeFileSync as writeFileSync2 } from "fs";
+import { basename as basename2, dirname as dirname3, join as join8, relative as relative2, resolve as resolve5, sep as sep3 } from "path";
 
 // core/src/actor.ts
 var PERSON = /^u:[0-9a-f]{8}$/;
@@ -62,7 +62,7 @@ class ActivityTextError extends Error {
 var CLAIM_ID = /^ISC-\d+(\.\d+)*$/u;
 var TASK_ID = /^[TC]\d+$/u;
 var IDEA_SLUG = /^[a-z0-9][a-z0-9-]*$/u;
-var INIT_TARGET = "init";
+var REPO_TARGETS = new Set(["init", "doc", "tldr"]);
 var RUN_EVENTS = new Set(["dispatch", "build", "patch", "apply"]);
 var OUTCOMES = new Set(["ok", "error", "released"]);
 var PROBE_RESULTS = new Set(["red", "green"]);
@@ -103,11 +103,11 @@ var lineOf = (entry) => `${JSON.stringify(entry)}
 var optional = (key, value) => value === undefined ? {} : { [key]: value };
 function targetOf(target) {
   oneLine(target, "the target", true);
-  if (SPEC_ID.test(target) || SPEC_FOLDER.test(target) || target === INIT_TARGET)
+  if (SPEC_ID.test(target) || SPEC_FOLDER.test(target) || REPO_TARGETS.has(target))
     return { spec: target };
   if (IDEA_SLUG.test(target))
     return { idea: target };
-  throw new ActivityTextError("bad-target", `the target ${JSON.stringify(target)} is no spec NNN, idea slug or init`);
+  throw new ActivityTextError("bad-target", `the target ${JSON.stringify(target)} is no spec NNN, idea slug, init, doc or tldr`);
 }
 function claimEvent(event, input) {
   checkTs(input.ts);
@@ -942,9 +942,202 @@ function runHook(stdin, env, now) {
   }
 }
 
+// plugin/src/repo-docs.ts
+import { copyFileSync, existsSync as existsSync2, readFileSync as readFileSync4, readdirSync as readdirSync3 } from "fs";
+import { join as join7, relative, sep as sep2 } from "path";
+
+// plugin/src/spec-files.ts
+import { readFileSync as readFileSync3 } from "fs";
+import { join as join4 } from "path";
+
+// core/src/files.ts
+var FILE_KINDS = {
+  spec: {
+    path: "spec.md",
+    description: "the what: frontmatter, goal, Test Strategy, claims with stable IDs and (after: \u2026) edges, decisions",
+    required: true,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  plan: {
+    path: "plan.md",
+    description: "the how: approach, affected files, interfaces, risks, open points",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  tasks: {
+    path: "tasks.md",
+    description: "atomic task lines anchored to one claim each, with flags, lane, edges and paths, plus the probe mapping",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  context: {
+    path: "context.md",
+    description: "the context log: question rounds and dated decisions",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  design: {
+    path: "design.md",
+    description: "the design pass per viewport for a UI spec",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  constitution: {
+    path: "../constitution.md",
+    description: "the repository constitution shared by every spec: binding rules, lanes, conformance baseline",
+    required: false,
+    directory: false,
+    scope: "repo",
+    repoPath: "specs/constitution.md"
+  },
+  rounds: {
+    path: "rounds.jsonl",
+    description: "one JSON line per implementation round: the whole board after that round",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  events: {
+    path: "events.jsonl",
+    description: "one JSON line per recorded stage transition {ts, from, to, command, actor}",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  gateReviewed: {
+    path: ".gates/reviewed.json",
+    description: "the reviewed mark: hashes of spec.md, plan.md and tasks.md at release time",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  gateCodeReviewed: {
+    path: ".gates/code-reviewed.json",
+    description: "the code-reviewed mark: tree and head of the reviewed working tree",
+    required: false,
+    directory: false,
+    scope: "spec",
+    repoPath: null
+  },
+  artifacts: {
+    path: "artifacts/",
+    description: "files the tasks produced, grouped by claim",
+    required: false,
+    directory: true,
+    scope: "spec",
+    repoPath: null
+  },
+  evidence: {
+    path: ".evidence/",
+    description: "probe output that closed a claim, grouped by claim",
+    required: false,
+    directory: true,
+    scope: "spec",
+    repoPath: null
+  },
+  master: {
+    path: "../../ISA.md",
+    description: "the master ISA the spec derives from; untracked in a public repository",
+    required: false,
+    directory: false,
+    scope: "repo",
+    repoPath: "ISA.md"
+  },
+  idea: {
+    path: "../ideas/",
+    description: "one story file <slug>.md per shaped idea, frontmatter plus a filled /spec prompt; README.md is the index",
+    required: false,
+    directory: true,
+    scope: "repo",
+    repoPath: "specs/ideas/"
+  },
+  workflow: {
+    path: "../workflow.md",
+    description: "the workflow table: per spec type the ordered stages and how its code review is done",
+    required: false,
+    directory: false,
+    scope: "repo",
+    repoPath: "specs/workflow.md"
+  },
+  tokens: {
+    path: "../tokens.jsonl",
+    description: "the token measurement: one JSON line per measuring run, /spec invocation, spec, stage, round and the unassigned rest",
+    required: false,
+    directory: false,
+    scope: "repo",
+    repoPath: "specs/tokens.jsonl"
+  },
+  backlog: {
+    path: "../backlog.md",
+    description: "the feature backlog: one line per feature block of the master, its position the rank, with a priority P1 to P4",
+    required: false,
+    directory: false,
+    scope: "repo",
+    repoPath: "specs/backlog.md"
+  },
+  backlogEvents: {
+    path: "../backlog.events.jsonl",
+    description: "the backlog event log: one JSON line per accepted backlog write {ts, actor, kind, feature, from, to}",
+    required: false,
+    directory: false,
+    scope: "repo",
+    repoPath: "specs/backlog.events.jsonl"
+  }
+};
+function joinPath(base, rel) {
+  const absolute = base.startsWith("/");
+  const out = [];
+  for (const segment of `${base}/${rel}`.split("/")) {
+    if (segment === "" || segment === ".")
+      continue;
+    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..")
+      out.pop();
+    else if (segment !== ".." || !absolute)
+      out.push(segment);
+  }
+  return (absolute ? "/" : "") + out.join("/");
+}
+function specFilePath(specDir, kind) {
+  return joinPath(specDir, FILE_KINDS[kind].path);
+}
+
+// plugin/src/spec-files.ts
+function readIfExists2(path) {
+  try {
+    return readFileSync3(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT")
+      return null;
+    throw error;
+  }
+}
+var FOLDER_KINDS = Object.keys(FILE_KINDS).filter((kind) => !FILE_KINDS[kind].directory && !FILE_KINDS[kind].path.startsWith(".."));
+function specFiles(ref) {
+  const texts = {};
+  for (const kind of FOLDER_KINDS) {
+    const text = readIfExists2(join4(ref.dir, FILE_KINDS[kind].path));
+    if (text !== null)
+      texts[kind] = text;
+  }
+  return { folder: ref.slug, texts };
+}
+
 // plugin/src/worktree-source.ts
 import { existsSync } from "fs";
-import { join as join4 } from "path";
+import { join as join5 } from "path";
 var NO_FSMONITOR = ["-c", "core.fsmonitor=false"];
 function git(cwd, args) {
   const r = Bun.spawnSync(["git", "-C", cwd, ...args], { stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
@@ -981,13 +1174,13 @@ function worktreeOnlyRefs(root, listed, porcelain) {
   const { worktrees } = assignWorktrees(porcelain, mainFolders);
   const tracked = {};
   for (const w of worktrees) {
-    if (w.kind !== "spec" || w.spec !== null || w.path === null || !insideRepository(w.path) || !holdsGit(join4(root, w.path)))
+    if (w.kind !== "spec" || w.spec !== null || w.path === null || !insideRepository(w.path) || !holdsGit(join5(root, w.path)))
       continue;
-    tracked[w.path] = trackedSpecPaths(join4(root, w.path));
+    tracked[w.path] = trackedSpecPaths(join5(root, w.path));
   }
   if (Object.keys(tracked).length === 0)
     return [];
-  return worktreeOnlySpecs(worktrees, mainFolders, tracked).map((spec) => ({ kind: "spec", id: spec.id, slug: spec.slug, dir: join4(root, spec.worktree, "specs", spec.slug), archived: false }));
+  return worktreeOnlySpecs(worktrees, mainFolders, tracked).map((spec) => ({ kind: "spec", id: spec.id, slug: spec.slug, dir: join5(root, spec.worktree, "specs", spec.slug), archived: false }));
 }
 function assigned(root, refs, listing) {
   const porcelain = listing ?? worktreeListing(root);
@@ -996,8 +1189,8 @@ function assigned(root, refs, listing) {
 }
 function splitOf(root, assignment, facts) {
   const merged = mergedOf(root, facts.branches);
-  const present = facts.paths.filter((path) => holdsGit(join4(root, path)));
-  const dirty = statusToRead(facts.ofSpec, merged, present).filter((path) => isDirty(join4(root, path)));
+  const present = facts.paths.filter((path) => holdsGit(join5(root, path)));
+  const dirty = statusToRead(facts.ofSpec, merged, present).filter((path) => isDirty(join5(root, path)));
   return liveWorktrees(assignment, { merged, present, dirty });
 }
 function specReadDirs(root, refs, listing) {
@@ -1006,7 +1199,7 @@ function specReadDirs(root, refs, listing) {
   if (active.length === 0)
     return dirs;
   for (const ref of active)
-    if (ref.dir !== join4(root, "specs", ref.slug) && existsSync(join4(ref.dir, "spec.md")))
+    if (ref.dir !== join5(root, "specs", ref.slug) && existsSync(join5(ref.dir, "spec.md")))
       dirs.set(ref.slug, ref.dir);
   const { porcelain, assignment, facts } = assigned(root, refs, listing);
   if (facts.ofSpec.length === 0)
@@ -1022,7 +1215,7 @@ function specReadDirs(root, refs, listing) {
     if (dirs.has(ref.slug))
       continue;
     const copy = copyDirFor(root, ref, view);
-    if (copy !== null && existsSync(join4(copy, "spec.md")))
+    if (copy !== null && existsSync(join5(copy, "spec.md")))
       dirs.set(ref.slug, copy);
   }
   return dirs;
@@ -1039,7 +1232,7 @@ function specTreeDirs(root, refs, listing) {
   for (const ref of active) {
     const worktree = ownLiveWorktree(live, ref.id);
     if (worktree?.path != null)
-      dirs.set(ref.slug, join4(root, worktree.path));
+      dirs.set(ref.slug, join5(root, worktree.path));
   }
   return dirs;
 }
@@ -1635,13 +1828,13 @@ var GOAL_HEADINGS = ["Goal", "Ziel"];
 var TASK_BOX = /^\s*- \[([ xX])\]\s*T\d+\b/gm;
 var escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function levelTwoSection(text, headings) {
-  const names2 = headings.map(escapeRegExp).join("|");
-  const section2 = new RegExp(String.raw`^##\s+(?:${names2})\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))`, "m");
-  return section2.exec(text.replace(/\r\n?/g, `
+  const names = headings.map(escapeRegExp).join("|");
+  const section = new RegExp(String.raw`^##\s+(?:${names})\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))`, "m");
+  return section.exec(text.replace(/\r\n?/g, `
 `))?.[1] ?? null;
 }
-function firstParagraph(section2) {
-  return section2.split(/\n\s*\n/).map((p) => p.trim()).find((p) => p !== "" && !p.startsWith("```") && !p.startsWith("~~~") && !p.startsWith("<!--") && !p.startsWith("|")) ?? null;
+function firstParagraph(section) {
+  return section.split(/\n\s*\n/).map((p) => p.trim()).find((p) => p !== "" && !p.startsWith("```") && !p.startsWith("~~~") && !p.startsWith("<!--") && !p.startsWith("|")) ?? null;
 }
 function goalOf(spec) {
   return (firstParagraph(levelTwoSection(spec, GOAL_HEADINGS) ?? "") ?? "").replace(/\s+/g, " ");
@@ -1717,170 +1910,6 @@ function diagramVerdict(input) {
   return { level: required ? "fail" : "warn", missing };
 }
 
-// core/src/files.ts
-var FILE_KINDS = {
-  spec: {
-    path: "spec.md",
-    description: "the what: frontmatter, goal, Test Strategy, claims with stable IDs and (after: \u2026) edges, decisions",
-    required: true,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  plan: {
-    path: "plan.md",
-    description: "the how: approach, affected files, interfaces, risks, open points",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  tasks: {
-    path: "tasks.md",
-    description: "atomic task lines anchored to one claim each, with flags, lane, edges and paths, plus the probe mapping",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  context: {
-    path: "context.md",
-    description: "the context log: question rounds and dated decisions",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  design: {
-    path: "design.md",
-    description: "the design pass per viewport for a UI spec",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  constitution: {
-    path: "../constitution.md",
-    description: "the repository constitution shared by every spec: binding rules, lanes, conformance baseline",
-    required: false,
-    directory: false,
-    scope: "repo",
-    repoPath: "specs/constitution.md"
-  },
-  rounds: {
-    path: "rounds.jsonl",
-    description: "one JSON line per implementation round: the whole board after that round",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  events: {
-    path: "events.jsonl",
-    description: "one JSON line per recorded stage transition {ts, from, to, command, actor}",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  gateReviewed: {
-    path: ".gates/reviewed.json",
-    description: "the reviewed mark: hashes of spec.md, plan.md and tasks.md at release time",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  gateCodeReviewed: {
-    path: ".gates/code-reviewed.json",
-    description: "the code-reviewed mark: tree and head of the reviewed working tree",
-    required: false,
-    directory: false,
-    scope: "spec",
-    repoPath: null
-  },
-  artifacts: {
-    path: "artifacts/",
-    description: "files the tasks produced, grouped by claim",
-    required: false,
-    directory: true,
-    scope: "spec",
-    repoPath: null
-  },
-  evidence: {
-    path: ".evidence/",
-    description: "probe output that closed a claim, grouped by claim",
-    required: false,
-    directory: true,
-    scope: "spec",
-    repoPath: null
-  },
-  master: {
-    path: "../../ISA.md",
-    description: "the master ISA the spec derives from; untracked in a public repository",
-    required: false,
-    directory: false,
-    scope: "repo",
-    repoPath: "ISA.md"
-  },
-  idea: {
-    path: "../ideas/",
-    description: "one story file <slug>.md per shaped idea, frontmatter plus a filled /spec prompt; README.md is the index",
-    required: false,
-    directory: true,
-    scope: "repo",
-    repoPath: "specs/ideas/"
-  },
-  workflow: {
-    path: "../workflow.md",
-    description: "the workflow table: per spec type the ordered stages and how its code review is done",
-    required: false,
-    directory: false,
-    scope: "repo",
-    repoPath: "specs/workflow.md"
-  },
-  tokens: {
-    path: "../tokens.jsonl",
-    description: "the token measurement: one JSON line per measuring run, /spec invocation, spec, stage, round and the unassigned rest",
-    required: false,
-    directory: false,
-    scope: "repo",
-    repoPath: "specs/tokens.jsonl"
-  },
-  backlog: {
-    path: "../backlog.md",
-    description: "the feature backlog: one line per feature block of the master, its position the rank, with a priority P1 to P4",
-    required: false,
-    directory: false,
-    scope: "repo",
-    repoPath: "specs/backlog.md"
-  },
-  backlogEvents: {
-    path: "../backlog.events.jsonl",
-    description: "the backlog event log: one JSON line per accepted backlog write {ts, actor, kind, feature, from, to}",
-    required: false,
-    directory: false,
-    scope: "repo",
-    repoPath: "specs/backlog.events.jsonl"
-  }
-};
-function joinPath(base, rel) {
-  const absolute = base.startsWith("/");
-  const out = [];
-  for (const segment of `${base}/${rel}`.split("/")) {
-    if (segment === "" || segment === ".")
-      continue;
-    if (segment === ".." && out.length > 0 && out[out.length - 1] !== "..")
-      out.pop();
-    else if (segment !== ".." || !absolute)
-      out.push(segment);
-  }
-  return (absolute ? "/" : "") + out.join("/");
-}
-function specFilePath(specDir, kind) {
-  return joinPath(specDir, FILE_KINDS[kind].path);
-}
-
 // core/src/gates.ts
 import { createHash as createHash2 } from "crypto";
 var REVIEWED_FILES = ["spec.md", "plan.md", "tasks.md"];
@@ -1894,8 +1923,8 @@ var stringOrNull = (value) => typeof value === "string" ? value : null;
 var count = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 function readGateMark(gate, text) {
   const diagnostics = [];
-  const fail = (code2, message) => ({ mark: null, diagnostics: [...diagnostics, { severity: "error", code: code2, message }] });
-  const warn = (code2, message) => diagnostics.push({ severity: "warning", code: code2, message });
+  const fail = (code, message) => ({ mark: null, diagnostics: [...diagnostics, { severity: "error", code, message }] });
+  const warn = (code, message) => diagnostics.push({ severity: "warning", code, message });
   let data;
   try {
     data = JSON.parse(text);
@@ -2068,13 +2097,13 @@ function treeIdOf(entries) {
   for (const entry of entries) {
     if (!MODES.has(entry.mode))
       throw new RangeError(`treeIdOf: unsupported mode ${entry.mode} for ${entry.path}`);
-    const segments2 = entry.path.split("/");
-    if (segments2.some((s) => s === "" || s === "." || s === ".." || s.includes("\x00"))) {
+    const segments = entry.path.split("/");
+    if (segments.some((s) => s === "" || s === "." || s === ".." || s.includes("\x00"))) {
       throw new RangeError(`treeIdOf: invalid path ${JSON.stringify(entry.path)}`);
     }
-    const name = segments2.pop() ?? "";
+    const name = segments.pop() ?? "";
     let dir = root;
-    for (const segment of segments2) {
+    for (const segment of segments) {
       if (dir.files.has(segment))
         throw new RangeError(`treeIdOf: ${entry.path} lies under a file`);
       let sub = dir.dirs.get(segment);
@@ -2092,13 +2121,316 @@ function treeIdOf(entries) {
 }
 
 // core/src/markdown.ts
+var ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function esc(s) {
+  return s.replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
+}
+function slugify(text) {
+  return text.toLowerCase().replace(/`/g, "").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "h";
+}
+var SAFE_HREF = /^(?:https?:|mailto:|#|[\w./-]+\.md(?:#[\w-]*)?$|[\w.~%+-]+(?:\/[\w.~%+-]+)*\/?(?:#[\w.-]*)?$)/;
+var LOCAL_SRC = /^[\w.~%+-]+(?:\/[\w.~%+-]+)*$/;
+var REMOTE_SRC = /^https?:\/\/[^\s"'<>]+$/i;
 var TARGET = String.raw`((?:[^()\s]|\([^()\s]*\))+)`;
 var IMAGE_INLINE = new RegExp(String.raw`!\[([^\]\n]*)\]\(${TARGET}\)`, "g");
 var LINK_INLINE = new RegExp(String.raw`\[([^\]\n]+)\]\(${TARGET}\)`, "g");
 var IMAGE_LINE = new RegExp(String.raw`^!\[([^\]\n]*)\]\(${TARGET}\)$`);
+var OPEN_MARK = /\u27E8\?:[^\u27E9\n]*\u27E9/g;
+var PLACEHOLDER = /\uE000(\d+)\uE000/g;
+function renderInline(text) {
+  const codes = [];
+  let s = text.replace(/`([^`\n]+)`/g, (_, code) => {
+    codes.push(`<code>${esc(code)}</code>`);
+    return `\uE000${codes.length - 1}\uE000`;
+  });
+  s = esc(s);
+  s = s.replace(IMAGE_INLINE, (_, alt) => alt);
+  s = s.replace(LINK_INLINE, (_, label, href) => {
+    const raw = href.replace(/&amp;/g, "&");
+    if (!SAFE_HREF.test(raw))
+      return label;
+    return `<a href="${esc(raw)}"${/^https?:/i.test(raw) ? ' target="_blank" rel="noopener"' : ""}>${label}</a>`;
+  });
+  s = s.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/).map((part, k) => k % 2 === 1 ? part : part.replace(/\bhttps?:\/\/[^\s<>"'\uE000]+/g, (u) => {
+    const m = /^(.*?)([.,;:!?)\]]*)$/.exec(u);
+    let url = m?.[1] ?? u;
+    let tail = m?.[2] ?? "";
+    while (tail.startsWith(")") && (url.match(/\(/g) ?? []).length > (url.match(/\)/g) ?? []).length) {
+      url += ")";
+      tail = tail.slice(1);
+    }
+    return `<a href="${url}" target="_blank" rel="noopener">${url}</a>${tail}`;
+  })).join("");
+  s = s.replace(/\*\*((?:[^*\n]|\*(?!\*))+?)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:!?]|$)/g, "$1<em>$2</em>");
+  s = s.replace(/(^|\s)_([^_\n]+)_(?=[\s.,;:!?)]|$)/g, "$1<em>$2</em>");
+  s = s.replace(/~~([^~\n]+)~~/g, "<s>$1</s>");
+  s = s.replace(OPEN_MARK, (m) => `<mark class="open-mark">${m}</mark>`);
+  return s.replace(PLACEHOLDER, (_, i) => codes[Number(i)] ?? "");
+}
+var FENCE2 = /^\s*(```|~~~)\s*(\S*)\s*$/;
+var HEADING2 = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
+var RULE2 = /^\s*([-*_])(\s*\1){2,}\s*$/;
+var ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+var CHECK = /^\[([ xX])\]\s+(.*)$/;
+var QUOTE = /^\s*>/;
+var TABLE_ROW = /^\s*\|/;
 var TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+var NUMERIC = /^[-+\u2212]?\d[\d.,\u202f ]*\s*(%|\u2030|\u20AC|\$|ms|s|min|h|[KMG]B|px)?$/;
+var CALLOUT = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i;
+var blank = (line) => line === undefined || line.trim() === "";
+var indentOf = (line) => line.replace(/\t/g, "  ").search(/\S/);
 function tableCells2(line) {
   return line.trim().replace(/^\|/, "").replace(/\|$/, "").split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
+}
+function renderList(items, document) {
+  let k = 0;
+  const walk = (depth) => {
+    const ordered = items[k]?.ordered ?? false;
+    const parts = [];
+    for (let it = items[k];it !== undefined && it.depth >= depth; it = items[k]) {
+      if (it.depth > depth) {
+        parts.push(walk(it.depth));
+        continue;
+      }
+      if (it.ordered !== ordered)
+        break;
+      k += 1;
+      const cb = it.checked === null ? "" : document ? `<input type="checkbox"${it.checked ? " checked" : ""} disabled> ` : `<span class="cb ${it.checked ? "on" : "off"}" aria-label="${it.checked ? "done" : "open"}">${it.checked ? "\u25CF" : "\u25CB"}</span> `;
+      const next = items[k];
+      const children = next !== undefined && next.depth > depth ? walk(next.depth) : "";
+      const cls = it.checked === null ? "" : ` class="task ${it.checked ? "done" : "open"}"`;
+      parts.push(`<li${cls}>${cb}${renderInline(it.text)}${children}</li>`);
+    }
+    return `<${ordered ? "ol" : "ul"}>${parts.join("")}</${ordered ? "ol" : "ul"}>`;
+  };
+  const lists = [];
+  for (let first = items[k];first !== undefined; first = items[k])
+    lists.push(walk(first.depth));
+  return lists.join(`
+`);
+}
+function mermaidHead(source) {
+  const lines = source.split(`
+`);
+  let k = 0;
+  let title = null;
+  while (k < lines.length && (lines[k] ?? "").trim() === "")
+    k += 1;
+  if ((lines[k] ?? "").trim() === "---") {
+    for (k += 1;k < lines.length && (lines[k] ?? "").trim() !== "---"; k += 1) {
+      const t = /^\s*title:\s*(.+?)\s*$/.exec(lines[k] ?? "");
+      if (t)
+        title = (t[1] ?? "").replace(/^(["'])(.*)\1$/, "$2");
+    }
+    k += 1;
+  }
+  const first = lines.slice(k).find((l) => l.trim() !== "" && !l.trim().startsWith("%%")) ?? "";
+  return { diagram: first.trim().split(/\s+/)[0] ?? "", title };
+}
+function mermaidFigure(source, ctx) {
+  const index = ctx.figures.length + 1;
+  const { diagram, title } = mermaidHead(source);
+  const caption = title ?? ctx.heading ?? diagram;
+  ctx.figures.push({ index, kind: "mermaid", diagram, source, caption });
+  return `<figure class="mermaid-figure" data-figure="${index}"><pre class="mermaid">${esc(source)}</pre><figcaption>${esc(caption)}</figcaption></figure>`;
+}
+function imageFigure(alt, src, ctx) {
+  const remote = REMOTE_SRC.test(src);
+  if (!remote && !LOCAL_SRC.test(src))
+    return null;
+  const index = ctx.figures.length + 1;
+  const caption = alt || (src.split("/").pop() ?? src);
+  const cap = `<figcaption>${esc(caption)}</figcaption>`;
+  if (remote) {
+    ctx.figures.push({ index, kind: "image", src, alt, caption, remote: true });
+    return `<figure class="image-figure remote" data-figure="${index}" data-remote><a href="${esc(src)}" target="_blank" rel="noopener">${esc(src)}</a>${cap}</figure>`;
+  }
+  const asset = specAsset(src, ctx.specAssets);
+  if (asset === false || ctx.assetExists?.(src, asset) === false) {
+    ctx.figures.push({ index, kind: "image", src, alt, caption, missing: true });
+    return `<figure class="image-figure missing" data-figure="${index}" data-missing><div class="figure-missing" role="img" aria-label="${esc(caption)}"><code>${esc(src)}</code></div>${cap}</figure>`;
+  }
+  if (asset !== null) {
+    ctx.figures.push({ index, kind: "image", src, alt, caption, asset });
+    return `<figure class="image-figure" data-figure="${index}"><img data-spec-asset="${esc(asset)}" alt="${esc(alt)}" loading="lazy">${cap}</figure>`;
+  }
+  ctx.figures.push({ index, kind: "image", src, alt, caption });
+  return `<figure class="image-figure" data-figure="${index}"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">${cap}</figure>`;
+}
+function lexical(path, browser) {
+  const out = [];
+  for (const raw of path.split("/")) {
+    const s = browser ? raw.replace(/%2e/gi, ".") : raw;
+    if (s === "" || s === ".")
+      continue;
+    if (s !== "..")
+      out.push(raw);
+    else if (out.pop() === undefined)
+      return null;
+  }
+  return out;
+}
+function specAsset(src, folders) {
+  const anywhere = folders.includes("*");
+  if (anywhere && src.startsWith("/"))
+    return false;
+  let decoded;
+  try {
+    decoded = decodeURIComponent(src);
+  } catch {
+    decoded = null;
+  }
+  const asResolved = lexical(src, true);
+  const asDecoded = decoded === null ? null : lexical(decoded, false);
+  const inFolder = (segments) => segments !== null && segments.length > 0 && (anywhere || folders.includes(segments[0] ?? ""));
+  if (!inFolder(asResolved) && !inFolder(asDecoded))
+    return null;
+  if (decoded === null || !inFolder(asDecoded) || asDecoded.length < (anywhere ? 1 : 2) || /%[0-9A-Fa-f]{2}|[\u0000-\u001f\u007f\\]/.test(decoded)) {
+    return false;
+  }
+  return asDecoded.join("/");
+}
+function renderParagraph(lines) {
+  const segments = [[]];
+  lines.forEach((raw, k) => {
+    const hard = k < lines.length - 1 && / {2,}$|\\$/.test(raw);
+    const text = raw.trim();
+    segments[segments.length - 1]?.push(hard ? text.replace(/\\$/, "").trimEnd() : text);
+    if (hard)
+      segments.push([]);
+  });
+  return segments.map((segment) => renderInline(segment.join(" "))).join("<br>");
+}
+function renderBlocks(md, ctx) {
+  const lines = md.split(`
+`);
+  const out = [];
+  const at = (n) => lines[n] ?? "";
+  let i = 0;
+  const uniqueId = (text) => {
+    const base = ctx.prefix + slugify(text);
+    const n = (ctx.ids.get(base) ?? 0) + 1;
+    ctx.ids.set(base, n);
+    return n === 1 ? base : `${base}-${n}`;
+  };
+  const isTable = (n) => TABLE_ROW.test(at(n)) && n + 1 < lines.length && TABLE_SEP.test(at(n + 1));
+  while (i < lines.length) {
+    const line = at(i);
+    if (blank(line)) {
+      i += 1;
+      continue;
+    }
+    const fence = FENCE2.exec(line);
+    if (fence) {
+      const close = new RegExp(String.raw`^\s*${fence[1] ?? "```"}\s*$`);
+      const body = [];
+      i += 1;
+      while (i < lines.length && !close.test(at(i)))
+        body.push(at(i++));
+      i += 1;
+      const lang = fence[2] ?? "";
+      if (ctx.document && lang === "mermaid") {
+        out.push(mermaidFigure(body.join(`
+`), ctx));
+        continue;
+      }
+      out.push(`<pre><code${lang ? ` class="lang-${esc(lang)}"` : ""}>${esc(body.join(`
+`))}</code></pre>`);
+      continue;
+    }
+    const heading = HEADING2.exec(line);
+    if (heading) {
+      const level = (heading[1] ?? "#").length;
+      const text = heading[2] ?? "";
+      const anchor = uniqueId(text);
+      ctx.heading = text.replace(/`/g, "");
+      ctx.toc.push({ level, text: ctx.heading, anchor });
+      out.push(`<h${level} id="${esc(anchor)}">${renderInline(text)}</h${level}>`);
+      i += 1;
+      continue;
+    }
+    if (RULE2.test(line)) {
+      out.push("<hr>");
+      i += 1;
+      continue;
+    }
+    if (QUOTE.test(line)) {
+      const body = [];
+      while (i < lines.length && QUOTE.test(at(i)))
+        body.push(at(i++).replace(/^\s*>\s?/, ""));
+      const kind = CALLOUT.exec(body[0] ?? "")?.[1]?.toLowerCase();
+      out.push(kind ? `<blockquote class="callout" data-kind="${kind}">${renderBlocks(body.slice(1).join(`
+`), ctx)}</blockquote>` : `<blockquote>${renderBlocks(body.join(`
+`), ctx)}</blockquote>`);
+      continue;
+    }
+    if (isTable(i)) {
+      const head = tableCells2(line);
+      const align = tableCells2(at(i + 1)).map((c) => /^:-+:$/.test(c) ? "center" : c.endsWith("-:") ? "right" : c.startsWith(":-") ? "left" : "");
+      const style = (k) => align[k] ? ` style="text-align:${align[k]}"` : "";
+      i += 2;
+      const rows = [];
+      while (i < lines.length && TABLE_ROW.test(at(i)))
+        rows.push(tableCells2(at(i++)));
+      const thead = head.map((c, k) => `<th${style(k)}>${renderInline(c)}</th>`).join("");
+      const tbody = rows.map((r) => `<tr>${head.map((_, k) => `<td${style(k)}${NUMERIC.test(r[k] ?? "") ? " data-num" : ""}>${renderInline(r[k] ?? "")}</td>`).join("")}</tr>`).join("");
+      out.push(`<div class="mdtable"><table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>`);
+      continue;
+    }
+    if (ITEM.test(line)) {
+      const items = [];
+      while (i < lines.length) {
+        const m = ITEM.exec(at(i));
+        if (!m) {
+          if (blank(at(i)) && ITEM.test(at(i + 1))) {
+            i += 1;
+            continue;
+          }
+          break;
+        }
+        const depth = (m[1] ?? "").replace(/\t/g, "  ").length;
+        let text = m[3] ?? "";
+        i += 1;
+        while (i < lines.length && !blank(at(i)) && !ITEM.test(at(i)) && !HEADING2.test(at(i)) && !FENCE2.test(at(i)) && indentOf(at(i)) > depth) {
+          text += ` ${at(i++).trim()}`;
+        }
+        const c = CHECK.exec(text);
+        items.push({ depth, ordered: /\d/.test(m[2] ?? ""), text: c ? c[2] ?? "" : text, checked: c ? c[1] !== " " : null });
+      }
+      out.push(renderList(items, ctx.document));
+      continue;
+    }
+    const para = [];
+    while (i < lines.length && !blank(at(i)) && !HEADING2.test(at(i)) && !FENCE2.test(at(i)) && !ITEM.test(at(i)) && !QUOTE.test(at(i)) && !isTable(i)) {
+      para.push(at(i++));
+    }
+    if (para.length === 0) {
+      i += 1;
+      continue;
+    }
+    const image = ctx.document && para.length === 1 ? IMAGE_LINE.exec((para[0] ?? "").trim()) : null;
+    const figure = image ? imageFigure(image[1] ?? "", image[2] ?? "", ctx) : null;
+    out.push(figure ?? `<p>${renderParagraph(para)}</p>`);
+  }
+  return out.join(`
+`);
+}
+function renderMarkdown(markdown, options) {
+  const md = markdown.replace(/\uE000/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/\r\n?/g, `
+`);
+  const ctx = {
+    prefix: options?.idPrefix ?? "",
+    ids: new Map,
+    toc: [],
+    document: options?.document ?? false,
+    assetExists: options?.assetExists,
+    specAssets: options?.document ? options.specAssets ?? [] : [],
+    figures: [],
+    heading: null
+  };
+  const html = renderBlocks(md, ctx);
+  return { html, toc: ctx.toc, figures: ctx.figures };
 }
 
 // core/src/ideas.ts
@@ -2210,8 +2542,8 @@ function checkIndex(index, slugs) {
 function readIdeas(files) {
   const ideas = [];
   const diagnostics = [];
-  const names2 = Object.keys(files).filter((name) => name !== INDEX && STORY_FILE.test(name)).sort();
-  for (const name of names2) {
+  const names = Object.keys(files).filter((name) => name !== INDEX && STORY_FILE.test(name)).sort();
+  for (const name of names) {
     const slug = name.slice(0, -".md".length);
     const path = `${IDEAS_DIR}${name}`;
     const fm = parseFrontmatter(files[name] ?? "");
@@ -2265,6 +2597,144 @@ function recutBetween(previous, next) {
   return struck.length + added.length + changed.length === 0 ? null : { struck, added, changed };
 }
 
+// core/src/context-log.ts
+var QUESTION_HEADER = /^### Q(\d*)\s*\u00B7\s*(.+?)\s*$/;
+var FENCE3 = /^\s*(```|~~~)/;
+var GOAL = /^## Goal\s+[\u2014\u2013-]+\s+confirmed\s+(\S+)\s*$/;
+var ROUND = /^## (Round\s+\S+.*?)(?:,\s*(\d{4}-\d{2}-\d{2}\S*))?\s*$/;
+var RECOMMENDED = /\s*\((?:recommended|empfohlen)\)/i;
+function blocksOf(text) {
+  const blocks = [];
+  let current = null;
+  let fenced = false;
+  for (const line of text.split(/\r?\n/)) {
+    if (FENCE3.test(line))
+      fenced = !fenced;
+    if (!fenced && /^#{2,3} /.test(line)) {
+      current = { header: line, lines: [] };
+      blocks.push(current);
+    } else {
+      current?.lines.push(line);
+    }
+  }
+  return blocks;
+}
+function items(lines) {
+  const out = [];
+  let last = null;
+  for (const line of lines) {
+    const item = /^-\s+([^:]+?):\s*(.*)$/.exec(line);
+    if (item) {
+      last = { key: (item[1] ?? "").toLowerCase(), value: (item[2] ?? "").trim() };
+      out.push(last);
+    } else if (last !== null && /^\s+\S/.test(line)) {
+      last.value = `${last.value} ${line.trim()}`.trim();
+    } else {
+      last = null;
+    }
+  }
+  return out;
+}
+function splitTop(value, sep) {
+  const parts = [];
+  let depth = 0;
+  let code = false;
+  let current = "";
+  for (const ch of value) {
+    if (ch === "`")
+      code = !code;
+    else if (!code && ch === "(")
+      depth += 1;
+    else if (!code && ch === ")")
+      depth = Math.max(0, depth - 1);
+    if (ch === sep && depth === 0 && !code) {
+      parts.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  parts.push(current);
+  return parts.map((p) => p.trim()).filter((p) => p !== "");
+}
+var unquote2 = (value) => value.replace(/`/g, "");
+function options(value) {
+  if (value === undefined)
+    return [];
+  return splitTop(value, "|").map((text) => ({ text: unquote2(text.replace(RECOMMENDED, "")).trim(), recommended: RECOMMENDED.test(text) }));
+}
+var valueOf = (list, key) => list.find((i) => i.key === key)?.value;
+function parseQuestion(block, n) {
+  const list = items(block.lines);
+  const landed = valueOf(list, "landed in");
+  return {
+    n: n === "" ? null : n,
+    title: (QUESTION_HEADER.exec(block.header)?.[2] ?? "").trim(),
+    from: valueOf(list, "from") ?? null,
+    offered: options(valueOf(list, "offered")),
+    chosen: valueOf(list, "chosen") ?? null,
+    landedIn: landed === undefined ? [] : splitTop(landed, ",").map(unquote2)
+  };
+}
+function parseDecisionLog(body) {
+  let goal = null;
+  const rounds = [];
+  let round = null;
+  for (const block of blocksOf(body)) {
+    if (block.header.startsWith("## ")) {
+      round = null;
+      const g = GOAL.exec(block.header);
+      if (g?.[1] && goal === null) {
+        const text = block.lines.join(`
+`).trim().split(/\n\s*\n/)[0]?.replace(/\s*\n\s*/g, " ").trim() ?? "";
+        if (text !== "")
+          goal = { text, confirmed: g[1] };
+        continue;
+      }
+      const r = ROUND.exec(block.header);
+      if (r?.[1]) {
+        const list = items(block.lines);
+        const shapes = options(valueOf(list, "shapes offered"));
+        round = { id: `round-${String(rounds.length)}`, title: r[1].trim(), date: r[2] ?? null, shapes, shapeChosen: shapes.length > 0 ? valueOf(list, "chosen") ?? null : null, questions: [] };
+        rounds.push(round);
+      }
+      continue;
+    }
+    const q = QUESTION_HEADER.exec(block.header);
+    if (q && round)
+      round.questions.push(parseQuestion(block, q[1] ?? ""));
+  }
+  return { goal, rounds };
+}
+function sectionTable(body, heading) {
+  const block = blocksOf(body).find((b) => b.header.startsWith("## ") && heading.test(b.header.slice(3).trim()));
+  if (!block)
+    return [];
+  const rows = block.lines.filter((l) => /^\s*\|/.test(l));
+  const head = rows[0];
+  if (head === undefined)
+    return [];
+  const keys = tableCells2(head).map((c) => c.toLowerCase());
+  return rows.slice(1).filter((l) => !/^\s*\|?\s*:?-{3,}/.test(l)).map((l) => Object.fromEntries(tableCells2(l).map((c, i) => [keys[i] ?? String(i), c])));
+}
+var column = (row, pattern) => Object.entries(row).find(([k]) => pattern.test(k))?.[1];
+function parseConstitutionView(body) {
+  const lanes = sectionTable(body, /^Lanes\b/i).flatMap((row) => {
+    const lane = unquote2(column(row, /^lane$/) ?? "").trim();
+    if (lane === "")
+      return [];
+    const probe = column(row, /probe/);
+    return [{ lane, paths: splitTop(column(row, /path/) ?? "", ",").map(unquote2), probe: probe ? unquote2(probe) : null }];
+  });
+  const tiers = sectionTable(body, /^Gates?\b/i).flatMap((row) => {
+    const tier = unquote2(column(row, /^tier$/) ?? "").trim();
+    if (tier === "")
+      return [];
+    return [{ tier, command: unquote2(column(row, /command/) ?? ""), runsWhen: unquote2(column(row, /runs|when/) ?? "") }];
+  });
+  return { lanes, tiers };
+}
+
 // core/src/stage.ts
 var TYPE_NEEDS = {
   bug: { plan: false, tasks: false },
@@ -2280,8 +2750,8 @@ function countsOf(input) {
   const p = input.partition;
   if (p) {
     const open = p.takeable + p.open;
-    const total2 = open + p.closed + p.dropped;
-    return { total: total2, takeable: p.takeable, open, allClosed: total2 > 0 && open === 0 };
+    const total = open + p.closed + p.dropped;
+    return { total, takeable: p.takeable, open, allClosed: total > 0 && open === 0 };
   }
   const { closed, total } = input.claims;
   return { total, takeable: input.takeable.length, open: total - closed, allClosed: total > 0 && closed === total };
@@ -2294,10 +2764,10 @@ function fullHoldOf(input) {
 }
 var needs = (input, file) => input.type ? TYPE_NEEDS[input.type][file] : false;
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-function takeableIds(input, count2) {
+function takeableIds(input, count) {
   const ids = input.takeable;
   if (ids.length === 0)
-    return plural(count2, "claim");
+    return plural(count, "claim");
   if (ids.length === 1)
     return ids[0] ?? "";
   if (ids.length === 2)
@@ -2319,7 +2789,7 @@ function fillReason(template, values) {
     return value;
   });
 }
-var SPEC_SUBCOMMANDS = ["init", "idea", "new", "plan", "tasks", "implement", "review", "done"];
+var SPEC_SUBCOMMANDS = ["init", "idea", "new", "plan", "tasks", "implement", "review", "done", "doc", "tldr"];
 var isSubcommand = (word) => SPEC_SUBCOMMANDS.includes(word);
 function commandFor(sub, id, tail) {
   return ["/spec", sub, id, tail].filter((part) => typeof part === "string" && part !== "").join(" ");
@@ -2345,7 +2815,9 @@ var OLD_KEYS = {
   review: "review",
   "code-review": "review code",
   complete: "done",
-  archive: "done"
+  archive: "done",
+  doc: "doc",
+  tldr: "tldr"
 };
 function commandKey(command) {
   const [head = "", ...rest] = command.trim().split(/\s+/);
@@ -2439,9 +2911,9 @@ var SPEC_RULES = [
     next: commandFor("implement", SPEC_ARG),
     reasons: ["{ids} {is} takeable"],
     explain: (input) => {
-      const count2 = countsOf(input).takeable;
-      const many = input.takeable.length === 0 ? count2 !== 1 : input.takeable.length > 1;
-      return { values: { ids: takeableIds(input, count2), is: many ? "are" : "is" } };
+      const count = countsOf(input).takeable;
+      const many = input.takeable.length === 0 ? count !== 1 : input.takeable.length > 1;
+      return { values: { ids: takeableIds(input, count), is: many ? "are" : "is" } };
     }
   },
   {
@@ -2578,15 +3050,15 @@ var defaultCodeReview = (type) => type === "chore" ? "none" : "spec";
 var CODE_REVIEW_STAGES = new Set(["code-review", "close"]);
 var DETOURS = new Set(["blocked", "close-pending"]);
 function defaultStages(type) {
-  const needs2 = type === null ? { plan: false, tasks: false } : TYPE_NEEDS[type];
+  const needs = type === null ? { plan: false, tasks: false } : TYPE_NEEDS[type];
   const codeReview = defaultCodeReview(type);
   const keep = (stage) => {
     if (DETOURS.has(stage) || stage === "done")
       return false;
     if (stage === "plan")
-      return needs2.plan;
+      return needs.plan;
     if (stage === "tasks")
-      return needs2.tasks;
+      return needs.tasks;
     return codeReview !== "none" || !CODE_REVIEW_STAGES.has(stage);
   };
   return [...new Set(SPEC_RULES.map((rule) => rule.stage))].filter(keep).concat("done");
@@ -2630,11 +3102,11 @@ function isAllocationEntry(stage, row) {
   return stage === "plan" && !row.includes("plan");
 }
 function placeOf(stage, row) {
-  const build2 = row.indexOf("build");
+  const build = row.indexOf("build");
   if (stage === "blocked")
-    return build2;
+    return build;
   if (stage === "close-pending")
-    return build2 < 0 ? -1 : build2 + 0.5;
+    return build < 0 ? -1 : build + 0.5;
   if (isAllocationEntry(stage, row))
     return -0.5;
   return row.indexOf(stage);
@@ -2969,10 +3441,10 @@ function driftReport(input) {
   const { frontmatter, spec, master } = input;
   const heldElsewhere = input.heldElsewhere ?? new Set;
   const fm = frontmatter.data;
-  const byId2 = new Map(spec.claims.map((c) => [c.id, c]));
+  const byId = new Map(spec.claims.map((c) => [c.id, c]));
   const evidence = new Set(spec.verification.map((v) => v.id));
   const evidenceWithoutClose = [...evidence].filter((id) => {
-    const c = byId2.get(id);
+    const c = byId.get(id);
     return c !== undefined && !c.checked && !c.dropped;
   });
   const feature = mainFeatureOf(fm.isaFeature);
@@ -2981,7 +3453,7 @@ function driftReport(input) {
     const masterById = new Map(master.claims.map((c) => [c.id, c]));
     const block = master.features.find((f) => f.id === feature);
     for (const id of block?.claims ?? []) {
-      if (byId2.has(id) || heldElsewhere.has(id) || masterById.get(id)?.dropped)
+      if (byId.has(id) || heldElsewhere.has(id) || masterById.get(id)?.dropped)
         continue;
       missingInSpec.push(id);
     }
@@ -3063,7 +3535,7 @@ function takeableSet(input) {
   const taken = new Map(partition.taken.map((t) => [t.id, t.session]));
   const gated = new Set(partition.gated);
   const units = unitsOf(input);
-  const byId2 = new Map(units.map((u) => [u.id, u]));
+  const byId = new Map(units.map((u) => [u.id, u]));
   const dispatch = [];
   const held = [];
   const filesThisRound = new Set;
@@ -3085,9 +3557,9 @@ function takeableSet(input) {
       return `spec not reviewed \u2014 the reviewed mark is ${partition.reviewed}`;
     if (!takeable.has(u.claim))
       return "claim unknown to the spec";
-    const openAfter = u.after.filter((a) => byId2.get(a)?.done !== true);
+    const openAfter = u.after.filter((a) => byId.get(a)?.done !== true);
     if (openAfter.length > 0) {
-      const seams = openAfter.filter((a) => byId2.get(a)?.seam === true);
+      const seams = openAfter.filter((a) => byId.get(a)?.seam === true);
       return seams.length > 0 ? `behind open seam ${seams.join(", ")}` : `after ${openAfter.join(", ")} still open`;
     }
     const collision = u.paths.find((p) => filesThisRound.has(p));
@@ -3134,7 +3606,7 @@ var OPERATOR = "operator";
 var CLAIM_ID2 = /^(?:ISC-[\w.-]+|[A-Z]{1,6}-[A-Z0-9][\w.-]*|[A-Z]{1,4}-?\d+(?:\.\d+)*)$/;
 var BOX_LINE = /^\s*- \[([ xX])\]\s*(T\d+)\b(.*)$/;
 var STRUCK_LINE = /^\s*- ~~(T\d+)\b(.*?)~~(?:\s*[\u2014\u2013-]\s*(.*?))?\s*$/;
-var FENCE2 = /^\s*(```|~~~)/;
+var FENCE4 = /^\s*(```|~~~)/;
 var AFTER = /\(after:\s*([^)]*)\)/gi;
 var TASK_ID2 = /^T\d+$/;
 var TASK_RANGE = /^T(\d+)\s*[\u2013\u2014-]\s*T?(\d+)$/;
@@ -3211,17 +3683,17 @@ function splitItems(s) {
 function takeEdges(s) {
   const mask = codeMask(s);
   const tokens = [];
-  let text2 = "";
+  let text = "";
   let last = 0;
   for (const m of s.matchAll(AFTER)) {
     if (mask[m.index])
       continue;
     tokens.push(...(m[1] ?? "").split(/\s*,\s*/).map((t) => t.trim()).filter((t) => t !== ""));
-    text2 += s.slice(last, m.index);
+    text += s.slice(last, m.index);
     last = m.index + m[0].length;
   }
-  text2 += s.slice(last);
-  return { text: text2.replace(/\s{2,}/g, " ").trim(), tokens };
+  text += s.slice(last);
+  return { text: text.replace(/\s{2,}/g, " ").trim(), tokens };
 }
 function taskIds(tokens) {
   const ids = [];
@@ -3295,35 +3767,35 @@ function parseBody(rest, warn) {
   const body = rest.replace(/^\s*\u00B7\s*/, "");
   const mask = codeMask(body);
   const dash = indexesOutside(body, " \u2014 ", mask)[0];
-  let segments2;
+  let segments;
   let textPart;
   if (dash === undefined) {
     warn("task-malformed", "The task line has no ` \u2014 ` between its head (claim, flags, lane) and its text.");
     const parts = body.split(" \xB7 ");
     const first = (parts[0] ?? "").trim();
-    segments2 = CLAIM_ID2.test(first) ? [first] : [];
+    segments = CLAIM_ID2.test(first) ? [first] : [];
     textPart = CLAIM_ID2.test(first) ? parts.slice(1).join(" \xB7 ") : body;
   } else {
-    segments2 = body.slice(0, dash).split("\xB7").map((s) => s.trim()).filter((s) => s !== "");
+    segments = body.slice(0, dash).split("\xB7").map((s) => s.trim()).filter((s) => s !== "");
     textPart = body.slice(dash + 3);
   }
   let claim = "";
-  if (segments2.length > 0 && CLAIM_ID2.test(segments2[0] ?? ""))
-    claim = segments2.shift() ?? "";
+  if (segments.length > 0 && CLAIM_ID2.test(segments[0] ?? ""))
+    claim = segments.shift() ?? "";
   else if (dash !== undefined) {
-    warn("task-no-claim", `The task line names no claim ID: "${segments2[0] ?? ""}".`);
-    if (segments2.length > 1)
-      segments2.shift();
+    warn("task-no-claim", `The task line names no claim ID: "${segments[0] ?? ""}".`);
+    if (segments.length > 1)
+      segments.shift();
   }
   let parallel = false;
   let seam = false;
   let lane = "";
-  const last = segments2[segments2.length - 1];
+  const last = segments[segments.length - 1];
   if (last !== undefined && !FLAG.test(last) && LANE_TOKEN.test(last))
-    lane = segments2.pop() ?? "";
+    lane = segments.pop() ?? "";
   else if (dash !== undefined)
     warn("task-no-lane", "The task line has no lane token before ` \u2014 `.");
-  for (const seg of segments2) {
+  for (const seg of segments) {
     if (seg === "[P]")
       parallel = true;
     else if (seg === "[seam]")
@@ -3334,22 +3806,22 @@ function parseBody(rest, warn) {
       warn("task-malformed", `Unexpected head segment "${seg}" between the claim and the lane.`);
   }
   const { text: noEdges, tokens } = takeEdges(textPart.trim());
-  let text2 = noEdges;
+  let text = noEdges;
   let paths = [];
   let pathNote = null;
   const sep = indexesOutside(noEdges, " \xB7 ").at(-1);
   if (sep !== undefined) {
     const column = pathColumn(noEdges.slice(sep + 3).trim());
     if (column !== null) {
-      text2 = noEdges.slice(0, sep).trim();
+      text = noEdges.slice(0, sep).trim();
       paths = column.paths;
       pathNote = column.note;
     }
   }
-  return { claim, parallel, seam, lane, text: text2, edgeTokens: tokens, paths, pathNote };
+  return { claim, parallel, seam, lane, text, edgeTokens: tokens, paths, pathNote };
 }
-function comparable(text2) {
-  const { text: noEdges } = takeEdges(text2);
+function comparable(text) {
+  const { text: noEdges } = takeEdges(text);
   const sep = indexesOutside(noEdges, " \xB7 ").at(-1);
   if (sep !== undefined && pathColumn(noEdges.slice(sep + 3).trim()) !== null)
     return noEdges.slice(0, sep).trim();
@@ -3379,7 +3851,7 @@ function parseTaskLines(input) {
   let fenced = false;
   lines.forEach((raw, index) => {
     const line = index + 1;
-    if (FENCE2.test(raw)) {
+    if (FENCE4.test(raw)) {
       fenced = !fenced;
       return;
     }
@@ -3484,12 +3956,12 @@ class TaskTextError extends Error {
     this.code = code;
   }
 }
-function tickTaskText(text2, id) {
-  const parts = text2.split(/(\r\n|\n|\r)/);
+function tickTaskText(text, id) {
+  const parts = text.split(/(\r\n|\n|\r)/);
   let fenced = false;
   for (let i = 0;i < parts.length; i += 2) {
     const raw = parts[i] ?? "";
-    if (FENCE2.test(raw)) {
+    if (FENCE4.test(raw)) {
       fenced = !fenced;
       continue;
     }
@@ -3497,7 +3969,7 @@ function tickTaskText(text2, id) {
     if (box?.[2] !== id)
       continue;
     if (box[1] !== " ")
-      return { text: text2, changed: false };
+      return { text, changed: false };
     const at = raw.indexOf("- [") + 3;
     parts[i] = `${raw.slice(0, at)}x${raw.slice(at + 1)}`;
     return { text: parts.join(""), changed: true };
@@ -3512,7 +3984,7 @@ function parseMapping(lines, tasks, diagnostics) {
   const warn = (code, message, line) => {
     diagnostics.push({ severity: "warning", code, message, line });
   };
-  const byId2 = new Map(tasks.map((t) => [t.id, t]));
+  const byId = new Map(tasks.map((t) => [t.id, t]));
   const rows = [];
   for (const row of table) {
     const [first = "", claim = "", ...rest] = cells(row.text);
@@ -3524,7 +3996,7 @@ function parseMapping(lines, tasks, diagnostics) {
     const id = claim.replace(/`/g, "").trim();
     rows.push({ tasks: ids, claim: id, probe: rest.join(" | ").trim(), line: row.line });
     for (const t of ids) {
-      const task = byId2.get(t);
+      const task = byId.get(t);
       if (task === undefined)
         warn("mapping-unknown-task", `Probe mapping names ${t}, which no task line carries.`, row.line);
       else if (task.state === "struck")
@@ -3664,8 +4136,8 @@ function tabCounts(spec, specEdges) {
     ...rounds === undefined ? {} : { rounds },
     specEdges
   });
-  const count2 = (name) => tab.counts.byStatus.find((c) => c.name === name)?.count ?? 0;
-  return { held: count2("held"), open: count2("open") };
+  const count = (name) => tab.counts.byStatus.find((c) => c.name === name)?.count ?? 0;
+  return { held: count("held"), open: count("open") };
 }
 function findCycles(specs) {
   const next = new Map;
@@ -3690,12 +4162,12 @@ function findCycles(specs) {
     counter += 1;
     stack.push(v);
     onStack.add(v);
-    for (const w2 of next.get(v) ?? []) {
-      if (!index.has(w2)) {
-        visit(w2);
-        low.set(v, Math.min(low.get(v) ?? 0, low.get(w2) ?? 0));
-      } else if (onStack.has(w2)) {
-        low.set(v, Math.min(low.get(v) ?? 0, index.get(w2) ?? 0));
+    for (const w of next.get(v) ?? []) {
+      if (!index.has(w)) {
+        visit(w);
+        low.set(v, Math.min(low.get(v) ?? 0, low.get(w) ?? 0));
+      } else if (onStack.has(w)) {
+        low.set(v, Math.min(low.get(v) ?? 0, index.get(w) ?? 0));
       }
     }
     if (low.get(v) !== index.get(v))
@@ -3792,16 +4264,16 @@ function edgeDiagnostics(model, specs, cycles) {
 // core/src/tldr.ts
 var TLDR_SECTIONS = ["overview", "try", "per-spec", "risks", "next"];
 var MARKER = /<!--\s*section:\s*([\w-]+)\s*-->/;
-function names2(text2, number) {
-  return new RegExp(String.raw`\b${number.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\b`).test(text2);
+function names2(text, number) {
+  return new RegExp(String.raw`\b${number.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\b`).test(text);
 }
 var LANG_TAG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
 function langOf(value) {
   const lang = value?.trim() ?? "";
   return LANG_TAG.test(lang) ? lang : null;
 }
-function parseTldr(text2) {
-  const fm = parseFrontmatter(text2);
+function parseTldr(text) {
+  const fm = parseFrontmatter(text);
   const diagnostics = [...fm.diagnostics];
   const generated = fm.values.generated ?? null;
   if (generated === null || generated === "") {
@@ -3835,13 +4307,13 @@ function tldrState(input) {
     return { present: false, stale: false, missingSections: [], unnamedSpecs: [] };
   const at = tldr.generated === null ? Number.NaN : Date.parse(tldr.generated);
   const stale = Number.isNaN(at) || specs.some((s) => [s.updated, s.lastRound ?? null].some((ts) => ts !== null && Date.parse(ts) > at));
-  const text2 = Object.values(tldr.sections).join(`
+  const text = Object.values(tldr.sections).join(`
 `);
   return {
     present: true,
     stale,
     missingSections: TLDR_SECTIONS.filter((k) => !Object.hasOwn(tldr.sections, k)),
-    unnamedSpecs: specs.filter((s) => s.phase !== "complete" && !names2(text2, s.number)).map((s) => s.number)
+    unnamedSpecs: specs.filter((s) => s.phase !== "complete" && !names2(text, s.number)).map((s) => s.number)
   };
 }
 
@@ -3871,13 +4343,13 @@ function devServiceLabels(constitution) {
   }
   return labels;
 }
-function readMark(gate, text2) {
-  return text2 === undefined ? null : readGateMark(gate, text2);
+function readMark(gate, text) {
+  return text === undefined ? null : readGateMark(gate, text);
 }
-function newestRound(text2) {
+function newestRound(text) {
   const diagnostics = [];
   let ts = null;
-  (text2 ?? "").split(/\r?\n/).forEach((line, i) => {
+  (text ?? "").split(/\r?\n/).forEach((line, i) => {
     if (line.trim() === "")
       return;
     let value;
@@ -4048,9 +4520,9 @@ function specRow(f, ctx, diagnostics) {
   note("gateCodeReviewed", codeMark?.diagnostics ?? []);
   const { specType: type, phase } = fm.data;
   const next = nextCommandWithReason(stageInput);
-  const mismatch2 = stageMismatchOf(stageInput, fm.keyLines.stage);
-  if (mismatch2 !== null)
-    note("spec", [mismatch2]);
+  const mismatch = stageMismatchOf(stageInput, fm.keyLines.stage);
+  if (mismatch !== null)
+    note("spec", [mismatch]);
   const drift = ctx.master === null ? null : driftReport({ frontmatter: fm, spec: doc, master: ctx.master, heldElsewhere: heldElsewhere(ctx, f.folder) });
   const diagrams = diagramVerdict({ type, phase, spec, plan });
   const fog = doc.fog.length;
@@ -4064,8 +4536,8 @@ function specRow(f, ctx, diagnostics) {
   }
   if (phase !== "complete") {
     if (reviewed.state !== "fresh") {
-      const text2 = reviewed.state === "stale" ? `reviewed mark is stale (${reviewed.changed.join(", ") || "unreadable"})` : "no reviewed mark yet";
-      warnings.push({ kind: "review", text: text2, command: commandFor("review", id) });
+      const text = reviewed.state === "stale" ? `reviewed mark is stale (${reviewed.changed.join(", ") || "unreadable"})` : "no reviewed mark yet";
+      warnings.push({ kind: "review", text, command: commandFor("review", id) });
     }
     const missing = diagrams.missing.filter((file) => file === "spec.md" || plan !== null);
     if (diagrams.level === "fail" && missing.length > 0) {
@@ -4251,7 +4723,7 @@ function specOverlaps(specs, edges, sharedFiles) {
 var baseName = (file) => file.slice(file.lastIndexOf("/") + 1);
 function edgeWarnings(rows, active, edges, constitution) {
   const out = new Map;
-  const add = (id, warning3) => void out.set(id, [...out.get(id) ?? [], warning3]);
+  const add = (id, warning) => void out.set(id, [...out.get(id) ?? [], warning]);
   const idOf = new Map(rows.map((r) => [r.slug, r.id]));
   for (const { file, diagnostic } of edges.diagnostics) {
     const id = idOf.get(file.split("/")[1] ?? "");
@@ -4285,10 +4757,10 @@ function buildDashboard(input) {
     master = parseClaims(input.master);
     masterFog = master.fog.length;
     note(MASTER_FILE, [...fm.diagnostics, ...master.diagnostics]);
-    const mismatch2 = fm.present && master.section !== null ? masterProgressMismatch(fm, master, MASTER_FILE) : null;
-    if (mismatch2) {
+    const mismatch = fm.present && master.section !== null ? masterProgressMismatch(fm, master, MASTER_FILE) : null;
+    if (mismatch) {
       note(MASTER_FILE, [
-        { severity: "warning", code: "master-progress-mismatch", message: `progress ${mismatch2.declared ?? "(none)"} disagrees with the recount ${mismatch2.counted}.` }
+        { severity: "warning", code: "master-progress-mismatch", message: `progress ${mismatch.declared ?? "(none)"} disagrees with the recount ${mismatch.counted}.` }
       ]);
     }
   }
@@ -4359,6 +4831,7 @@ function buildDashboard(input) {
       ...input.tldrSource?.kind === "worktree" ? { source: input.tldrSource } : {}
     };
   }
+  const tldrCommand = brief === null || brief.stale ? commandFor("tldr") : null;
   const stageCounts = Object.fromEntries(STAGES.map((stage) => [stage, rows.filter((r) => r.stage === stage).length]));
   const open = rows.filter((r) => r.stage !== "done");
   const warnings = sum(rows, (r) => r.warnings.length);
@@ -4390,7 +4863,7 @@ function buildDashboard(input) {
   };
   const warningGroups = WARNING_ORDER.map((kind) => ({
     kind,
-    items: rows.flatMap((r) => r.warnings.filter((w) => w.kind === kind).map((warning3) => ({ spec: r.id, warning: warning3 })))
+    items: rows.flatMap((r) => r.warnings.filter((w) => w.kind === kind).map((warning) => ({ spec: r.id, warning })))
   })).filter((g) => g.items.length > 0);
   const services = [...input.services ?? []].sort((a, b) => a.port - b.port).map((s) => s.label === null && labels.has(s.port) ? { ...s, label: labels.get(s.port) ?? null } : s);
   diagnostics.push(...input.sourceDiagnostics ?? []);
@@ -4402,6 +4875,7 @@ function buildDashboard(input) {
     warningGroups,
     archive,
     brief,
+    tldrCommand,
     services,
     diagnostics,
     ideas: ideasOf(input.ideas, master)
@@ -4411,6 +4885,446 @@ var featureNameOf = (master, feature) => feature === null ? null : master?.featu
 function ideasOf(files, master) {
   const list = readIdeas(files ?? {}).ideas.map(({ feature, milestone, slug, title, priority }) => ({ feature, featureName: featureNameOf(master, feature), milestone, slug, title, priority }));
   return { count: list.length, list };
+}
+
+// core/src/resolve.ts
+import { readdirSync as readdirSync2 } from "fs";
+import { join as join6, resolve as resolve4, sep } from "path";
+function listSpecs(workspaceRoot) {
+  return scan(workspaceRoot) ?? [];
+}
+function resolveSpec(workspaceRoot, ref) {
+  const specs = scan(workspaceRoot);
+  if (specs === null)
+    return notFound(ref, "no-specs-dir");
+  if (SPEC_ID.test(ref))
+    return single(ref, specs.filter((s) => specIdOf(s.slug) === ref), "unknown-id");
+  if (SPEC_FOLDER.test(ref)) {
+    const byFolder = specs.filter((s) => s.slug === ref);
+    if (byFolder.length > 0)
+      return single(ref, byFolder, "unknown-slug");
+  }
+  return single(ref, specs.filter((s) => ref !== "" && specSlugOf(s.slug) === ref), "unknown-slug");
+}
+function single(ref, matches, missing) {
+  if (matches.length === 0)
+    return notFound(ref, missing);
+  if (matches.length > 1)
+    return notFound(ref, "ambiguous");
+  return matches[0];
+}
+function notFound(ref, reason) {
+  return { kind: "not_found", ref, reason };
+}
+function scan(workspaceRoot) {
+  const specsDir = resolve4(workspaceRoot, "specs");
+  const active = folders(specsDir);
+  if (active === null)
+    return null;
+  const archiveDir = join6(specsDir, "archive");
+  return [...refs(specsDir, active, false), ...refs(archiveDir, folders(archiveDir) ?? [], true)];
+}
+function refs(parent, names, archived) {
+  const out = [];
+  for (const name of names) {
+    const match = SPEC_FOLDER.exec(name);
+    if (match?.[1] === undefined)
+      continue;
+    out.push({ kind: "spec", id: match[1], slug: name, dir: join6(parent, name), archived });
+  }
+  return out.sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
+}
+function folders(dir) {
+  let entries;
+  try {
+    entries = readdirSync2(dir, { withFileTypes: true });
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT" || code === "ENOTDIR")
+      return null;
+    throw error;
+  }
+  return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+}
+
+// core/src/markdown-docs.ts
+var ENTITIES = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
+function countWords(html) {
+  const text = html.replace(/<figure\b[\s\S]*?<\/figure>/g, " ").replace(/<pre\b[\s\S]*?<\/pre>/g, " ").replace(/<[^>]*>/g, " ").replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e] ?? " ");
+  return text.match(/[\p{L}\p{N}]+(?:[-'\u2019][\p{L}\p{N}]+)*/gu)?.length ?? 0;
+}
+var isSignal = (value) => Number.isInteger(value) && value >= 1 && value <= 4;
+function renderDocsMarkdown(markdown, options) {
+  const fm = parseFrontmatter(markdown);
+  const rendered = renderMarkdown(fm.body, {
+    document: true,
+    ...options?.idPrefix === undefined ? {} : { idPrefix: options.idPrefix },
+    ...options?.assetExists === undefined ? {} : { assetExists: options.assetExists },
+    ...options?.specAssets === undefined ? {} : { specAssets: options.specAssets }
+  });
+  return {
+    frontmatter: fm.present ? { ...fm.values } : null,
+    html: rendered.html,
+    toc: rendered.toc.filter((entry) => entry.level === 2 || entry.level === 3),
+    figures: rendered.figures,
+    sections: rendered.toc.map((entry) => ({ id: entry.anchor, heading: entry.text, level: entry.level })),
+    wordCount: countWords(rendered.html),
+    ...options?.doc === "decisions" ? { decisions: parseDecisionLog(fm.body) } : {},
+    ...options?.doc === "decisions" && isSignal(options.goalSignal) ? { goalSignal: options.goalSignal } : {},
+    ...options?.doc === "constitution" ? { constitution: parseConstitutionView(fm.body) } : {}
+  };
+}
+var DESIGN_TYPES = new Set(["feature", "project"]);
+
+// core/src/tech.ts
+var TECH_FILE = "specs/tech.md";
+var APPROACH_HEADINGS = ["Approach"];
+var proseOrNull = (text) => {
+  const trimmed = text?.trim() ?? "";
+  return trimmed === "" ? null : trimmed;
+};
+function techSourcesOf(spec, plan) {
+  const approach = plan === undefined ? null : levelTwoSection(plan, APPROACH_HEADINGS);
+  return {
+    goal: proseOrNull(levelTwoSection(spec, GOAL_HEADINGS)),
+    approach: proseOrNull(approach === null ? null : firstParagraph(approach)),
+    fog: parseFrontmatter(spec).data.phase === "complete" ? [] : parseClaims(spec).fog.map((line) => line.text)
+  };
+}
+function insideSpecs(src) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(src);
+  } catch {
+    return false;
+  }
+  return [src, decoded].every((path) => {
+    if (path.startsWith("/") || path.includes("\\"))
+      return false;
+    let depth = 0;
+    for (const segment of path.split("/")) {
+      if (segment === "..")
+        depth -= 1;
+      else if (segment !== "" && segment !== ".")
+        depth += 1;
+      if (depth < 0)
+        return false;
+    }
+    return true;
+  });
+}
+function techOptions(page, input) {
+  const exists = input.assetExists;
+  return {
+    idPrefix: `tech-${page}-`,
+    specAssets: ["*"],
+    assetExists: (src, asset) => insideSpecs(src) && (exists === undefined || exists(src, asset))
+  };
+}
+function techSections(body, diagnostics) {
+  const found = sectionsByMarker(body);
+  const text = (key) => {
+    if (Object.hasOwn(found, key))
+      return found[key] ?? "";
+    const diagnostic = {
+      severity: "warning",
+      code: "tech-section",
+      message: `${TECH_FILE} has no \`<!-- section: ${key} -->\` marker, so its ${key} section is empty.`,
+      subject: key
+    };
+    diagnostics.push({ file: TECH_FILE, diagnostic });
+    return "";
+  };
+  return { overview: text("overview"), stack: text("stack"), architecture: text("architecture"), risks: text("risks") };
+}
+function pageOf(markdown, idPrefix) {
+  const text = markdown?.trim() ?? "";
+  return text === "" ? null : renderDocsMarkdown(text, { idPrefix });
+}
+function techSpec(f) {
+  const spec = f.texts.spec;
+  if (spec === undefined)
+    return null;
+  const id = specIdOf(f.folder) ?? f.folder;
+  const { specType, phase } = parseFrontmatter(spec).data;
+  const sources = techSourcesOf(spec, f.texts.plan);
+  return {
+    id,
+    slug: f.folder,
+    title: specTitle(listArchive([f])[0], f.folder),
+    type: specType,
+    phase,
+    goal: pageOf(sources.goal, `spec-${id}-goal-`),
+    approach: pageOf(sources.approach, `spec-${id}-approach-`),
+    fog: [...sources.fog]
+  };
+}
+function byNumber(a, b) {
+  const n = (s) => /^\d+$/.test(s.id) ? Number(s.id) : Number.POSITIVE_INFINITY;
+  return n(a) - n(b) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0);
+}
+function readTech(input) {
+  const diagnostics = [];
+  let pages = null;
+  if (input.tech !== undefined) {
+    const fm = parseFrontmatter(input.tech);
+    for (const diagnostic of fm.diagnostics)
+      diagnostics.push({ file: TECH_FILE, diagnostic });
+    const s = techSections(fm.body, diagnostics);
+    const join = [s.overview, s.stack].filter((part) => part !== "").join(`
+
+`);
+    pages = {
+      overview: renderDocsMarkdown(join, techOptions("overview", input)),
+      architecture: renderDocsMarkdown(s.architecture, techOptions("architecture", input)),
+      risks: renderDocsMarkdown(s.risks, techOptions("risks", input))
+    };
+  }
+  const specs = input.specs.flatMap((f) => techSpec(f) ?? []).sort(byNumber);
+  return { pages, diagnostics, specs };
+}
+
+// core/src/tldr-facts.ts
+var sorted = (paths) => [...paths].sort();
+function tldrFacts(input) {
+  const active = input.specs.filter((s) => !s.archived);
+  const model = buildDashboard({
+    master: input.master ?? null,
+    constitution: input.constitution ?? null,
+    tldr: null,
+    specs: active.map(({ folder, texts }) => ({ folder, texts })),
+    archived: input.specs.filter((s) => s.archived).map(({ folder, texts }) => ({ folder, texts })),
+    ...input.worktreeTree === undefined ? {} : { worktreeTree: input.worktreeTree },
+    ...input.workflow === undefined ? {} : { workflow: input.workflow },
+    ...input.locks === undefined ? {} : { locks: input.locks }
+  });
+  const byFolder = new Map(active.map((s) => [s.folder, s]));
+  const specs = model.specs.filter((row) => row.phase !== "complete").map((row) => {
+    const files = byFolder.get(row.slug);
+    return {
+      number: row.id,
+      title: row.title,
+      stage: row.stage,
+      progress: `${row.progress.closed}/${row.progress.total}`,
+      openClaims: row.progress.total - row.progress.closed,
+      fog: parseClaims(files?.texts.spec ?? "").fog.map((f) => f.text),
+      prototypes: sorted(files?.prototypes ?? []),
+      artifacts: sorted(files?.artifacts ?? [])
+    };
+  }).sort((a, b) => a.number < b.number ? -1 : a.number > b.number ? 1 : 0);
+  return { specs };
+}
+
+// core/src/workflow.ts
+var CODE_REVIEW_MODES = ["spec", "feature", "none"];
+var ROW_STAGE = {
+  idea: false,
+  plan: true,
+  tasks: true,
+  review: true,
+  build: true,
+  blocked: false,
+  "close-pending": false,
+  "code-review": true,
+  close: true,
+  done: true
+};
+var FIXED_GATES = ["review", "build", "done"];
+var knownStage = (stage) => Object.hasOwn(ROW_STAGE, stage);
+function gateViolation(stages) {
+  const foreign = stages.find((s) => !knownStage(s) || !ROW_STAGE[s]);
+  if (foreign !== undefined) {
+    return knownStage(foreign) ? `list ${foreign}, a detour no workflow row lists` : `list ${foreign}, a stage core does not know`;
+  }
+  const twice = stages.find((s, i) => stages.indexOf(s) !== i);
+  if (twice !== undefined)
+    return `list ${twice} twice`;
+  const missing = FIXED_GATES.find((gate) => !stages.includes(gate));
+  if (missing !== undefined)
+    return `leave out the fixed gate ${missing}`;
+  if (stages.indexOf("review") > stages.indexOf("build"))
+    return "put the fixed gate review after build";
+  const last = stages.at(-1) ?? "";
+  if (last !== "done")
+    return `list ${last} after the fixed gate done`;
+  return null;
+}
+var HEADER = ["type", "stages", "code_review"];
+var FENCE5 = /^\s*(```|~~~)/;
+var plain = (cell) => cell.replace(/`/g, "").trim();
+function parseWorkflow(text) {
+  if (text === null)
+    return { rows: DEFAULT_WORKFLOW, source: "default", diagnostics: [] };
+  const diagnostics = [];
+  const warn = (code, message, line, subject) => {
+    diagnostics.push(subject === undefined ? { severity: "warning", code, message, line } : { severity: "warning", code, message, line, subject });
+  };
+  const lines = text.replace(/\r\n?/g, `
+`).split(`
+`);
+  const header = findHeader(lines);
+  const byType = new Map;
+  if (header === null) {
+    warn("workflow-table", "specs/workflow.md has no table | type | stages | code_review |; every type runs its default row.", 1);
+  } else if (!TABLE_SEP.test(lines[header + 1] ?? "")) {
+    warn("workflow-table", "the workflow table has no separator row under its header; every type runs its default row.", header + 1);
+  } else {
+    for (let i = header + 2;i < lines.length && /^\s*\|/.test(lines[i] ?? ""); i++) {
+      const parsed = parseRow(lines[i] ?? "", i + 1, warn);
+      if (parsed)
+        byType.set(parsed.row.type, [...byType.get(parsed.row.type) ?? [], parsed]);
+    }
+  }
+  const rows = WORKFLOW_TYPES.map((type) => {
+    const found = byType.get(type) ?? [];
+    for (const dup of found.slice(1)) {
+      warn("workflow-duplicate", `type ${type} has more than one row; it runs its default row.`, dup.line, type);
+    }
+    const only = found.length === 1 ? found[0] : undefined;
+    if (!only)
+      return defaultWorkflowRow(type);
+    const violation = gateViolation(only.row.stages);
+    if (violation === null)
+      return only.row;
+    warn("workflow-gate", `the stages of type ${type} ${violation}; it runs its default row.`, only.line, type);
+    return defaultWorkflowRow(type);
+  });
+  diagnostics.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
+  return { rows, source: "file", diagnostics };
+}
+function findHeader(lines) {
+  let fenced = false;
+  for (let i = 0;i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (FENCE5.test(line))
+      fenced = !fenced;
+    else if (!fenced && /^\s*\|/.test(line) && tableCells2(line).map((c) => plain(c).toLowerCase()).join("|") === HEADER.join("|"))
+      return i;
+  }
+  return null;
+}
+function parseRow(text, line, warn) {
+  const cells = tableCells2(text).map(plain);
+  if (cells.length !== HEADER.length) {
+    warn("workflow-row", `a workflow row needs the three cells type, stages and code_review; it has ${cells.length}.`, line);
+    return null;
+  }
+  const [typeCell = "", stagesCell = "", modeCell = ""] = cells;
+  const type = WORKFLOW_TYPES.find((t) => t === typeCell);
+  if (!type) {
+    warn("workflow-type", `type ${typeCell} is none of ${WORKFLOW_TYPES.join(", ")}; the row is ignored.`, line, typeCell);
+    return null;
+  }
+  const stages = stagesCell.split("\xB7").map((s) => s.trim());
+  if (stages.some((s) => s === "")) {
+    warn("workflow-row", `the stages of type ${type} hold an empty stage; it runs its default row.`, line, type);
+    return null;
+  }
+  const codeReview = CODE_REVIEW_MODES.find((m) => m === modeCell);
+  if (!codeReview) {
+    warn("workflow-code-review", `code_review ${modeCell} of type ${type} is none of ${CODE_REVIEW_MODES.join(", ")}; it runs its default row.`, line, modeCell);
+    return null;
+  }
+  return { row: { type, stages, codeReview }, line };
+}
+
+// plugin/src/repo-docs.ts
+var TECH_TARGET = "specs/tech.md";
+var TECH_PREVIOUS = "specs/tech.prev.md";
+var TLDR_TARGET = "specs/tldr.md";
+var readIfExists3 = (path) => existsSync2(path) ? readFileSync4(path, "utf8") : undefined;
+var missingFile = (file) => ({ code: "missing-file", subject: file, message: `${file} does not exist.` });
+function docTarget(root, options = {}) {
+  const keep = options.keep ?? false;
+  const source = join7(root, TECH_TARGET);
+  if (keep || !existsSync2(source))
+    return { target: TECH_TARGET, previous: null, keep };
+  copyFileSync(source, join7(root, TECH_PREVIOUS));
+  return { target: TECH_TARGET, previous: TECH_PREVIOUS, keep };
+}
+function docCheck(root) {
+  const tech = readIfExists3(join7(root, TECH_TARGET));
+  if (tech === undefined)
+    return { ok: false, findings: [missingFile(TECH_TARGET)] };
+  const findings = readTech({ tech, specs: [] }).diagnostics.filter((d) => d.diagnostic.code === "tech-section").map(({ diagnostic }) => ({ code: diagnostic.code, subject: diagnostic.subject ?? null, message: diagnostic.message }));
+  return { ok: findings.length === 0, findings };
+}
+function tldrTarget() {
+  return { target: TLDR_TARGET };
+}
+function specFolders(root) {
+  const main = listSpecs(root);
+  const porcelain = worktreeListing(root);
+  const refs = withWorktreeOnly(main, worktreeOnlyRefs(root, main, porcelain));
+  const dirs = specReadDirs(root, refs, porcelain);
+  return refs.map((ref) => {
+    const dir = ref.archived ? undefined : dirs.get(ref.slug);
+    return dir === undefined ? ref : { ...ref, dir };
+  });
+}
+var TLDR_KINDS = ["spec", "rounds"];
+function tldrSpecs(root) {
+  const specs = specFolders(root).filter((ref) => !ref.archived).map(({ dir, slug: folder }) => {
+    const texts = {};
+    for (const kind of TLDR_KINDS) {
+      const text = readIfExists3(join7(dir, FILE_KINDS[kind].path));
+      if (text !== undefined)
+        texts[kind] = text;
+    }
+    return { folder, texts };
+  });
+  const model = buildDashboard({ master: null, constitution: null, tldr: null, specs, archived: [] });
+  return model.specs.map((row) => ({ number: row.id, updated: row.updated, phase: row.phase, lastRound: row.lastRound }));
+}
+function tldrCheck(root) {
+  const text = readIfExists3(join7(root, TLDR_TARGET));
+  if (text === undefined)
+    return { ok: false, stale: false, findings: [missingFile(TLDR_TARGET)] };
+  const tldr = parseTldr(text);
+  const state = tldrState({ tldr, specs: tldrSpecs(root) });
+  const findings = [
+    ...state.missingSections.map((key) => ({
+      code: "tldr-section",
+      subject: key,
+      message: `${TLDR_TARGET} has no \`<!-- section: ${key} -->\` marker.`
+    })),
+    ...tldr.diagnostics.filter((d) => d.code === "tldr-generated-missing" || d.code === "tldr-generated-invalid").map((d) => ({ code: d.code, subject: "generated", message: d.message })),
+    ...state.unnamedSpecs.map((number) => ({
+      code: "tldr-unnamed-spec",
+      subject: number,
+      message: `${TLDR_TARGET} never names the open spec ${number}.`
+    }))
+  ];
+  return { ok: findings.length === 0, stale: state.stale, findings };
+}
+function filesUnder(specDir, folder, dir) {
+  const base = join7(specDir, dir);
+  if (!existsSync2(base))
+    return [];
+  return readdirSync3(base, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => `${folder}/${relative(specDir, join7(entry.parentPath, entry.name)).split(sep2).join("/")}`);
+}
+var DESIGN_DIR = ".design";
+var ARTIFACTS_DIR = "artifacts";
+var PROTOTYPE_FILE = "index.html";
+async function tldrFacts2(root) {
+  const specs = specFolders(root).map((ref) => {
+    const files = specFiles(ref);
+    if (ref.archived)
+      return { ...files, archived: true, prototypes: [], artifacts: [] };
+    return {
+      ...files,
+      archived: false,
+      prototypes: filesUnder(ref.dir, ref.slug, DESIGN_DIR).filter((path) => path.endsWith(`/${PROTOTYPE_FILE}`)),
+      artifacts: filesUnder(ref.dir, ref.slug, ARTIFACTS_DIR)
+    };
+  });
+  return tldrFacts({
+    specs,
+    master: readIfExists2(join7(root, "ISA.md")),
+    constitution: readIfExists2(join7(root, "specs", "constitution.md")),
+    workflow: parseWorkflow(readIfExists2(join7(root, "specs", "workflow.md"))),
+    locks: await readLockSources({ repoRoot: root })
+  });
 }
 
 // core/src/allocate.ts
@@ -4497,14 +5411,14 @@ class PackError extends Error {
 var unticked2 = (cell) => cell.replace(/`/g, "").trim();
 var KIND_PREFIX2 = { normal: "", anti: "Anti: ", antecedent: "Antecedent: " };
 var BULLET = /^[-*+]\s+(.*)$/;
-function decisionRows(text2) {
-  const section3 = levelTwoSection(text2, ["Decisions"]);
-  if (section3 === null)
+function decisionRows(text) {
+  const section = levelTwoSection(text, ["Decisions"]);
+  if (section === null)
     return [];
   const rows = [];
   let row = null;
   let gap = false;
-  for (const line of section3.split(`
+  for (const line of section.split(`
 `).map((l) => l.trimEnd())) {
     const bullet = BULLET.exec(line);
     if (bullet !== null) {
@@ -4527,8 +5441,8 @@ var escapeRegExp2 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function mentions(row, claimId, taskId) {
   return [claimId, taskId].some((id) => id !== "" && new RegExp(String.raw`(?<![\w-])${escapeRegExp2(id)}(?!\w)`).test(row));
 }
-function decisionsOf(source, text2, claimId, taskId) {
-  return decisionRows(text2).filter((r) => mentions(r, claimId, taskId)).map((r) => ({ source, text: r }));
+function decisionsOf(source, text, claimId, taskId) {
+  return decisionRows(text).filter((r) => mentions(r, claimId, taskId)).map((r) => ({ source, text: r }));
 }
 function buildPack(input) {
   const tab = parseTaskLines({ tasks: input.tasks, ...input.constitution === null ? {} : { constitution: input.constitution } });
@@ -4582,66 +5496,6 @@ function capPack(pack, limit = PACK_LIMIT) {
   return capped;
 }
 
-// core/src/resolve.ts
-import { readdirSync as readdirSync2 } from "fs";
-import { join as join5, resolve as resolve4, sep } from "path";
-function listSpecs(workspaceRoot) {
-  return scan(workspaceRoot) ?? [];
-}
-function resolveSpec(workspaceRoot, ref) {
-  const specs = scan(workspaceRoot);
-  if (specs === null)
-    return notFound(ref, "no-specs-dir");
-  if (SPEC_ID.test(ref))
-    return single(ref, specs.filter((s) => specIdOf(s.slug) === ref), "unknown-id");
-  if (SPEC_FOLDER.test(ref)) {
-    const byFolder2 = specs.filter((s) => s.slug === ref);
-    if (byFolder2.length > 0)
-      return single(ref, byFolder2, "unknown-slug");
-  }
-  return single(ref, specs.filter((s) => ref !== "" && specSlugOf(s.slug) === ref), "unknown-slug");
-}
-function single(ref, matches, missing2) {
-  if (matches.length === 0)
-    return notFound(ref, missing2);
-  if (matches.length > 1)
-    return notFound(ref, "ambiguous");
-  return matches[0];
-}
-function notFound(ref, reason) {
-  return { kind: "not_found", ref, reason };
-}
-function scan(workspaceRoot) {
-  const specsDir = resolve4(workspaceRoot, "specs");
-  const active = folders(specsDir);
-  if (active === null)
-    return null;
-  const archiveDir = join5(specsDir, "archive");
-  return [...refs(specsDir, active, false), ...refs(archiveDir, folders(archiveDir) ?? [], true)];
-}
-function refs(parent, names3, archived) {
-  const out = [];
-  for (const name of names3) {
-    const match = SPEC_FOLDER.exec(name);
-    if (match?.[1] === undefined)
-      continue;
-    out.push({ kind: "spec", id: match[1], slug: name, dir: join5(parent, name), archived });
-  }
-  return out.sort((a, b) => Number(a.id) - Number(b.id) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
-}
-function folders(dir) {
-  let entries;
-  try {
-    entries = readdirSync2(dir, { withFileTypes: true });
-  } catch (error) {
-    const code = error.code;
-    if (code === "ENOENT" || code === "ENOTDIR")
-      return null;
-    throw error;
-  }
-  return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-}
-
 // core/src/spec-text.ts
 class SpecTextError extends Error {
   code;
@@ -4662,21 +5516,21 @@ var SECTIONS = {
 };
 var TABLE_HEAD = ["| isc | type | check | threshold | tool | anchors_to | severity |", "|-----|------|-------|-----------|------|------------|----------|"];
 var LEVEL_TWO2 = /^##\s+(?!#)/;
-var RULE2 = /^---\s*$/;
+var RULE3 = /^---\s*$/;
 var HEADING_UP_TO_THREE = /^#{1,3}\s/;
-var FENCE3 = /^\s*(```|~~~)/;
+var FENCE6 = /^\s*(```|~~~)/;
 var ISC_NUMBER = /^ISC-(\d+)/;
 var DATED = /^\d{4}-\d{2}-\d{2}\b/;
-function linesOf(text2) {
-  const eol = text2.includes(`\r
+function linesOf(text) {
+  const eol = text.includes(`\r
 `) ? `\r
 ` : `
 `;
-  const lines = text2.split(/\r\n|\r|\n/);
+  const lines = text.split(/\r\n|\r|\n/);
   const fenced = [];
   let open = null;
   for (const line of lines) {
-    const fence = FENCE3.exec(line)?.[1] ?? null;
+    const fence = FENCE6.exec(line)?.[1] ?? null;
     if (open === null && fence !== null) {
       open = fence;
       fenced.push(true);
@@ -4773,16 +5627,16 @@ function cell(value, what) {
   return oneLine2(value, what).trim().replace(/(?<!\\)\|/g, "\\|");
 }
 function claimLine2(id, claim) {
-  const text2 = oneLine2(claim.text, `the text of ${id}`).trim();
-  if (text2 === "")
+  const text = oneLine2(claim.text, `the text of ${id}`).trim();
+  if (text === "")
     throw new SpecTextError("bad-input", `${id} has no text`);
   const after = claim.after ?? [];
-  return `- [ ] ${id}: ${text2}${after.length > 0 ? ` (after: ${after.join(", ")})` : ""}`;
+  return `- [ ] ${id}: ${text}${after.length > 0 ? ` (after: ${after.join(", ")})` : ""}`;
 }
 function rowLine(id, row) {
-  const cells2 = [id, row.type, row.check, row.threshold, row.tool, row.anchorsTo].map((v) => cell(v, `a Test Strategy cell of ${id}`));
+  const cells = [id, row.type, row.check, row.threshold, row.tool, row.anchorsTo].map((v) => cell(v, `a Test Strategy cell of ${id}`));
   const severity = cell(row.severity ?? "", `the severity of ${id}`);
-  return `| ${[...cells2, severity].join(" | ")} |`;
+  return `| ${[...cells, severity].join(" | ")} |`;
 }
 function rowLines(ids, rows) {
   if (rows.length > ids.length)
@@ -4793,7 +5647,7 @@ function claimSectionRange(doc, parsed) {
   if (!parsed.section)
     return null;
   const start = parsed.section.line - 1;
-  const end = doc.lines.findIndex((l, i) => i > start && !doc.fenced[i] && (LEVEL_TWO2.test(l) || RULE2.test(l)));
+  const end = doc.lines.findIndex((l, i) => i > start && !doc.fenced[i] && (LEVEL_TWO2.test(l) || RULE3.test(l)));
   return [start, end < 0 ? doc.lines.length : end];
 }
 function insertClaims(doc, parsed, range, block, feature) {
@@ -4852,22 +5706,22 @@ function mintClaimsText(master, feature, claims, rows, opts = {}) {
   const block = claims.map((c, i) => claimLine2(ids[i] ?? "", c));
   const newRows = rowLines(ids, rows);
   const doc = linesOf(master);
-  const section3 = claimSectionRange(doc, parsed);
-  if (!section3)
+  const section = claimSectionRange(doc, parsed);
+  if (!section)
     throw new SpecTextError("no-claim-section", "the master has no claim section (## Features or ## Claims)");
   const target = parsed.features.find((f) => f.id === feature);
   if (target) {
     const head = target.line - 1;
     let end = doc.lines.findIndex((l, i) => i > head && !doc.fenced[i] && HEADING_UP_TO_THREE.test(l));
-    if (end < 0 || end > section3[1])
-      end = section3[1];
+    if (end < 0 || end > section[1])
+      end = section[1];
     insertClaims(doc, parsed, [head, end], block, feature);
   } else if (parsed.features.length === 0) {
-    insertClaims(doc, parsed, section3, block, null);
+    insertClaims(doc, parsed, section, block, null);
   } else if (opts.featureName !== undefined) {
     const heading = `### ${feature} \xB7 ${oneLine2(opts.featureName, "the feature name").trim()}`;
     const why = opts.why === undefined ? [] : [`Why: ${oneLine2(opts.why, "the Why line").trim()}`];
-    appendToSection(doc, section3, [heading, ...why, "", ...block], false);
+    appendToSection(doc, section, [heading, ...why, "", ...block], false);
   } else {
     throw new SpecTextError("unknown-feature", `the master has no feature block ${feature}`);
   }
@@ -4889,28 +5743,28 @@ function projectClaimsText(spec, claims, rows) {
   const block = claims.map((c) => claimLine2(c.id, c));
   const newRows = rowLines(ids, rows);
   const doc = linesOf(spec);
-  const section3 = claimSectionRange(doc, parsed);
-  if (section3)
-    insertClaims(doc, parsed, section3, block, null);
+  const section = claimSectionRange(doc, parsed);
+  if (section)
+    insertClaims(doc, parsed, section, block, null);
   else
     insertBlock(doc, newSectionAt(doc, ["Test Strategy", "Decisions", "Changelog", "Verification"]), ["## Claims", "", ...block]);
   insertRows(doc, newRows, claimSectionRange(doc, parseClaims(textOf(doc))));
   recount(doc, true);
   return textOf(doc);
 }
-function appendVerificationText(text2, id, type, stub, now) {
+function appendVerificationText(text, id, type, stub, now) {
   oneLine2(stub, "the verification stub");
   oneLine2(type, "the verification type");
   if (stub.trim() === "")
     throw new SpecTextError("bad-input", "the verification stub is empty");
   const updated = validDate(now);
-  const parsed = parseClaims(text2);
+  const parsed = parseClaims(text);
   const claim = parsed.claims.find((c) => c.id === id);
   if (!claim)
     throw new SpecTextError("unknown-id", `no claim line carries ${id}`);
   if (claim.dropped)
     throw new SpecTextError("dropped-claim", `${id} is dropped and takes no evidence`);
-  const doc = linesOf(text2);
+  const doc = linesOf(text);
   const entry = `- ${id}: ${type.trim()} \u2014 ${stub.trim()}`;
   const range = sectionRange(doc, "Verification");
   if (range)
@@ -4924,13 +5778,13 @@ function appendVerificationText(text2, id, type, stub, now) {
   setKey(doc, "updated", updated, true);
   return textOf(doc);
 }
-function appendDecisionText(text2, line, now) {
+function appendDecisionText(text, line, now) {
   const body = oneLine2(line, "the decision").trim();
   if (body === "")
     throw new SpecTextError("bad-input", "the decision is empty");
   const updated = validDate(now);
   const entry = `- ${DATED.test(body) ? body : `${updated.slice(0, 10)}: ${body}`}`;
-  const doc = linesOf(text2);
+  const doc = linesOf(text);
   const range = sectionRange(doc, "Decisions");
   if (range)
     appendToSection(doc, range, [entry], true);
@@ -5109,8 +5963,8 @@ function stageInputOf(input, fm, number) {
     edgeHeld: input.edgeHeld ?? []
   };
 }
-function withStage(text2, stage, fm) {
-  const lines = text2.split(`
+function withStage(text, stage, fm) {
+  const lines = text.split(`
 `);
   const close = fm.bodyLine - 2;
   const cr = (line) => line?.endsWith("\r") ? "\r" : "";
@@ -5210,119 +6064,6 @@ function planCatchUp(input) {
   return { kind: "catch-up", from: last, to, specText, event };
 }
 
-// core/src/workflow.ts
-var CODE_REVIEW_MODES = ["spec", "feature", "none"];
-var ROW_STAGE = {
-  idea: false,
-  plan: true,
-  tasks: true,
-  review: true,
-  build: true,
-  blocked: false,
-  "close-pending": false,
-  "code-review": true,
-  close: true,
-  done: true
-};
-var FIXED_GATES = ["review", "build", "done"];
-var knownStage = (stage) => Object.hasOwn(ROW_STAGE, stage);
-function gateViolation(stages) {
-  const foreign = stages.find((s) => !knownStage(s) || !ROW_STAGE[s]);
-  if (foreign !== undefined) {
-    return knownStage(foreign) ? `list ${foreign}, a detour no workflow row lists` : `list ${foreign}, a stage core does not know`;
-  }
-  const twice = stages.find((s, i) => stages.indexOf(s) !== i);
-  if (twice !== undefined)
-    return `list ${twice} twice`;
-  const missing2 = FIXED_GATES.find((gate) => !stages.includes(gate));
-  if (missing2 !== undefined)
-    return `leave out the fixed gate ${missing2}`;
-  if (stages.indexOf("review") > stages.indexOf("build"))
-    return "put the fixed gate review after build";
-  const last = stages.at(-1) ?? "";
-  if (last !== "done")
-    return `list ${last} after the fixed gate done`;
-  return null;
-}
-var HEADER = ["type", "stages", "code_review"];
-var FENCE4 = /^\s*(```|~~~)/;
-var plain = (cell2) => cell2.replace(/`/g, "").trim();
-function parseWorkflow(text2) {
-  if (text2 === null)
-    return { rows: DEFAULT_WORKFLOW, source: "default", diagnostics: [] };
-  const diagnostics = [];
-  const warn = (code, message, line, subject) => {
-    diagnostics.push(subject === undefined ? { severity: "warning", code, message, line } : { severity: "warning", code, message, line, subject });
-  };
-  const lines = text2.replace(/\r\n?/g, `
-`).split(`
-`);
-  const header = findHeader(lines);
-  const byType = new Map;
-  if (header === null) {
-    warn("workflow-table", "specs/workflow.md has no table | type | stages | code_review |; every type runs its default row.", 1);
-  } else if (!TABLE_SEP.test(lines[header + 1] ?? "")) {
-    warn("workflow-table", "the workflow table has no separator row under its header; every type runs its default row.", header + 1);
-  } else {
-    for (let i = header + 2;i < lines.length && /^\s*\|/.test(lines[i] ?? ""); i++) {
-      const parsed = parseRow(lines[i] ?? "", i + 1, warn);
-      if (parsed)
-        byType.set(parsed.row.type, [...byType.get(parsed.row.type) ?? [], parsed]);
-    }
-  }
-  const rows = WORKFLOW_TYPES.map((type) => {
-    const found = byType.get(type) ?? [];
-    for (const dup of found.slice(1)) {
-      warn("workflow-duplicate", `type ${type} has more than one row; it runs its default row.`, dup.line, type);
-    }
-    const only = found.length === 1 ? found[0] : undefined;
-    if (!only)
-      return defaultWorkflowRow(type);
-    const violation = gateViolation(only.row.stages);
-    if (violation === null)
-      return only.row;
-    warn("workflow-gate", `the stages of type ${type} ${violation}; it runs its default row.`, only.line, type);
-    return defaultWorkflowRow(type);
-  });
-  diagnostics.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
-  return { rows, source: "file", diagnostics };
-}
-function findHeader(lines) {
-  let fenced = false;
-  for (let i = 0;i < lines.length; i++) {
-    const line = lines[i] ?? "";
-    if (FENCE4.test(line))
-      fenced = !fenced;
-    else if (!fenced && /^\s*\|/.test(line) && tableCells2(line).map((c) => plain(c).toLowerCase()).join("|") === HEADER.join("|"))
-      return i;
-  }
-  return null;
-}
-function parseRow(text2, line, warn) {
-  const cells2 = tableCells2(text2).map(plain);
-  if (cells2.length !== HEADER.length) {
-    warn("workflow-row", `a workflow row needs the three cells type, stages and code_review; it has ${cells2.length}.`, line);
-    return null;
-  }
-  const [typeCell = "", stagesCell = "", modeCell = ""] = cells2;
-  const type = WORKFLOW_TYPES.find((t) => t === typeCell);
-  if (!type) {
-    warn("workflow-type", `type ${typeCell} is none of ${WORKFLOW_TYPES.join(", ")}; the row is ignored.`, line, typeCell);
-    return null;
-  }
-  const stages = stagesCell.split("\xB7").map((s) => s.trim());
-  if (stages.some((s) => s === "")) {
-    warn("workflow-row", `the stages of type ${type} hold an empty stage; it runs its default row.`, line, type);
-    return null;
-  }
-  const codeReview = CODE_REVIEW_MODES.find((m) => m === modeCell);
-  if (!codeReview) {
-    warn("workflow-code-review", `code_review ${modeCell} of type ${type} is none of ${CODE_REVIEW_MODES.join(", ")}; it runs its default row.`, line, modeCell);
-    return null;
-  }
-  return { row: { type, stages, codeReview }, line };
-}
-
 // plugin/src/spec-check.ts
 var EXIT = { ok: 0, badArgs: 1, drift: 3, lockLost: 4 };
 var ERROR_CODES = [
@@ -5354,6 +6095,7 @@ var ERROR_CODES = [
   "claim-required",
   "unknown-task",
   "no-claim",
+  "incomplete",
   "internal"
 ];
 
@@ -5408,42 +6150,23 @@ function git2(cwd, args) {
   const r = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
   return r.exitCode === 0 ? r.stdout.toString() : null;
 }
-function readIfExists2(path) {
-  try {
-    return readFileSync3(path, "utf8");
-  } catch (error) {
-    if (error.code === "ENOENT")
-      return null;
-    throw error;
-  }
-}
-var FOLDER_KINDS = Object.keys(FILE_KINDS).filter((kind) => !FILE_KINDS[kind].directory && !FILE_KINDS[kind].path.startsWith(".."));
-function specFiles(ref) {
-  const texts = {};
-  for (const kind of FOLDER_KINDS) {
-    const text2 = readIfExists2(join6(ref.dir, FILE_KINDS[kind].path));
-    if (text2 !== null)
-      texts[kind] = text2;
-  }
-  return { folder: ref.slug, texts };
-}
 var LISTED = new WeakMap;
 function listedOf(ctx) {
-  let listed2 = LISTED.get(ctx);
-  if (listed2 === undefined) {
+  let listed = LISTED.get(ctx);
+  if (listed === undefined) {
     const main = listSpecs(ctx.root);
     const porcelain = worktreeListing(ctx.root);
-    listed2 = { refs: withWorktreeOnly(main, worktreeOnlyRefs(ctx.root, main, porcelain)), porcelain };
-    LISTED.set(ctx, listed2);
+    listed = { refs: withWorktreeOnly(main, worktreeOnlyRefs(ctx.root, main, porcelain)), porcelain };
+    LISTED.set(ctx, listed);
   }
-  return listed2;
+  return listed;
 }
 var READ_DIRS = new WeakMap;
 function readDirs(ctx) {
   let dirs = READ_DIRS.get(ctx);
   if (dirs === undefined) {
-    const { refs: refs2, porcelain } = listedOf(ctx);
-    dirs = specReadDirs(ctx.root, refs2, porcelain);
+    const { refs, porcelain } = listedOf(ctx);
+    dirs = specReadDirs(ctx.root, refs, porcelain);
     READ_DIRS.set(ctx, dirs);
   }
   return dirs;
@@ -5457,21 +6180,21 @@ function specRef(ctx, arg) {
   const name = basename2(arg.replace(/[\\/]+$/u, ""));
   const ref = resolveSpec(ctx.root, name);
   if (ref.kind === "not_found") {
-    const only = listedOf(ctx).refs.find((s) => !s.archived && s.dir !== join6(ctx.root, "specs", s.slug) && [s.id, s.slug, specSlugOf(s.slug)].includes(name));
+    const only = listedOf(ctx).refs.find((s) => !s.archived && s.dir !== join8(ctx.root, "specs", s.slug) && [s.id, s.slug, specSlugOf(s.slug)].includes(name));
     if (only === undefined)
       throw bad(`no spec folder matches "${arg}" (${ref.reason})`, "unknown-spec");
     return sourced(ctx, only);
   }
   return sourced(ctx, ref);
 }
-var rel = (ctx, path) => relative(ctx.root, path).split(sep2).join("/");
+var rel = (ctx, path) => relative2(ctx.root, path).split(sep3).join("/");
 function specText(ctx, ref) {
-  const text2 = readIfExists2(join6(ref.dir, "spec.md"));
-  if (text2 === null)
+  const text = readIfExists2(join8(ref.dir, "spec.md"));
+  if (text === null)
     throw bad(`${rel(ctx, ref.dir)} has no spec.md`, "missing-file");
-  return text2;
+  return text;
 }
-var masterPath = (ctx) => join6(ctx.root, "ISA.md");
+var masterPath = (ctx) => join8(ctx.root, "ISA.md");
 function holderOf2(ctx, ref) {
   const copy = ref.archived ? undefined : readDirs(ctx).get(ref.slug);
   return copy !== undefined && copy === ref.dir ? dirname3(dirname3(copy)) : ctx.root;
@@ -5482,8 +6205,8 @@ function treeHolderOf(ctx, ref) {
     return ctx.root;
   let dirs = TREE_DIRS.get(ctx);
   if (dirs === undefined) {
-    const { refs: refs2, porcelain } = listedOf(ctx);
-    dirs = specTreeDirs(ctx.root, refs2, porcelain);
+    const { refs, porcelain } = listedOf(ctx);
+    dirs = specTreeDirs(ctx.root, refs, porcelain);
     TREE_DIRS.set(ctx, dirs);
   }
   return dirs.get(ref.slug) ?? ctx.root;
@@ -5492,7 +6215,7 @@ function masterPathFor(ctx, ref) {
   const holder = holderOf2(ctx, ref);
   if (holder === ctx.root)
     return masterPath(ctx);
-  return (git2(holder, ["-c", "core.fsmonitor=false", "ls-files", "--", "ISA.md"]) ?? "").trim() === "" ? masterPath(ctx) : join6(holder, "ISA.md");
+  return (git2(holder, ["-c", "core.fsmonitor=false", "ls-files", "--", "ISA.md"]) ?? "").trim() === "" ? masterPath(ctx) : join8(holder, "ISA.md");
 }
 async function locksOf(ctx) {
   return readLockSources({ repoRoot: ctx.root });
@@ -5511,13 +6234,13 @@ function titleOf(slug) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 function branchNumbers(root) {
-  const names3 = (git2(root, ["branch", "-a", "--format=%(refname:short)"]) ?? "").split(`
+  const names = (git2(root, ["branch", "-a", "--format=%(refname:short)"]) ?? "").split(`
 `);
-  return specNumbersOf(names3.flatMap((name) => name.trim().split("/").slice(1)));
+  return specNumbersOf(names.flatMap((name) => name.trim().split("/").slice(1)));
 }
 function specFoldersIn(dir) {
   try {
-    return readdirSync3(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() && specIdOf(e.name) !== null ? [e.name] : []);
+    return readdirSync4(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() && specIdOf(e.name) !== null ? [e.name] : []);
   } catch {
     return [];
   }
@@ -5529,7 +6252,7 @@ function allocationSite(ctx) {
   const porcelain = git2(ctx.root, ["worktree", "list", "--porcelain"]) ?? "";
   const worktrees = porcelain.split(`
 `).flatMap((line) => line.startsWith("worktree ") ? [line.slice("worktree ".length)] : []);
-  const taken = worktrees.filter((w) => resolve5(w) !== resolve5(ctx.root)).flatMap((w) => [...specFoldersIn(join6(w, "specs")), ...specFoldersIn(join6(w, "specs", "archive"))]);
+  const taken = worktrees.filter((w) => resolve5(w) !== resolve5(ctx.root)).flatMap((w) => [...specFoldersIn(join8(w, "specs")), ...specFoldersIn(join8(w, "specs", "archive"))]);
   return { at: tracks ? top : ctx.root, taken };
 }
 function allocate(ctx, args) {
@@ -5537,12 +6260,12 @@ function allocate(ctx, args) {
   const slug = required(args, 1, "the slug");
   if (!SPEC_TYPES.includes(type))
     throw bad(`"${type}" is no spec type (${SPEC_TYPES.join(", ")})`);
-  const listed2 = listSpecs(ctx.root);
-  const clash = listed2.find((s) => specSlugOf(s.slug) === slug);
+  const listed = listSpecs(ctx.root);
+  const clash = listed.find((s) => specSlugOf(s.slug) === slug);
   if (clash)
     throw bad(`a spec folder for "${slug}" exists already: ${rel(ctx, clash.dir)}`);
   const site = allocationSite(ctx);
-  const number = nextSpecNumber([...specNumbersOf([...listed2.map((s) => s.slug), ...site.taken]), ...branchNumbers(ctx.root)]);
+  const number = nextSpecNumber([...specNumbersOf([...listed.map((s) => s.slug), ...site.taken]), ...branchNumbers(ctx.root)]);
   const title = args.values.get("title") ?? titleOf(slug);
   const goal = args.values.get("goal");
   const feature = args.values.get("feature");
@@ -5556,13 +6279,13 @@ function allocate(ctx, args) {
     now: ctx.now,
     actor: args.values.get("actor") ?? "a:claude:spec-check"
   });
-  const dir = join6(site.at, ...plan.dir.split("/"));
-  if (existsSync2(dir))
+  const dir = join8(site.at, ...plan.dir.split("/"));
+  if (existsSync3(dir))
     throw bad(`${rel(ctx, dir)} exists already`);
   mkdirSync3(dir, { recursive: true });
   const files = Object.keys(plan.files);
   for (const name of files)
-    writeFileSync2(join6(dir, name), plan.files[name]);
+    writeFileSync2(join8(dir, name), plan.files[name]);
   emit(ctx, args, { dir: plan.dir, number, files }, [
     `allocated ${plan.dir} (${files.join(", ")})`,
     ...goal === undefined ? ["no --goal given: the goal reads as the title; confirm it in spec.md and context.md"] : []
@@ -5572,12 +6295,12 @@ function allocate(ctx, args) {
 var isRecord5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var isString = (v) => typeof v === "string";
 function claimInputs(path) {
-  const text2 = readIfExists2(path);
-  if (text2 === null)
+  const text = readIfExists2(path);
+  if (text === null)
     throw bad(`the claims file ${basename2(path)} does not exist`);
   let data;
   try {
-    data = JSON.parse(text2);
+    data = JSON.parse(text);
   } catch {
     throw bad(`the claims file ${basename2(path)} is not valid JSON`);
   }
@@ -5615,10 +6338,10 @@ var ISC_NUMBER2 = /^ISC-(\d+)/u;
 function nextIdAcrossSpecs(ctx) {
   let highest = 0;
   for (const ref of specsOf(ctx)) {
-    const text2 = readIfExists2(join6(ref.dir, "spec.md"));
-    if (text2 === null)
+    const text = readIfExists2(join8(ref.dir, "spec.md"));
+    if (text === null)
       continue;
-    for (const c of parseClaims(text2).claims)
+    for (const c of parseClaims(text).claims)
       highest = Math.max(highest, Number(ISC_NUMBER2.exec(c.id)?.[1] ?? 0));
   }
   return highest + 1;
@@ -5636,7 +6359,7 @@ function mint(ctx, args) {
   const rows = inputs.map((i) => i.row);
   const featureName = args.values.get("feature-name");
   const why = args.values.get("why");
-  const specPath = join6(ref.dir, "spec.md");
+  const specPath = join8(ref.dir, "spec.md");
   const spec = specText(ctx, ref);
   const masterFile = masterPathFor(ctx, ref);
   const master = readIfExists2(masterFile);
@@ -5668,7 +6391,7 @@ function verify(ctx, args) {
   const id = required(args, 1, "the claim ID");
   const type = required(args, 2, "the verification type");
   const stub = required(args, 3, "the one-line stub");
-  const specPath = join6(ref.dir, "spec.md");
+  const specPath = join8(ref.dir, "spec.md");
   const nextSpec = appendVerificationText(specText(ctx, ref), id, type, stub, ctx.now);
   const masterFile = masterPathFor(ctx, ref);
   const master = readIfExists2(masterFile);
@@ -5688,27 +6411,27 @@ function verify(ctx, args) {
 }
 function decisionFile(ctx, arg) {
   for (const candidate of [resolve5(ctx.cwd, arg), resolve5(ctx.root, arg)]) {
-    if (!existsSync2(candidate) || !statSync(candidate).isFile())
+    if (!existsSync3(candidate) || !statSync(candidate).isFile())
       continue;
-    const inside = relative(ctx.root, candidate);
+    const inside = relative2(ctx.root, candidate);
     if (inside.startsWith("..") || resolve5(ctx.root, inside) !== candidate)
       throw bad(`${arg} lies outside the repository`);
     return candidate;
   }
-  return join6(specRef(ctx, arg).dir, "spec.md");
+  return join8(specRef(ctx, arg).dir, "spec.md");
 }
 function decide(ctx, args) {
   const path = decisionFile(ctx, required(args, 0, "the file"));
   const line = required(args, 1, "the decision line");
-  const text2 = readIfExists2(path);
-  if (text2 === null)
+  const text = readIfExists2(path);
+  if (text === null)
     throw bad(`${rel(ctx, path)} does not exist`);
-  writeFileSync2(path, appendDecisionText(text2, line, ctx.now));
+  writeFileSync2(path, appendDecisionText(text, line, ctx.now));
   emit(ctx, args, { file: rel(ctx, path) }, [`decision added to ${rel(ctx, path)}`]);
   return EXIT.ok;
 }
-function idsOf(text2) {
-  return new Set(text2 === null ? [] : parseClaims(text2).claims.map((c) => c.id));
+function idsOf(text) {
+  return new Set(text === null ? [] : parseClaims(text).claims.map((c) => c.id));
 }
 function driftLines(slug, report) {
   const lines = [];
@@ -5723,19 +6446,19 @@ function driftLines(slug, report) {
   return lines.length === 0 ? [] : [`${slug}:`, ...lines];
 }
 function drift(ctx, args) {
-  const listed2 = specsOf(ctx);
+  const listed = specsOf(ctx);
   const one = args.positional[0];
-  const targets = one === undefined ? listed2.filter((s) => !s.archived) : [specRef(ctx, one)];
+  const targets = one === undefined ? listed.filter((s) => !s.archived) : [specRef(ctx, one)];
   const master = readIfExists2(one === undefined || targets[0] === undefined ? masterPath(ctx) : masterPathFor(ctx, targets[0]));
   const masterDoc = master === null ? null : parseClaims(master);
-  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists2(join6(s.dir, "spec.md")))]));
+  const held = new Map(listed.map((s) => [s.slug, idsOf(readIfExists2(join8(s.dir, "spec.md")))]));
   const specs = [];
   for (const ref of targets) {
-    const text2 = readIfExists2(join6(ref.dir, "spec.md"));
-    if (text2 === null)
+    const text = readIfExists2(join8(ref.dir, "spec.md"));
+    if (text === null)
       continue;
-    const heldElsewhere2 = new Set([...held].filter(([slug]) => slug !== ref.slug).flatMap(([, ids]) => [...ids]));
-    const report = driftReport({ frontmatter: parseFrontmatter(text2), spec: parseClaims(text2), master: masterDoc, heldElsewhere: heldElsewhere2 });
+    const heldElsewhere = new Set([...held].filter(([slug]) => slug !== ref.slug).flatMap(([, ids]) => [...ids]));
+    const report = driftReport({ frontmatter: parseFrontmatter(text), spec: parseClaims(text), master: masterDoc, heldElsewhere });
     specs.push({ id: ref.id, slug: ref.slug, drift: hasDrift(report), report });
   }
   const masterProgress = master === null || masterDoc === null || one !== undefined ? null : masterProgressMismatch(parseFrontmatter(master), masterDoc);
@@ -5759,9 +6482,9 @@ function worktreeTreeOf(ctx, specs, at = ctx.root) {
     return null;
   return checkoutOf(at)?.tree ?? null;
 }
-function perSpecTrees(ctx, refs2, specs) {
+function perSpecTrees(ctx, refs, specs) {
   const perSpec = {};
-  for (const ref of refs2) {
+  for (const ref of refs) {
     const files = specs.find((f) => f.folder === ref.slug);
     if (files?.texts.gateCodeReviewed === undefined)
       continue;
@@ -5775,20 +6498,20 @@ function perSpecTrees(ctx, refs2, specs) {
   return perSpec;
 }
 function dashboardInput(ctx, locks) {
-  const listed2 = specsOf(ctx);
-  const active = listed2.filter((s) => !s.archived);
+  const listed = specsOf(ctx);
+  const active = listed.filter((s) => !s.archived);
   const specs = active.map(specFiles);
   const perSpec = perSpecTrees(ctx, active, specs);
   return {
     master: readIfExists2(masterPath(ctx)),
-    constitution: readIfExists2(join6(ctx.root, "specs", "constitution.md")),
-    tldr: readIfExists2(join6(ctx.root, "specs", "tldr.md")),
+    constitution: readIfExists2(join8(ctx.root, "specs", "constitution.md")),
+    tldr: readIfExists2(join8(ctx.root, "specs", "tldr.md")),
     specs,
-    archived: listed2.filter((s) => s.archived).map(specFiles),
+    archived: listed.filter((s) => s.archived).map(specFiles),
     worktreeTree: worktreeTreeOf(ctx, specs.filter((f) => perSpec[f.folder] === undefined)),
     ...Object.keys(perSpec).length === 0 ? {} : { perSpec },
     locks,
-    workflow: parseWorkflow(readIfExists2(join6(ctx.root, "specs", "workflow.md")))
+    workflow: parseWorkflow(readIfExists2(join8(ctx.root, "specs", "workflow.md")))
   };
 }
 async function status(ctx, args) {
@@ -5826,20 +6549,20 @@ async function status(ctx, args) {
 async function frontier(ctx, args) {
   const ref = specRef(ctx, required(args, 0, "the spec"));
   const files = specFiles(ref);
-  const text2 = files.texts.spec;
-  if (text2 === undefined)
+  const text = files.texts.spec;
+  if (text === undefined)
     throw bad(`${rel(ctx, ref.dir)} has no spec.md`);
-  const claims = [...parseClaims(text2).claims];
+  const claims = [...parseClaims(text).claims];
   const reviewed = reviewedGate(files.texts).check.state;
   const locks = (await locksOf(ctx)).locks;
-  const constitution = readIfExists2(join6(ctx.root, "specs", "constitution.md"));
+  const constitution = readIfExists2(join8(ctx.root, "specs", "constitution.md"));
   const tasks = files.texts.tasks === undefined ? null : parseTaskLines({
     tasks: files.texts.tasks,
     ...constitution === null ? {} : { constitution },
     ...files.texts.rounds === undefined ? {} : { rounds: files.texts.rounds }
   });
   const partition = partitionClaims(claims, locks, reviewed);
-  const set = takeableSet({ specType: parseFrontmatter(text2).data.specType, claims, tasks, locks, reviewed, partition });
+  const set = takeableSet({ specType: parseFrontmatter(text).data.specType, claims, tasks, locks, reviewed, partition });
   const value = {
     spec: ref.slug,
     reviewed,
@@ -5882,23 +6605,23 @@ function holdsFeatureOpen2(files) {
   return parseFrontmatter(spec).data.phase !== "complete" && parseClaims(spec).claims.some((c) => !c.checked && !c.dropped);
 }
 function transitionInput(ctx, ref, to, actor, locks) {
-  const listed2 = specsOf(ctx);
-  const active = listed2.filter((s) => !s.archived).map(specFiles);
-  const archived = listed2.filter((s) => s.archived).map(specFiles);
+  const listed = specsOf(ctx);
+  const active = listed.filter((s) => !s.archived).map(specFiles);
+  const archived = listed.filter((s) => s.archived).map(specFiles);
   const files = active.find((f) => f.folder === ref.slug) ?? specFiles(ref);
   const spec = files.texts.spec ?? "";
   const id = specIdOf(files.folder) ?? files.folder;
   const reviewed = reviewedGate(files.texts).check.state;
   const partition = partitionClaims(parseClaims(spec).claims, locks.locks, reviewed);
   const codeMark = files.texts.gateCodeReviewed === undefined ? null : readGateMark("code-reviewed", files.texts.gateCodeReviewed).mark;
-  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists2(join6(ctx.root, "specs", "constitution.md")) }, []);
+  const edges = resolveEdges({ specs: active, archived, constitution: readIfExists2(join8(ctx.root, "specs", "constitution.md")) }, []);
   const edgeHeld = specEdgeHolds(partition.takeable, edges.edges.filter((e) => e.fromSpec === id));
   const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
   const feature = mainFeatureOf(parseFrontmatter(spec).data.isaFeature);
   const siblings = feature === null ? [] : active.filter((f) => f.texts.spec !== undefined && mainFeatureOf(parseFrontmatter(f.texts.spec).data.isaFeature) === feature && holdsFeatureOpen2(f)).map((f) => specIdOf(f.folder) ?? f.folder).filter((sibling) => sibling !== id).sort();
   return {
     files,
-    workflow: parseWorkflow(readIfExists2(join6(ctx.root, "specs", "workflow.md"))),
+    workflow: parseWorkflow(readIfExists2(join8(ctx.root, "specs", "workflow.md"))),
     to,
     actor,
     now: ctx.now,
@@ -5945,7 +6668,7 @@ async function transition(ctx, args) {
   }
   const event = { ...plan.event, command: args.values.get("command") ?? pluginCommand2(plan.event.command) };
   const line = checkedEvent(event);
-  writeFileSync2(join6(ref.dir, "spec.md"), plan.specText);
+  writeFileSync2(join8(ref.dir, "spec.md"), plan.specText);
   appendEventLine(ref.dir, line);
   emit(ctx, args, { spec: ref.slug, from: plan.from, to: plan.to, event }, [`${ref.slug}: ${plan.from} \u2192 ${plan.to} (${event.command})`]);
   return EXIT.ok;
@@ -5958,9 +6681,9 @@ function requiredValue(args, name, what) {
     throw bad(`--${name} ${what} is required`);
   return value;
 }
-function startedRunIds(text2) {
+function startedRunIds(text) {
   const ids = new Set;
-  for (const raw of text2.split(`
+  for (const raw of text.split(`
 `)) {
     if (raw.trim() === "")
       continue;
@@ -6083,11 +6806,11 @@ var OPEN_ATTENTION = new Set(["question", "concerns", "fail"]);
 var ROUND_MODES = ["agent", "workflow", "cockpit"];
 var records = (value) => Array.isArray(value) ? value.filter(isRecord5) : [];
 function readJsonFile(ctx, file, flag) {
-  const text2 = readIfExists2(resolve5(ctx.cwd, file));
-  if (text2 === null)
+  const text = readIfExists2(resolve5(ctx.cwd, file));
+  if (text === null)
     throw bad(`${flag} ${basename2(file)} does not exist`);
   try {
-    return JSON.parse(text2);
+    return JSON.parse(text);
   } catch {
     throw bad(`${flag} ${basename2(file)} is not valid JSON`);
   }
@@ -6169,10 +6892,10 @@ function pairs(args, name) {
   });
 }
 function roundUnits(ref, claims) {
-  const tasks = readIfExists2(join6(ref.dir, "tasks.md"));
+  const tasks = readIfExists2(join8(ref.dir, "tasks.md"));
   if (tasks === null) {
-    const units2 = claims.filter((c) => !c.dropped).map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
-    return { units: units2, hasTasks: false };
+    const units = claims.filter((c) => !c.dropped).map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
+    return { units, hasTasks: false };
   }
   const units = parseTaskLines({ tasks }).tasks.filter((t) => t.state !== "struck").map((t) => ({
     id: t.id,
@@ -6215,7 +6938,7 @@ function roundsRecord(ctx, args) {
     if (!outcomes.reader.has(task))
       outcomes.reader.set(task, r);
   const { units, hasTasks } = roundUnits(ref, doc.claims);
-  const logPath = join6(ref.dir, "rounds.jsonl");
+  const logPath = join8(ref.dir, "rounds.jsonl");
   const existing = readIfExists2(logPath);
   const prev = roundLines(existing ?? undefined).at(-1);
   const prevById = new Map;
@@ -6332,7 +7055,7 @@ function rounds(ctx, args) {
     throw bad(`"${sub}" is no rounds command (record)`);
   return roundsRecord(ctx, args);
 }
-var gatePath = (ref, gate) => join6(ref.dir, ".gates", `${gate}.json`);
+var gatePath = (ref, gate) => join8(ref.dir, ".gates", `${gate}.json`);
 var numberOf = (ref) => specIdOf(ref.slug) ?? ref.slug;
 var nextFor = (ref, gate) => gate === "reviewed" ? `/spec review ${numberOf(ref)}` : `/spec review ${numberOf(ref)} code`;
 function checkedEvent(event) {
@@ -6342,7 +7065,7 @@ function checkedEvent(event) {
   return line;
 }
 function appendEventLine(dir, line) {
-  const path = join6(dir, "events.jsonl");
+  const path = join8(dir, "events.jsonl");
   const existing = readIfExists2(path);
   const lead = existing !== null && existing !== "" && !existing.endsWith(`
 `) ? `
@@ -6354,10 +7077,10 @@ function ensureGatesIgnored(ref) {
   const top = git2(ref.dir, ["rev-parse", "--show-toplevel"])?.trim();
   if (top === undefined || top === "")
     return "no-git";
-  const probe = relative(top, gatePath(ref, "reviewed")).split(sep2).join("/");
+  const probe = relative2(top, gatePath(ref, "reviewed")).split(sep3).join("/");
   if (git2(top, ["-c", "core.fsmonitor=false", "check-ignore", "-q", "--", probe]) !== null)
     return "ignored";
-  const path = join6(top, ".gitignore");
+  const path = join8(top, ".gitignore");
   const have = readIfExists2(path) ?? "";
   const lead = have === "" || have.endsWith(`
 `) ? "" : `
@@ -6368,21 +7091,21 @@ function ensureGatesIgnored(ref) {
   return "added";
 }
 function treeEntry(root, path) {
-  const absolute = join6(root, path);
-  let stat2;
+  const absolute = join8(root, path);
+  let stat;
   try {
-    stat2 = lstatSync2(absolute);
+    stat = lstatSync2(absolute);
   } catch (error) {
     if (error.code === "ENOENT")
       return null;
     throw error;
   }
-  if (stat2.isSymbolicLink())
+  if (stat.isSymbolicLink())
     return { path, mode: "120000", bytes: readlinkSync(absolute, { encoding: "buffer" }) };
-  if (!stat2.isFile())
+  if (!stat.isFile())
     return null;
-  const mode = (stat2.mode & 64) === 0 ? "100644" : "100755";
-  return { path, mode, bytes: readFileSync3(absolute) };
+  const mode = (stat.mode & 64) === 0 ? "100644" : "100755";
+  return { path, mode, bytes: readFileSync5(absolute) };
 }
 var listedPaths = (out) => [...new Set((out ?? "").split("\x00"))].filter((p) => p !== "" && !p.endsWith("/"));
 function checkoutOf(cwd) {
@@ -6414,8 +7137,8 @@ function changedSince(checkout, head) {
   return [...new Set([...listedPaths(tracked), ...listedPaths(untracked)])].sort();
 }
 function gateCheckOf(ctx, ref, gate) {
-  const text2 = readIfExists2(gatePath(ref, gate));
-  const reading = text2 === null ? null : readGateMark(gate, text2);
+  const text = readIfExists2(gatePath(ref, gate));
+  const reading = text === null ? null : readGateMark(gate, text);
   const problems = reading !== null && reading.mark === null ? reading.diagnostics.map((d) => d.message) : [];
   if (gate === "reviewed")
     return { check: reviewedGate(specFiles(ref).texts).check, problems };
@@ -6467,18 +7190,18 @@ function gateReviewed(ctx, args, ref) {
     throw new CliError(EXIT.drift, `${ref.slug}: run-locked by ${locked.run} (${locked.session}, ${locked.command ?? "no command"}, since ${locked.since}); nothing written`, "run-locked");
   }
   const texts = specFiles(ref).texts;
-  const textOf2 = { "spec.md": texts.spec, "plan.md": texts.plan, "tasks.md": texts.tasks };
+  const textOf = { "spec.md": texts.spec, "plan.md": texts.plan, "tasks.md": texts.tasks };
   const files = {};
   for (const f of REVIEWED_FILES) {
-    const text2 = textOf2[f];
-    files[f] = text2 === undefined ? null : hashForGate(f, text2);
+    const text = textOf[f];
+    files[f] = text === undefined ? null : hashForGate(f, text);
   }
   const at = ctx.now.toISOString();
   const event = { ts: at, from: "review", to: "build", command: args.values.get("command") ?? nextFor(ref, "reviewed"), actor };
   const line = checkedEvent(event);
   const mark = reviewedMarkText(at, files);
   const gitignore = ensureGatesIgnored(ref);
-  mkdirSync3(join6(ref.dir, ".gates"), { recursive: true });
+  mkdirSync3(join8(ref.dir, ".gates"), { recursive: true });
   writeFileSync2(gatePath(ref, "reviewed"), mark);
   appendEventLine(ref.dir, line);
   const ignored = gitignore === "added" ? "; .gitignore: added .gates/" : "";
@@ -6517,7 +7240,7 @@ async function gateCodeReviewed(ctx, args, ref) {
     throw bad(`the tree id of the working tree could not be computed${line === null ? "" : " after the event line was appended"}; no mark written`);
   const note = args.values.get("note");
   const mark = codeReviewedMarkText({ at, actor, tree: checkout.tree, head: checkout.head, branch: checkout.branch, code, security, ...note === undefined ? {} : { note } });
-  mkdirSync3(join6(ref.dir, ".gates"), { recursive: true });
+  mkdirSync3(join8(ref.dir, ".gates"), { recursive: true });
   writeFileSync2(gatePath(ref, "code-reviewed"), mark);
   const on = checkout.branch === null ? "" : ` on ${checkout.branch}`;
   const moved = event === null ? "" : "; code-review \u2192 close";
@@ -6542,9 +7265,9 @@ function pickFolder(pool, arg) {
   const name = basename2(arg.replace(/[\\/]+$/u, ""));
   return pool.find((s) => s.id === name || s.slug === name || specSlugOf(s.slug) === name);
 }
-function shiftedText(text2, down) {
-  const fm = parseFrontmatter(text2);
-  const lines = text2.split(`
+function shiftedText(text, down) {
+  const fm = parseFrontmatter(text);
+  const lines = text.split(`
 `);
   const shift = (path) => down ? `../${path}` : path.replace(/^\.\.\//u, "");
   if (fm.present) {
@@ -6577,8 +7300,8 @@ function stampedText(spec, date, reason) {
 }
 function plannedTexts(ctx, ref, down, date, reason) {
   const texts = new Map;
-  for (const name of readdirSync3(ref.dir).filter((n) => n.endsWith(".md"))) {
-    const before = readFileSync3(join6(ref.dir, name), "utf8");
+  for (const name of readdirSync4(ref.dir).filter((n) => n.endsWith(".md"))) {
+    const before = readFileSync5(join8(ref.dir, name), "utf8");
     let after = shiftedText(before, down);
     if (name === "spec.md")
       after = stampedText(after, date, reason);
@@ -6589,12 +7312,12 @@ function plannedTexts(ctx, ref, down, date, reason) {
   }
   return texts;
 }
-function archiveBlockers(text2, ref, listed2, master, locks) {
+function archiveBlockers(text, ref, listed, master, locks) {
   const blockers = [];
-  const fm = parseFrontmatter(text2);
-  const spec = parseClaims(text2);
-  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join6(s.dir, "spec.md")))]));
-  const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere: heldElsewhere2 });
+  const fm = parseFrontmatter(text);
+  const spec = parseClaims(text);
+  const heldElsewhere = new Set(listed.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join8(s.dir, "spec.md")))]));
+  const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere });
   if (hasDrift(report))
     blockers.push({ kind: "drift", hard: true, detail: `drift against the master: run spec-check drift ${ref.id} and repair it first` });
   const ids = new Set(spec.claims.map((c) => c.id));
@@ -6612,12 +7335,12 @@ function archiveReferences(ctx, ref, at) {
   const slug = ref.slug;
   const needle = new RegExp(`(?<!archive/)specs/${slug.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?![\\w-])`, "u");
   const out = [];
-  const add = (file, line, text2) => {
-    if (needle.test(text2))
-      out.push({ file, line, text: text2.trim().slice(0, 160) });
+  const add = (file, line, text) => {
+    if (needle.test(text))
+      out.push({ file, line, text: text.trim().slice(0, 160) });
   };
   (readIfExists2(masterPathFor(ctx, ref)) ?? "").split(`
-`).forEach((text2, i) => add("ISA.md", i + 1, text2));
+`).forEach((text, i) => add("ISA.md", i + 1, text));
   const grep = git2(at, ["grep", "-n", "-I", "-F", "-e", `specs/${slug}`, "--", ".", ":!specs", ":!ISA.md"]) ?? "";
   for (const hit of grep.split(`
 `)) {
@@ -6628,16 +7351,16 @@ function archiveReferences(ctx, ref, at) {
   return out;
 }
 function performMove(move) {
-  mkdirSync3(dirname3(join6(move.at, move.to)), { recursive: true });
+  mkdirSync3(dirname3(join8(move.at, move.to)), { recursive: true });
   const tracked = (git2(move.at, ["ls-files", "--", move.from]) ?? "").trim() !== "";
   if (tracked) {
     if (git2(move.at, ["mv", move.from, move.to]) === null)
       throw bad(`git mv ${move.from} ${move.to} failed`);
   } else {
-    renameSync2(join6(move.at, move.from), join6(move.at, move.to));
+    renameSync2(join8(move.at, move.from), join8(move.at, move.to));
   }
-  for (const [name, text2] of move.texts)
-    writeFileSync2(join6(move.at, move.to, name), text2);
+  for (const [name, text] of move.texts)
+    writeFileSync2(join8(move.at, move.to, name), text);
 }
 async function archive(ctx, args) {
   const restore = args.positional[0] === "restore";
@@ -6650,11 +7373,11 @@ async function archive(ctx, args) {
     throw bad("--reason needs one line of text");
   if (restore && reason !== null)
     throw bad("archive restore takes no --reason");
-  const listed2 = specsOf(ctx);
-  const active = listed2.filter((s) => !s.archived);
-  const archived = listed2.filter((s) => s.archived);
+  const listed = specsOf(ctx);
+  const active = listed.filter((s) => !s.archived);
+  const archived = listed.filter((s) => s.archived);
   const pool = restore ? archived : active;
-  const refs2 = [];
+  const refs = [];
   for (const target of targets) {
     const hit = pickFolder(pool, target);
     if (hit === undefined) {
@@ -6663,14 +7386,14 @@ async function archive(ctx, args) {
     }
     if (restore && active.some((s) => s.id === hit.id))
       throw bad(`an active folder holds ${hit.id} already; restoring ${hit.slug} would collide`);
-    if (!refs2.includes(hit))
-      refs2.push(hit);
+    if (!refs.includes(hit))
+      refs.push(hit);
   }
   if (restore)
-    return archiveRestore(ctx, args, refs2, dry);
+    return archiveRestore(ctx, args, refs, dry);
   const locks = await locksOf(ctx);
-  const verdicts = refs2.map((ref) => {
-    const blockers = archiveBlockers(specText(ctx, ref), ref, listed2, readIfExists2(masterPathFor(ctx, ref)), locks);
+  const verdicts = refs.map((ref) => {
+    const blockers = archiveBlockers(specText(ctx, ref), ref, listed, readIfExists2(masterPathFor(ctx, ref)), locks);
     const ok = blockers.every((b) => !b.hard) && (blockers.length === 0 || reason !== null);
     return { spec: ref.slug, from: rel(ctx, ref.dir), to: `specs/archive/${ref.slug}`, ok, blockers, ref };
   });
@@ -6678,7 +7401,7 @@ async function archive(ctx, args) {
     `${v.spec}  ${v.ok ? v.blockers.length === 0 ? "ok" : "ok with --reason" : "blocked"}`,
     ...v.blockers.map((b) => `    ${b.hard ? "hard" : "soft"}: ${b.detail}${b.hard ? "" : " (--reason lifts it)"}`)
   ]);
-  const verdictView = verdicts.map((v) => ({ spec: v.spec, from: v.from, to: rel(ctx, join6(holderOf2(ctx, v.ref), v.to)), ok: v.ok, blockers: v.blockers }));
+  const verdictView = verdicts.map((v) => ({ spec: v.spec, from: v.from, to: rel(ctx, join8(holderOf2(ctx, v.ref), v.to)), ok: v.ok, blockers: v.blockers }));
   const refused = verdicts.filter((v) => !v.ok);
   if (refused.length > 0) {
     return refuse(ctx, args, EXIT.drift, "blocked", { dryRun: dry, reason, moved: false, verdicts: verdictView }, [
@@ -6690,13 +7413,13 @@ async function archive(ctx, args) {
   const moves = verdicts.map((v) => {
     const why = v.blockers.length === 0 ? null : reason;
     const at = holderOf2(ctx, v.ref);
-    const from = relative(at, v.ref.dir).split(sep2).join("/");
+    const from = relative2(at, v.ref.dir).split(sep3).join("/");
     return { move: { ref: v.ref, at, from, to: v.to, texts: plannedTexts(ctx, v.ref, true, date, why) }, reason: why };
   });
   const report = moves.map(({ move, reason: why }) => {
     if (!dry)
       performMove(move);
-    const to = rel(ctx, join6(move.at, move.to));
+    const to = rel(ctx, join8(move.at, move.to));
     return { spec: move.ref.slug, from: rel(ctx, move.ref.dir), to, reason: why, references: archiveReferences(ctx, move.ref, move.at) };
   });
   const lines = [
@@ -6710,9 +7433,9 @@ async function archive(ctx, args) {
   emit(ctx, args, { dryRun: dry, reason, moved: !dry, verdicts: verdictView, archived: report }, lines);
   return EXIT.ok;
 }
-function archiveRestore(ctx, args, refs2, dry) {
-  const rows = listArchive(refs2.map(specFiles));
-  const moves = refs2.map((ref) => ({ ref, at: ctx.root, from: rel(ctx, ref.dir), to: `specs/${ref.slug}`, texts: plannedTexts(ctx, ref, false, null, null) }));
+function archiveRestore(ctx, args, refs, dry) {
+  const rows = listArchive(refs.map(specFiles));
+  const moves = refs.map((ref) => ({ ref, at: ctx.root, from: rel(ctx, ref.dir), to: `specs/${ref.slug}`, texts: plannedTexts(ctx, ref, false, null, null) }));
   for (const move of moves)
     if (!dry)
       performMove(move);
@@ -6739,7 +7462,7 @@ function packLines(pack) {
 function pack(ctx, args) {
   const ref = specRef(ctx, required(args, 0, "spec"));
   const task = required(args, 1, "task (T<k>)");
-  const tasks = readIfExists2(join6(ref.dir, "tasks.md"));
+  const tasks = readIfExists2(join8(ref.dir, "tasks.md"));
   if (tasks === null)
     throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");
   let value;
@@ -6748,8 +7471,8 @@ function pack(ctx, args) {
       slug: ref.slug,
       spec: specText(ctx, ref),
       tasks,
-      plan: readIfExists2(join6(ref.dir, "plan.md")),
-      constitution: readIfExists2(join6(ctx.root, "specs", "constitution.md")),
+      plan: readIfExists2(join8(ref.dir, "plan.md")),
+      constitution: readIfExists2(join8(ctx.root, "specs", "constitution.md")),
       task
     });
     value = capPack(uncapped, PACK_LIMIT);
@@ -6765,16 +7488,67 @@ function pack(ctx, args) {
 function tick(ctx, args) {
   const ref = specRef(ctx, required(args, 0, "spec"));
   const task = required(args, 1, "task (T<k>)");
-  const path = join6(ref.dir, "tasks.md");
-  const text2 = readIfExists2(path);
-  if (text2 === null)
+  const path = join8(ref.dir, "tasks.md");
+  const text = readIfExists2(path);
+  if (text === null)
     throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");
-  const planned = tickTaskText(text2, task);
+  const planned = tickTaskText(text, task);
   if (planned.changed)
     writeFileSync2(path, planned.text);
   const result = planned.changed ? "ticked" : "already-ticked";
   emit(ctx, args, { spec: ref.slug, task, result }, [`${planned.changed ? "ticked" : "already ticked"} ${task}`]);
   return EXIT.ok;
+}
+var findingLine = (f) => `  ${f.subject ?? "-"}: ${f.message} (${f.code})`;
+function checkAnswer(ctx, args, target, result, okLine) {
+  if (result.ok) {
+    emit(ctx, args, result, [okLine]);
+    return EXIT.ok;
+  }
+  if (args.flags.has("json"))
+    return refuse(ctx, args, EXIT.drift, "incomplete", result.findings, []);
+  process.stderr.write(`spec-check: ${ctx.command}: ${target} is incomplete
+${result.findings.map(findingLine).join(`
+`)}
+`);
+  return EXIT.drift;
+}
+function docCommand(ctx, args) {
+  const sub = required(args, 0, "sub-command (target or check)");
+  if (args.positional.length > 1)
+    throw bad(`unexpected argument "${args.positional[1] ?? ""}"`);
+  if (sub === "target") {
+    const result = docTarget(ctx.root, { keep: args.flags.has("keep") });
+    emit(ctx, args, result, [`target: ${result.target}`, ...result.previous === null ? [] : [`previous: ${result.previous}`]]);
+    return EXIT.ok;
+  }
+  if (args.flags.has("keep"))
+    throw bad("--keep belongs to doc target");
+  if (sub === "check")
+    return checkAnswer(ctx, args, "specs/tech.md", docCheck(ctx.root), "specs/tech.md is complete");
+  throw bad(`unknown doc sub-command "${sub}"; use target or check`);
+}
+async function tldrCommand(ctx, args) {
+  const sub = required(args, 0, "sub-command (target, check or facts)");
+  if (args.positional.length > 1)
+    throw bad(`unexpected argument "${args.positional[1] ?? ""}"`);
+  if (sub === "target") {
+    const result = tldrTarget();
+    emit(ctx, args, result, [`target: ${result.target}`]);
+    return EXIT.ok;
+  }
+  if (sub === "check") {
+    const result = tldrCheck(ctx.root);
+    const okLine = result.stale ? "specs/tldr.md is complete but stale: run /spec tldr" : "specs/tldr.md is complete and fresh";
+    return checkAnswer(ctx, args, "specs/tldr.md", result, okLine);
+  }
+  if (sub === "facts") {
+    const facts = await tldrFacts2(ctx.root);
+    const lines = facts.specs.map((s) => `${s.number}  ${s.stage}  ${s.progress}  ${s.title}`);
+    emit(ctx, args, facts, lines.length === 0 ? ["no open specs"] : lines);
+    return EXIT.ok;
+  }
+  throw bad(`unknown tldr sub-command "${sub}"; use target, check or facts`);
 }
 var COMMANDS = {
   allocate: {
@@ -6874,6 +7648,17 @@ var COMMANDS = {
     values: ["task", "claim", "session", "result", "text", "worktree"],
     run: activity
   },
+  doc: {
+    usage: "doc target [--keep] [--json] | doc check [--json]",
+    summary: "the technical documentation specs/tech.md: target names it and first copies an existing one to specs/tech.prev.md (--keep: nothing written); check exits 0 when its four sections stand, 3 (incomplete) with every finding otherwise",
+    flags: ["keep"],
+    run: docCommand
+  },
+  tldr: {
+    usage: "tldr target [--json] | tldr check [--json] | tldr facts --json",
+    summary: "the TL;DR specs/tldr.md: target names it; check exits 0 when complete (and says when it is stale), 3 (incomplete) on a missing file, section, generated: or open spec; facts prints per open spec its number, title, stage, progress, open claims, fog lines, prototypes and artifacts. Writes nothing",
+    run: tldrCommand
+  },
   hook: {
     usage: "hook",
     summary: "the plugin's activity hook: one Claude Code hook payload on stdin; claim and dispatch at PreToolUse(Agent) with a marker line, build at PostToolUse(Agent) async_launched, release at SubagentStop of the last builder of the claim (or build and release at PostToolUse(Agent) completed), into the repository of CLAUDE_PROJECT_DIR. Prints nothing, always exits 0",
@@ -6894,7 +7679,7 @@ function help() {
 `);
 }
 async function main(argv, cwd = process.cwd(), now = new Date) {
-  const out = (text2) => process.stdout.write(`${text2}
+  const out = (text) => process.stdout.write(`${text}
 `);
   const [name, ...rest] = argv;
   const json = rest.includes("--json");
@@ -6940,7 +7725,7 @@ ${command.summary}`);
 if (import.meta.main)
   process.exit(await main(process.argv.slice(2)));
 export {
-  main,
+  ERROR_CODES,
   EXIT,
-  ERROR_CODES
+  main
 };

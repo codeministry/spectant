@@ -1,11 +1,13 @@
 // The repository documents of `/spec doc` and `/spec tldr` (spec 074, T12–T14, T18–T20; ISC-618, ISC-619, ISC-620):
 // `docTarget`, `docCheck`, `tldrTarget` and `tldrCheck` over temporary repositories, never this repository's own
-// `specs/`. Every case that must write nothing compares a snapshot of the whole tree before and after.
-import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+// `specs/`, and the `doc` and `tldr` commands of `spec-check` through its router (T15, T16, T21; ISC-621). Every case
+// that must write nothing compares a snapshot of the whole tree before and after.
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { docCheck, docTarget, tldrCheck, tldrTarget } from '../src/repo-docs.ts';
+import { main } from '../src/spec-check.ts';
 
 const roots: string[] = [];
 
@@ -36,6 +38,27 @@ function snapshot(root: string): Record<string, string> {
   };
   walk(root);
   return out;
+}
+
+/** `spec-check <argv>` in process at `cwd`: its exit code, what it printed on stdout and on stderr. */
+async function cli(cwd: string, ...argv: string[]): Promise<{ code: number; out: string; err: string }> {
+  const out: string[] = [];
+  const err: string[] = [];
+  const stdout = spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+    out.push(String(chunk));
+    return true;
+  });
+  const stderr = spyOn(process.stderr, 'write').mockImplementation((chunk: string | Uint8Array) => {
+    err.push(String(chunk));
+    return true;
+  });
+  try {
+    const code = await main(argv, cwd);
+    return { code, out: out.join(''), err: err.join('') };
+  } finally {
+    stdout.mockRestore();
+    stderr.mockRestore();
+  }
 }
 
 const TECH_KEYS = ['overview', 'stack', 'architecture', 'risks'] as const;
@@ -102,6 +125,19 @@ describe('doc target', () => {
     expect(docTarget(root, { keep: true })).toEqual({ target: 'specs/tech.md', previous: null, keep: true });
     expect(snapshot(root)).toEqual(before);
   });
+
+  test('through the CLI: `doc target --json` prints the result object, `--keep` writes nothing', async () => {
+    const root = repo({ 'specs/tech.md': techText() });
+    const kept = snapshot(root);
+    const keep = await cli(root, 'doc', 'target', '--keep', '--json');
+    expect(keep.code).toBe(0);
+    expect(JSON.parse(keep.out)).toEqual({ target: 'specs/tech.md', previous: null, keep: true });
+    expect(snapshot(root)).toEqual(kept);
+    const run = await cli(root, 'doc', 'target', '--json');
+    expect(run).toMatchObject({ code: 0, err: '' });
+    expect(JSON.parse(run.out)).toEqual({ target: 'specs/tech.md', previous: 'specs/tech.prev.md', keep: false });
+    expect(readFileSync(join(root, 'specs/tech.prev.md'), 'utf8')).toBe(techText());
+  });
 });
 
 describe('doc check', () => {
@@ -134,13 +170,31 @@ describe('doc check', () => {
     expect(result.findings).toEqual([{ code: 'missing-file', subject: 'specs/tech.md', message: 'specs/tech.md does not exist.' }]);
     expect(snapshot(root)).toEqual(before);
   });
+
+  test('through the CLI: `doc check` exits 3 `incomplete` with every finding, exit 0 with the result when complete', async () => {
+    const root = repo({ 'specs/tech.md': techText(['overview', 'stack']) });
+    const open = await cli(root, 'doc', 'check', '--json');
+    expect(open.code).toBe(3);
+    expect(JSON.parse(open.out)).toEqual({ error: 'incomplete', command: 'doc', detail: docCheck(root).findings });
+    const person = await cli(root, 'doc', 'check');
+    expect(person.code).toBe(3);
+    expect(person.err).toContain('architecture');
+    expect(person.err).toContain('risks');
+    writeFileSync(join(root, 'specs/tech.md'), techText());
+    const done = await cli(root, 'doc', 'check', '--json');
+    expect(done.code).toBe(0);
+    expect(JSON.parse(done.out)).toEqual({ ok: true, findings: [] });
+    const unknown = await cli(root, 'doc', 'sweep', '--json');
+    expect(unknown.code).toBe(1);
+    expect(JSON.parse(unknown.out)).toMatchObject({ error: 'bad-args', command: 'doc' });
+  });
 });
 
 describe('tldr target', () => {
   test('names tldr.md and writes nothing', () => {
     const root = repo(SPECS);
     const before = snapshot(root);
-    expect(tldrTarget(root)).toEqual({ target: 'specs/tldr.md' });
+    expect(tldrTarget()).toEqual({ target: 'specs/tldr.md' });
     expect(snapshot(root)).toEqual(before);
   });
 });
@@ -197,6 +251,62 @@ describe('tldr check', () => {
     const root = repo(SPECS);
     const before = snapshot(root);
     expect(tldrCheck(root)).toEqual({ ok: false, stale: false, findings: [{ code: 'missing-file', subject: 'specs/tldr.md', message: 'specs/tldr.md does not exist.' }] });
+    expect(snapshot(root)).toEqual(before);
+  });
+
+  test('through the CLI: `tldr check` exits 3 when incomplete, 0 and says stale when complete but stale', async () => {
+    const root = repo({ ...SPECS, 'specs/tldr.md': tldrText({ keys: TLDR_KEYS.filter((k) => k !== 'risks') }) });
+    const open = await cli(root, 'tldr', 'check', '--json');
+    expect(open.code).toBe(3);
+    expect(JSON.parse(open.out)).toEqual({ error: 'incomplete', command: 'tldr', detail: tldrCheck(root).findings });
+    expect((await cli(root, 'tldr', 'check')).err).toContain('risks');
+    const rounds = `${JSON.stringify({ round: 1, ts: '2026-10-21T09:00:00.000Z' })}\n`;
+    writeFileSync(join(root, 'specs/002-beta/rounds.jsonl'), rounds);
+    writeFileSync(join(root, 'specs/tldr.md'), tldrText());
+    const stale = await cli(root, 'tldr', 'check', '--json');
+    expect(stale.code).toBe(0);
+    expect(JSON.parse(stale.out)).toEqual({ ok: true, stale: true, findings: [] });
+    const person = await cli(root, 'tldr', 'check');
+    expect(person.code).toBe(0);
+    expect(person.out).toContain('stale');
+    expect(await cli(root, 'tldr', 'facts')).toMatchObject({ code: 0, err: '' });
+    expect((await cli(root, 'tldr', 'sweep', '--json')).code).toBe(1);
+  });
+});
+
+const REPO_DOCS_FIXTURE = join(import.meta.dir, 'fixtures', 'repo-docs');
+
+/** The repo-docs fixture copied into a fresh git repository: three open specs, one complete, one archived. */
+function fixtureRepo(): string {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'repo-docs-facts-')));
+  roots.push(root);
+  cpSync(REPO_DOCS_FIXTURE, root, { recursive: true });
+  const init = Bun.spawnSync(['git', 'init', '-q', '-b', 'main'], { cwd: root, stdout: 'pipe', stderr: 'pipe' });
+  expect(init.exitCode).toBe(0);
+  return root;
+}
+
+describe('tldr facts', () => {
+  test('`tldr facts --json` lists exactly the open specs with their facts and writes nothing', async () => {
+    const root = fixtureRepo();
+    const before = snapshot(root);
+    const run = await cli(root, 'tldr', 'facts', '--json');
+    expect(run).toMatchObject({ code: 0, err: '' });
+    const facts = JSON.parse(run.out) as { specs: Array<Record<string, unknown>> };
+    expect(facts.specs.map((s) => s.number)).toEqual(['001', '002', '003']);
+    expect(facts.specs.map((s) => s.title)).toEqual(['Import a recipe from a Markdown file', 'Find recipes by ingredient', 'Export the whole recipe box every night']);
+    for (const spec of facts.specs) {
+      expect(spec.stage).toEqual(expect.any(String));
+      expect(spec.progress).toMatch(/^\d+\/\d+$/u);
+      expect(spec.openClaims).toEqual(expect.any(Number));
+    }
+    const [one, two, three] = facts.specs;
+    expect(two?.prototypes).toEqual(['002-ingredient-search/.design/prototype/index.html']);
+    expect(two?.artifacts).toEqual(['002-ingredient-search/artifacts/sample-queries.md']);
+    expect(one).toMatchObject({ prototypes: [], artifacts: [], fog: [] });
+    expect(three).toMatchObject({ prototypes: [], artifacts: [] });
+    expect(two?.fog).toEqual(['Whether a plural ("tomatoes") should match a singular ingredient line ("tomato").']);
+    expect(three?.fog).toEqual(['Whether the export keeps the last seven archives or only the newest one.']);
     expect(snapshot(root)).toEqual(before);
   });
 });

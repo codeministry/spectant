@@ -713,3 +713,28 @@ describe('brief lang: the TL;DR names its primary language in `lang:` (spec 021,
     expect(noise(m).filter((s) => /lang/i.test(s))).toEqual([]);
   });
 });
+
+// The command that writes or refreshes `specs/tldr.md` (spec 074, ISC-626): `tldrCommand` is `/spec tldr` when the
+// file is absent or `tldrState` reads it stale, null while it is there and fresh; `brief` stays as it is.
+describe('repo docs command: the dashboard names /spec tldr (ISC-626)', () => {
+  const harbor = readTree('harbor');
+  const tldr = harbor.tldr ?? '';
+
+  test('repo docs command: absent tldr.md, no brief, tldrCommand /spec tldr', () => {
+    const m = buildDashboard({ ...harbor, tldr: null });
+    expect(m.brief).toBeNull();
+    expect(m.tldrCommand).toBe('/spec tldr');
+  });
+
+  test('repo docs command: stale tldr.md, tldrCommand /spec tldr beside the stale brief', () => {
+    const m = buildDashboard(harbor);
+    expect(m.brief?.stale).toBe(true);
+    expect(m.tldrCommand).toBe('/spec tldr');
+  });
+
+  test('repo docs command: fresh tldr.md, tldrCommand null', () => {
+    const m = buildDashboard({ ...harbor, tldr: tldr.replace(/^generated: .*$/m, 'generated: 2099-01-01T00:00:00Z') });
+    expect(m.brief?.stale).toBe(false);
+    expect(m.tldrCommand).toBeNull();
+  });
+});

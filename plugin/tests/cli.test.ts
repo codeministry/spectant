@@ -285,6 +285,9 @@ describe('spec-check --json: compact answers of every command', () => {
       code: 'bad-args',
       ok: ['probe', '--task', 'T1', '--claim', 'ISC-1', '--session', HOLDER, '--result', 'green'],
     },
+    // The pack fixture has no tech.md: doc check refuses `incomplete`, doc target only names the target.
+    doc: { fail: ['check'], exit: 3, code: 'incomplete', ok: ['target'] },
+    tldr: { fail: ['sweep'], exit: 1, code: 'bad-args', ok: ['facts'] },
   };
 
   /** A fresh git repository holding a copy of the pack fixture and the claims file `mint` reads. */
@@ -661,6 +664,10 @@ describe('spec-check: worktree source', () => {
         ok(['gate', 'code-reviewed', '001', '--yes', '--code', '0', '--security', '0']);
         ok(['gate', 'check', 'code-reviewed', '001']);
         ok(['allocate', 'feature', 'export', '--goal', 'One export.']);
+        // No tech.md and no tldr.md in the fixture: doc target finds nothing to copy, the rest only reads.
+        ok(['doc', 'target', '--json']);
+        ok(['tldr', 'target', '--json']);
+        ok(['tldr', 'facts', '--json']);
         ok(['archive', '001', '--reason', 'a fixture']);
 
         expect([...covered].toSorted()).toEqual(run(root, '--help').out.split('\n').filter((l) => l.startsWith('  ')).map((l) => l.trim().split(' ')[0] ?? '').toSorted());

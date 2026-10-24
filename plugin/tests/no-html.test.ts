@@ -19,7 +19,8 @@
 //      output path ending `.html` (`'deck.html'`, `` `${out}/x.html` ``), a bare extension literal (`'.html'`, the
 //      piece a path is built from), or a write call (`writeFileSync`, `Bun.write`, `appendFile`, `copyFile`, `rename`,
 //      `cpSync`, `createWriteStream`) whose arguments reach `.html`. Comments that state the rule carry no literal and
-//      no write call, so they pass.
+//      no write call, so they pass. A name the code only reads by (the prototype page `tldr facts` lists, spec 074)
+//      carries a trailing `// no-html: allow — <reason>` and passes; a write call never does.
 //    The guard's own fixtures prove each regex fires on an offending line and stays quiet on the allowed ones.
 import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -78,11 +79,15 @@ const HTML_EXT_LITERAL = /(['"])\.html?\1/;
 const HTML_WRITE_CALL =
   /\b(?:writeFileSync|writeFile|appendFileSync|appendFile|createWriteStream|copyFileSync|copyFile|renameSync|rename|cpSync|Bun\.write)\s*\([^;]{0,300}?\.html?\b/;
 
+/** A literal the line only reads by, marked as such; it lifts the literal rules, never `HTML_WRITE_CALL`. */
+const READ_ONLY_ALLOW = /\/\/ no-html: allow — \S/;
+
 /** The code rule over one source: every line that builds or writes an `.html` output path. */
 function codeWritesHtml(source: string): number[] {
   const hits = new Set<number>();
   const lines = source.split('\n');
   lines.forEach((line, i) => {
+    if (READ_ONLY_ALLOW.test(line)) return;
     if (HTML_PATH_LITERAL.test(line) || HTML_EXT_LITERAL.test(line)) hits.add(i + 1);
   });
   for (const m of source.matchAll(new RegExp(HTML_WRITE_CALL.source, 'g'))) {
@@ -167,6 +172,8 @@ describe('the static guard fires on an instruction or a write, never on the rule
       "writeFileSync(path + '.html', body);",
       "appendFileSync(\n  join(root, specDir, `${slug}.html`),\n  page,\n);",
       'writeFileSync(target.replace(/\\.md$/, ".html"), page);',
+      // The read-only marker never lifts a write call.
+      "writeFileSync(join(dir, 'index.html'), page); // no-html: allow — a write",
     ];
     for (const source of offending) expect({ source, hits: codeWritesHtml(source).length > 0 }).toEqual({ source, hits: true });
     const allowed = [
@@ -174,6 +181,7 @@ describe('the static guard fires on an instruction or a write, never on the rule
       "writeFileSync(join(dir, 'spec.md'), text);",
       "const help = 'writes no `.html` anywhere';",
       'await Bun.write(`${dir}/events.jsonl`, line);',
+      "const PROTOTYPE_FILE = 'index.html'; // no-html: allow — a name matched while listing, never written",
     ];
     for (const source of allowed) expect({ source, hits: codeWritesHtml(source) }).toEqual({ source, hits: [] });
   });
@@ -362,6 +370,10 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
       cli(root, [0], 'transition', '001', 'done', '--command', '/spec done 001');
       cli(root, [0], 'status', '001', '--json');
       cli(root, [0, 3], 'drift', '001', '--json');
+      cli(root, [0], 'doc', 'target', '--json');
+      cli(root, [0, 3], 'doc', 'check', '--json');
+      cli(root, [0, 3], 'tldr', 'check', '--json');
+      cli(root, [0], 'tldr', 'facts', '--json');
       // The close step of the done workflow writes `phase: complete` by hand; the archive then moves without a reason.
       const spec = join(root, DIR, 'spec.md');
       writeFileSync(spec, readFileSync(spec, 'utf8').replace(/^phase: .*$/m, 'phase: complete'));
@@ -383,5 +395,5 @@ describe('the whole CLI chain writes no .html file (ISC-46)', () => {
 
     // ISC-46: not one .html file anywhere in the fixture tree, `.git/` and the linked worktree included.
     expect(htmlFiles(root)).toEqual([]);
-  });
+  }, 30_000); // some forty CLI processes, each with its git reads
 });
