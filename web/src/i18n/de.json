@@ -2971,7 +2971,9 @@
       "active": "Aktiv",
       "none": "Keine Spec passt zu diesem Filter.",
       "reset": "Filter zurücksetzen",
-      "unreadable": "{{name}}, nicht lesbar"
+      "unreadable": "{{name}}, nicht lesbar",
+      "toggle": "Filter",
+      "toggleSet": "Filter, Auswahl aktiv"
     }
   }
 }

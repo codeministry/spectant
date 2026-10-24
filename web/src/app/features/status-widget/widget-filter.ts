@@ -86,6 +86,34 @@ export function saveWidgetFilter(filter: WidgetFilter, win: Window = window): vo
 }
 
 /**
+ * The `localStorage` key of whether the filter rows show, toggled from the head's filter button: a per-viewer
+ * convenience like the selection, so a missing, unreadable or throwing store shows them.
+ */
+export const WIDGET_FILTER_OPEN_KEY = 'spectant.statusWidget.filterOpen';
+
+/** Whether the filter rows show: stored `false` hides them, anything else (none stored, a throwing store) shows them. */
+export function loadWidgetFilterOpen(win: Window = window): boolean {
+  try {
+    return win.localStorage.getItem(WIDGET_FILTER_OPEN_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+/** Stores whether the filter rows show; a full or blocked store only loses the convenience. */
+export function saveWidgetFilterOpen(open: boolean, win: Window = window): void {
+  try {
+    win.localStorage.setItem(WIDGET_FILTER_OPEN_KEY, String(open));
+  } catch {
+    // Nothing to do: the next load shows the filter.
+  }
+}
+
+/** Whether the selection narrows anything: a workspace, a stage or "Active" is set. */
+export const isFiltering = (filter: WidgetFilter): boolean =>
+  filter.workspaces.length > 0 || filter.stages.length > 0 || filter.active;
+
+/**
  * The selection limited to the options the body still offers (a live update, ISC-587): a vanished workspace or a
  * stage no listed spec has anymore falls out. "Active" never falls out, even while no spec runs (ISC-633): its chip
  * always stands. Returns the same object when nothing fell out, so a caller can skip the write.

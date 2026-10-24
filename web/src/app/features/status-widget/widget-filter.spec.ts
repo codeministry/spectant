@@ -3,13 +3,17 @@ import type { StatusResponse, StatusSpec, StatusWorkspace } from '../../../../..
 import {
   activeCount,
   EMPTY_FILTER,
+  isFiltering,
   loadWidgetFilter,
+  loadWidgetFilterOpen,
   pruneFilter,
   saveWidgetFilter,
+  saveWidgetFilterOpen,
   stageCounts,
   stageOptions,
   visibleGroups,
   WIDGET_FILTER_KEY,
+  WIDGET_FILTER_OPEN_KEY,
   workspaceCounts,
   workspaceOptions,
   type WidgetFilter,
@@ -195,6 +199,31 @@ describe('widget filter storage (spec 072, T27, ISC-606)', () => {
     };
     expect(() => saveWidgetFilter(filter(['atlas'], ['plan']), fakeWindow(full))).not.toThrow();
     expect(() => saveWidgetFilter(filter(['atlas'], ['plan']), fakeWindow('throws'))).not.toThrow();
+  });
+});
+
+describe('widget filter visibility', () => {
+  it('shows the filter unless false is stored, and round-trips a stored choice', () => {
+    const win = fakeWindow();
+    expect(loadWidgetFilterOpen(win)).toBe(true);
+    saveWidgetFilterOpen(false, win);
+    expect(win.localStorage.getItem(WIDGET_FILTER_OPEN_KEY)).toBe('false');
+    expect(loadWidgetFilterOpen(win)).toBe(false);
+    saveWidgetFilterOpen(true, win);
+    expect(loadWidgetFilterOpen(win)).toBe(true);
+    expect(loadWidgetFilterOpen(fakeWindow(fakeStorage({ [WIDGET_FILTER_OPEN_KEY]: 'nonsense' })))).toBe(true);
+  });
+
+  it('shows the filter when the store throws, and swallows a throwing save', () => {
+    expect(loadWidgetFilterOpen(fakeWindow('throws'))).toBe(true);
+    expect(() => saveWidgetFilterOpen(false, fakeWindow('throws'))).not.toThrow();
+  });
+
+  it('counts a selection as filtering in either dimension or with "Active", never the empty one', () => {
+    expect(isFiltering(EMPTY_FILTER)).toBe(false);
+    expect(isFiltering(filter(['atlas'], []))).toBe(true);
+    expect(isFiltering(filter([], ['plan']))).toBe(true);
+    expect(isFiltering(filter([], [], true))).toBe(true);
   });
 });
 

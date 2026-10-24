@@ -108,6 +108,27 @@
 }
 
 /*
+ * The filter button: at the head's end, centred on the 40 px row like the mark and the figures; a 6 px primary dot
+ * at its top-right corner marks a set selection, so a hidden filter never narrows the list unseen.
+ */
+.filter-toggle {
+  position: relative;
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.filter-toggle[data-filtering]::after {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+  inline-size: 6px;
+  block-size: 6px;
+  content: "";
+  background: var(--color-primary);
+  border-radius: 50%;
+}
+
+/*
  * The filter (spec 072, T19, ISC-603): a grid of two labelled chip rows, workspace then stage. At every width each
  * eyebrow label is a line of its own above its row (16 px line, 4 px gap), so the chips start at the column's edge.
  * The labels are `aria-hidden`; the group names repeat them. Nothing is sticky.
@@ -117,6 +138,10 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   min-inline-size: 0;
+}
+
+.widget-filter[hidden] {
+  display: none;
 }
 
 .filter-label {

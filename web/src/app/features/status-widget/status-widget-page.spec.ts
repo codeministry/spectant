@@ -127,10 +127,10 @@ describe('StatusWidgetPage on /widget (spec 071, T25, ISC-582)', () => {
       den: kpi.querySelector('dd .den')?.textContent.trim().replace(/^\//, '') ?? null,
     }));
 
-  it('heads the page with the brand mark first, then the flat KPI row, no tiles and no accent (spec 072, T9, ISC-602)', async () => {
+  it('heads the page with the brand mark first, then the flat KPI row and the filter button, no tiles and no accent (spec 072, T9, ISC-602)', async () => {
     const root = (await land(MIXED)).routeNativeElement as HTMLElement;
     const head = root.querySelector<HTMLElement>('main.widget header.head');
-    expect([...(head?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-brand-mark', 'dl']);
+    expect([...(head?.children ?? [])].map((el) => el.tagName.toLowerCase())).toEqual(['ui-brand-mark', 'dl', 'button']);
     expect(head?.querySelector<HTMLElement>('ui-brand-mark')?.style.getPropertyValue('--brand-mark-size')).toBe('28px');
     expect(root.querySelectorAll('ui-kpi-tile, ui-card, header.head [data-accent], header.head [aria-live]')).toHaveLength(0);
     expect(head?.querySelectorAll('dl.kpis > div.kpi')).toHaveLength(3);

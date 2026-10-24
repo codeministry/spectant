@@ -10,7 +10,7 @@ import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { RefreshService } from '../../layout/shell/refresh.service';
-import { WIDGET_FILTER_KEY } from './widget-filter';
+import { WIDGET_FILTER_KEY, WIDGET_FILTER_OPEN_KEY } from './widget-filter';
 
 // Spec 072 (T19, T20, ISC-603): below the head the page shows a filter of two multi-selections, workspace and stage.
 // Without a selection everything shows; with one the list shows only the rows both selections match, and a workspace
@@ -482,5 +482,71 @@ describe('status widget filter (spec 072, T19, ISC-603)', () => {
     const root = await land(RUN);
     await press(root, 1, 'Active');
     expect(visible(root)).toEqual(['harbor: 002', 'lantern: 010', 'beacon: !notice']);
+  });
+  // The head's filter button shows and hides both filter rows together; the choice is stored per viewer, a hidden
+  // filter keeps its selection, and the button carries a dot and a longer name while a selection is set.
+  const toggleOf = (root: HTMLElement): HTMLButtonElement => {
+    const button = root.querySelector<HTMLButtonElement>('header.head button.filter-toggle');
+    if (!button) throw new Error('no filter button');
+    return button;
+  };
+
+  const toggle = async (root: HTMLElement): Promise<void> => {
+    toggleOf(root).click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+  };
+
+  it('puts the filter button last in the head, open and controlling the filter section', async () => {
+    const root = await land();
+    const head = root.querySelector('header.head');
+    expect(head?.lastElementChild).toBe(toggleOf(root));
+    expect(toggleOf(root).getAttribute('aria-expanded')).toBe('true');
+    expect(toggleOf(root).getAttribute('aria-controls')).toBe('widget-filter');
+    expect(toggleOf(root).getAttribute('aria-label')).toBe('Filter');
+    expect(root.querySelector('section.widget-filter')?.id).toBe('widget-filter');
+    expect(root.querySelector<HTMLElement>('section.widget-filter')?.hidden).toBe(false);
+  });
+
+  it('hides and shows both filter rows together and stores the choice', async () => {
+    const root = await land();
+    await toggle(root);
+    const section = root.querySelector<HTMLElement>('section.widget-filter');
+    expect(section?.hidden).toBe(true);
+    expect(section?.querySelectorAll('ui-filter-chips')).toHaveLength(2);
+    expect(toggleOf(root).getAttribute('aria-expanded')).toBe('false');
+    expect(localStorage.getItem(WIDGET_FILTER_OPEN_KEY)).toBe('false');
+    await toggle(root);
+    expect(section?.hidden).toBe(false);
+    expect(localStorage.getItem(WIDGET_FILTER_OPEN_KEY)).toBe('true');
+  });
+
+  it('starts hidden from the stored choice and keeps filtering by the hidden selection, marked on the button', async () => {
+    localStorage.setItem(WIDGET_FILTER_OPEN_KEY, 'false');
+    localStorage.setItem(WIDGET_FILTER_KEY, JSON.stringify({ workspaces: ['lantern'], stages: [] }));
+    const root = await land();
+    expect(root.querySelector<HTMLElement>('section.widget-filter')?.hidden).toBe(true);
+    expect(visible(root)).toEqual(['lantern: 010 011']);
+    expect(toggleOf(root).hasAttribute('data-filtering')).toBe(true);
+    expect(toggleOf(root).getAttribute('aria-label')).toBe('Filter, selection active');
+  });
+
+  it('carries no mark without a selection, and no button without a filter', async () => {
+    const root = await land();
+    expect(toggleOf(root).hasAttribute('data-filtering')).toBe(false);
+    TestBed.resetTestingModule();
+    const empty = await land(EMPTY);
+    expect(empty.querySelector('header.head button.filter-toggle')).toBeNull();
+  });
+
+  it('resets from the no-match line while hidden and moves the focus to the filter button', async () => {
+    localStorage.setItem(WIDGET_FILTER_OPEN_KEY, 'false');
+    localStorage.setItem(WIDGET_FILTER_KEY, JSON.stringify({ workspaces: ['reef'], stages: ['plan'] }));
+    const root = await land();
+    root.querySelector<HTMLButtonElement>('div.no-match button')?.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(visible(root)).toEqual(['harbor: 002 005 001', 'lantern: 010 011', 'beacon: !notice', 'reef: 020']);
+    expect(document.activeElement).toBe(toggleOf(root));
   });
 });

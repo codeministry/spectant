@@ -12,7 +12,9 @@
  *
  * - `bun run e2e -- status-widget-window -g header` (ISC-602): at 360, 480 and 820 px, in English and German, the head
  *   is one flat row at most 48 px high: the brand mark first, the three figures (`dl.kpis` > `div.kpi`) right of it on
- *   the same line, no `ui-kpi-tile` card, nothing wrapping or overflowing.
+ *   the same line, no `ui-kpi-tile` card, nothing wrapping or overflowing. The filter button (`button.filter-toggle`)
+ *   stands last, flush with the head's right edge and on the centre line of mark and figures; a click hides both
+ *   filter rows and a second shows them again.
  * - `bun run e2e -- status-widget-window -g layout` (ISC-607): the layout tests above, in light and dark theme, with
  *   the head, the filter (`section.widget-filter`, two `ui-filter-chips`) and the command lines (`div.entry-cmd` >
  *   `ui-command-chip`): nothing scrolls sideways (page, filter, chip rows, rows), every row's title and copy chip stay
@@ -198,6 +200,7 @@ type HeadGeometry = {
   head: Box;
   mark: Box;
   kpis: Box;
+  toggle: Box;
   figures: Box[];
   firstChild: string;
   overflow: Array<{ scrollWidth: number; clientWidth: number }>;
@@ -212,12 +215,14 @@ async function measureHead(page: Page): Promise<HeadGeometry> {
     };
     const mark = head.querySelector('ui-brand-mark');
     const kpis = head.querySelector('dl.kpis');
-    if (!mark || !kpis) throw new Error('head without ui-brand-mark or dl.kpis');
+    const toggle = head.querySelector('button.filter-toggle');
+    if (!mark || !kpis || !toggle) throw new Error('head without ui-brand-mark, dl.kpis or button.filter-toggle');
     const figures = [...kpis.querySelectorAll(':scope > div.kpi')];
     return {
       head: box(head),
       mark: box(mark),
       kpis: box(kpis),
+      toggle: box(toggle),
       figures: figures.map(box),
       firstChild: head.firstElementChild?.localName ?? '',
       overflow: [head, kpis, ...figures].map((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth })),
@@ -264,8 +269,25 @@ for (const width of [360, 480, 820] as const) {
           expect(figure.y + figure.height, `${name} inside the head`).toBeLessThanOrEqual(g.head.y + g.head.height);
           expect(figure.x + figure.width, `${name} inside the head`).toBeLessThanOrEqual(g.head.x + g.head.width);
         }
+        // The filter button last, right of the figures, flush with the head's right edge, on the same centre line.
+        expect(g.toggle.x).toBeGreaterThanOrEqual(g.kpis.x + g.kpis.width);
+        expect(Math.abs(g.toggle.x + g.toggle.width - (g.head.x + g.head.width))).toBeLessThanOrEqual(ROW_SLACK);
+        expect(Math.abs(centre(g.toggle) - centre(g.mark))).toBeLessThanOrEqual(ROW_SLACK);
+        expect(Math.abs(centre(g.toggle) - centre(g.kpis))).toBeLessThanOrEqual(ROW_SLACK);
         expect(g.head.height).toBeLessThanOrEqual(HEAD_MAX);
         for (const [i, o] of g.overflow.entries()) expect(o.scrollWidth, `overflow of box ${String(i)}`).toBeLessThanOrEqual(o.clientWidth);
+
+        // One click hides both filter rows together, a second shows them again.
+        const toggle = head.locator('button.filter-toggle');
+        const filter = page.locator('app-status-widget-page section.widget-filter');
+        await expect(filter).toBeVisible();
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(filter).toBeHidden();
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await expect(filter.locator('ui-filter-chips')).toHaveCount(2);
+        await expect(filter).toBeVisible();
 
         await page.request.post(RESET_PATH, { headers });
       });
