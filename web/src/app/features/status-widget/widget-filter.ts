@@ -13,14 +13,25 @@ import { STAGE_ORDER } from '../../shared/ui/stage-tone';
  * (`STAGE_ORDER`) limited to the ones that occur, so a live update never reorders them.
  */
 
-/** The selection: workspace slugs and stages; an empty list selects nothing and so matches everything. */
+/**
+ * The selection: workspace slugs and stages; an empty list selects nothing and so matches everything. `active` (spec
+ * 075, ISC-630) is the stage dimension's pseudo-option "Active", no stage: set, only specs with an open agent run (item
+ * state `running`) pass, intersected with the stage selection.
+ */
 export interface WidgetFilter {
   readonly workspaces: readonly string[];
   readonly stages: readonly Stage[];
+  readonly active: boolean;
 }
 
 /** No selection in either dimension: every listed spec and every unreadable workspace shows. */
-export const EMPTY_FILTER: WidgetFilter = { workspaces: [], stages: [] };
+export const EMPTY_FILTER: WidgetFilter = { workspaces: [], stages: [], active: false };
+
+/** The chip key of the "Active" option in the stage row; no stage is called that, so it never collides. */
+export const ACTIVE_KEY = 'active';
+
+/** Whether a spec has an open agent run (the row's pulse, ISC-594). */
+const isRunning = (spec: StatusSpec): boolean => spec.state === 'running';
 
 /** One workspace option: its slug as the key, the path tail the group head shows, and whether it could be read. */
 export interface WorkspaceOption {
@@ -45,16 +56,20 @@ const isStage = (value: unknown): value is Stage =>
 const isStringList = (value: unknown): value is readonly string[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'string');
 
-/** The stored selection, or `EMPTY_FILTER` when none is stored, it is not two lists of words, or the store throws. */
+/**
+ * The stored selection, or `EMPTY_FILTER` when none is stored, it is not two lists of words with an optional boolean
+ * `active`, or the store throws. A selection stored before spec 075 has no `active` and loads with it off (ISC-633).
+ */
 export function loadWidgetFilter(win: Window = window): WidgetFilter {
   try {
     const raw = win.localStorage.getItem(WIDGET_FILTER_KEY);
     if (raw === null) return EMPTY_FILTER;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return EMPTY_FILTER;
-    const { workspaces, stages } = parsed as Partial<Record<keyof WidgetFilter, unknown>>;
+    const { workspaces, stages, active } = parsed as Partial<Record<keyof WidgetFilter, unknown>>;
     if (!isStringList(workspaces) || !Array.isArray(stages) || !stages.every(isStage)) return EMPTY_FILTER;
-    return { workspaces: [...workspaces], stages: [...stages] };
+    if (active !== undefined && typeof active !== 'boolean') return EMPTY_FILTER;
+    return { workspaces: [...workspaces], stages: [...stages], active: active ?? false };
   } catch {
     return EMPTY_FILTER;
   }
@@ -63,7 +78,8 @@ export function loadWidgetFilter(win: Window = window): WidgetFilter {
 /** Stores the selection; a full or blocked store only loses the convenience. */
 export function saveWidgetFilter(filter: WidgetFilter, win: Window = window): void {
   try {
-    win.localStorage.setItem(WIDGET_FILTER_KEY, JSON.stringify({ workspaces: filter.workspaces, stages: filter.stages }));
+    const { workspaces, stages, active } = filter;
+    win.localStorage.setItem(WIDGET_FILTER_KEY, JSON.stringify({ workspaces, stages, active }));
   } catch {
     // Nothing to do: the next load starts without a selection.
   }
@@ -71,8 +87,8 @@ export function saveWidgetFilter(filter: WidgetFilter, win: Window = window): vo
 
 /**
  * The selection limited to the options the body still offers (a live update, ISC-587): a vanished workspace or a
- * stage no listed spec has anymore falls out. Returns the same object when nothing fell out, so a caller can skip
- * the write.
+ * stage no listed spec has anymore falls out. "Active" never falls out, even while no spec runs (ISC-633): its chip
+ * always stands. Returns the same object when nothing fell out, so a caller can skip the write.
  */
 export function pruneFilter(filter: WidgetFilter, body: StatusResponse): WidgetFilter {
   const keys = new Set(workspaceOptions(body).map((option) => option.key));
@@ -80,7 +96,7 @@ export function pruneFilter(filter: WidgetFilter, body: StatusResponse): WidgetF
   const workspaces = filter.workspaces.filter((slug) => keys.has(slug));
   const stages = filter.stages.filter((stage) => occurring.has(stage));
   if (workspaces.length === filter.workspaces.length && stages.length === filter.stages.length) return filter;
-  return { workspaces, stages };
+  return { workspaces, stages, active: filter.active };
 }
 
 /** The workspace options: each that lists a spec and each unreadable one, in body (picker) order. */
@@ -98,14 +114,17 @@ export function stageOptions(body: StatusResponse): readonly Stage[] {
 const workspaceMatches = (filter: WidgetFilter, slug: string): boolean =>
   filter.workspaces.length === 0 || filter.workspaces.includes(slug);
 
-/** Whether a spec passes the stage selection; an empty selection passes every one. */
+/**
+ * Whether a spec passes the stage dimension: the stage selection (an empty one passes every spec) and, with "Active"
+ * set, an open run as well, so a stage beside "Active" narrows the list and never widens it (ISC-631, ISC-632).
+ */
 const stageMatches = (filter: WidgetFilter, spec: StatusSpec): boolean =>
-  filter.stages.length === 0 || filter.stages.includes(spec.stage);
+  (filter.stages.length === 0 || filter.stages.includes(spec.stage)) && (!filter.active || isRunning(spec));
 
 /**
  * The groups to render, in body order, each with its specs narrowed to the rows that match both selections. A
  * readable workspace without a matching row has no head. An unreadable workspace stays while the workspace selection
- * is empty or contains it; a stage selection never hides it, since it lists nothing a stage could match.
+ * is empty or contains it; a stage selection or "Active" never hides it, since it lists nothing either could match.
  */
 export function visibleGroups(body: StatusResponse, filter: WidgetFilter): readonly StatusWorkspace[] {
   const groups: StatusWorkspace[] = [];
@@ -137,7 +156,7 @@ export function workspaceCounts(body: StatusResponse, filter: WidgetFilter): Rea
 
 /**
  * The facet count of each stage option (ISC-611): the listed specs at that stage in the workspaces that pass the
- * workspace selection, never the stage selection; an unreadable workspace lists nothing and adds nothing. Every
+ * workspace selection, never the stage selection nor "Active" (the same row); an unreadable workspace lists nothing and adds nothing. Every
  * option has an entry, a 0 included, in workflow order.
  */
 export function stageCounts(body: StatusResponse, filter: WidgetFilter): ReadonlyMap<Stage, number> {
@@ -147,4 +166,13 @@ export function stageCounts(body: StatusResponse, filter: WidgetFilter): Readonl
     for (const spec of ws.specs) counts.set(spec.stage, (counts.get(spec.stage) ?? 0) + 1);
   }
   return counts;
+}
+
+/**
+ * The facet count of the "Active" option (spec 075, ISC-630): the listed specs with an open run in the workspaces that
+ * pass the workspace selection, never the stage selection, "Active" itself included (ISC-611 held). A 0 is a real
+ * count: the chip stays visible and selectable.
+ */
+export function activeCount(body: StatusResponse, filter: WidgetFilter): number {
+  return body.workspaces.filter((ws) => workspaceMatches(filter, ws.slug)).flatMap((ws) => ws.specs.filter(isRunning)).length;
 }

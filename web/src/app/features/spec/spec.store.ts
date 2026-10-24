@@ -7,8 +7,8 @@ import { specParams } from './spec-view';
 import { openClaims } from './status/status-model';
 
 /**
- * The areas whose tabs share the spec rail; the dashboard and the live area register their own rail, and the Library
- * has none (`no-rail`, spec 017: the shell draws no rail column there, `SpecArea.noRail`).
+ * The areas whose tabs share the spec rail; the dashboard registers its own rail, and the Library and the live area
+ * (spec 075) have none (`no-rail`, spec 017: the shell draws no rail column there, `SpecArea.noRail`).
  */
 const RAIL_AREAS: ReadonlySet<AreaId> = new Set(['status', 'data', 'notes']);
 

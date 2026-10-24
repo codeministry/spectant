@@ -1,4 +1,4 @@
-import type { CardState, Frame, FrameCard, LiveCard, LiveFrame, RunCounts, RunState, SpecWait, TaskRun } from '../../../../../../../core/src/files';
+import type { CardState, Frame, FrameCard, LiveCard, RunCounts, RunState, SpecWait, TaskRun } from '../../../../../../../core/src/files';
 import { CARD_STATES, glyphSpec } from '../../../../shared/ui/glyph/states';
 import type { ScrubberFrame } from '../../../../shared/ui/scrubber/scrubber';
 
@@ -38,9 +38,6 @@ const SECTION_OF: Readonly<Record<CardState, BoardSection>> = {
 };
 
 const LANDED: ReadonlySet<CardState> = new Set<CardState>(['done', 'closed', 'operatorDone']);
-
-/** The Needs you list rule of core's live.ts, applied to history frames: question, concerns, open operator steps. */
-const NEEDS_YOU: readonly CardState[] = ['question', 'concerns', 'operatorOpen'];
 
 export const boardSection = (state: CardState): BoardSection => SECTION_OF[state];
 export const isLanded = (state: CardState): boolean => LANDED.has(state);
@@ -224,12 +221,6 @@ export function frameEvents<C extends FrameCard>(previous: Frame | null, current
   if (previous === null) return [...current.cards];
   const before = new Map(previous.cards.map((c) => [c.task, c.state]));
   return current.cards.filter((c) => before.get(c.task) !== c.state);
-}
-
-/** "Needs you": the live frame's own list as the model gives it; a history frame by the same rule. */
-export function needsYouOf(frame: Frame | LiveFrame): readonly FrameCard[] {
-  if ('needsYou' in frame) return frame.needsYou;
-  return NEEDS_YOU.flatMap((state) => frame.cards.filter((c) => c.state === state));
 }
 
 /** Search over the id, the claim and the text, case-insensitive; an empty query matches every card. */

@@ -85,21 +85,4 @@
       </p>
     </div>
   }
-
-  @if (live.frame(); as f) {
-    <app-live-rail
-      [frame]="f"
-      [events]="live.events()"
-      [needsYou]="live.needsYou()"
-      [index]="live.index()"
-      [last]="live.lastIndex()"
-      [live]="live.isLive()"
-      [(barOpen)]="live.barOpen"
-      (opened)="live.openCard($event)"
-      (step)="setFrame($event)"
-    />
-    @if (live.selected(); as c) {
-      <app-card-detail [card]="c" [history]="live.selectedHistory()" [open]="true" (openChange)="live.closeDetail($event)" />
-    }
-  }
 </section>

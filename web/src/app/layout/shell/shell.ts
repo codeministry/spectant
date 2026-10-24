@@ -91,6 +91,16 @@ export class ShellComponent {
   });
 
   /**
+   * Zen's footer status bar shows wherever the rail would, and on the Live tabs (spec 075), which draw no rail but keep
+   * the spec's status bar in zen.
+   */
+  protected readonly zenFooter = computed(() => {
+    if (this.showRail()) return true;
+    const area = this.state.specId() === null ? null : this.state.area();
+    return area === 'live' && !this.state.notFound() && !this.data.specMissing();
+  });
+
+  /**
    * The rail belongs to an open, existing spec (T54 fills its content, T38 adds the collapse toggle), to the planning
    * tree and Gantt at wide, and to the spec list at wide while a selection is docked (spec 058). The workspace
    * dashboard never draws one: its Next up and warnings stand in its own column (spec 058, ISC-392).

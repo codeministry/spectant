@@ -26,6 +26,8 @@ import { UiNotice } from '../../shared/ui/notice/notice';
 import { isToneStage, toneOfStage } from '../../shared/ui/stage-tone';
 import { StatusWidgetRow } from './status-widget-row';
 import {
+  ACTIVE_KEY,
+  activeCount,
   EMPTY_FILTER,
   loadWidgetFilter,
   pruneFilter,
@@ -130,20 +132,37 @@ export class StatusWidgetPage {
   });
 
   /**
-   * The stage chips: the occurring stages in workflow order, with the rows' badge words and tones and each one's facet
-   * count under the workspace selection (ISC-611); a 0 chip stays and can be pressed.
+   * The stage chips: first "Active" (spec 075, ISC-630), always, with the running specs under the workspace selection
+   * as its number; then the occurring stages in workflow order, with the rows' badge words and tones and each one's
+   * facet count under the workspace selection (ISC-611); a 0 chip stays and can be pressed.
    */
   readonly stageChips = computed<readonly FilterOption[]>(() => {
     const body = this.status();
     this.lang();
     if (!body) return [];
-    const counts = stageCounts(body, this.filter());
-    return stageOptions(body).map((stage) => ({
-      key: stage,
-      label: this.transloco.translate(`stages.${stage}`),
-      tone: toneOfStage(stage),
-      count: counts.get(stage) ?? 0,
-    }));
+    const filter = this.filter();
+    const counts = stageCounts(body, filter);
+    const active: FilterOption = {
+      key: ACTIVE_KEY,
+      label: this.transloco.translate('statusWidget.filter.active'),
+      tone: 'primary',
+      count: activeCount(body, filter),
+    };
+    return [
+      active,
+      ...stageOptions(body).map((stage) => ({
+        key: stage,
+        label: this.transloco.translate(`stages.${stage}`),
+        tone: toneOfStage(stage),
+        count: counts.get(stage) ?? 0,
+      })),
+    ];
+  });
+
+  /** The pressed keys of the stage row: "Active" first when set, then the selected stages. */
+  readonly stageSelection = computed<readonly string[]>(() => {
+    const { active, stages } = this.filter();
+    return active ? [ACTIVE_KEY, ...stages] : stages;
   });
 
   /** Whether a selection leaves nothing to render: the no-match line with its reset button stands instead (ISC-605). */
@@ -163,9 +182,9 @@ export class StatusWidgetPage {
     this.setFilter({ ...this.filter(), workspaces: [...keys] });
   }
 
-  /** Replaces the stage selection; a key that is no stage is ignored. */
+  /** Replaces the stage selection and "Active" from the stage row's keys; any other key that is no stage is ignored. */
   selectStages(keys: readonly string[]): void {
-    this.setFilter({ ...this.filter(), stages: keys.filter(isToneStage) });
+    this.setFilter({ ...this.filter(), stages: keys.filter(isToneStage), active: keys.includes(ACTIVE_KEY) });
   }
 
   constructor() {
