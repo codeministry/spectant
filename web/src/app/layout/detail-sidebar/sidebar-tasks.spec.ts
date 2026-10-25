@@ -143,7 +143,7 @@ describe('SidebarTasks (spec 067, T33, ISC-535)', () => {
     expect(host.hidden).toBe(true);
   });
 
-  it('sends one write per tick, busy while it is in flight, and keeps the task listed, ticked, without a read', async () => {
+  it('sends one write per tick, busy and focusable while it is in flight, and keeps the task listed, ticked, without a read', async () => {
     const { host, detect } = render(SPEC);
     await detect();
     const input = box(host, 'T29');
@@ -153,7 +153,13 @@ describe('SidebarTasks (spec 067, T33, ISC-535)', () => {
     expect(sent).toEqual([{ ws: 'harbor', id: '002', tid: 'T29', hash: 'h0', checked: true }]);
     const row = host.querySelector('[data-task="T29"]');
     expect(row?.getAttribute('aria-busy')).toBe('true');
-    expect(box(host, 'T29').disabled).toBe(true);
+    // In flight the box keeps its focus (ISC-537): aria-disabled, not disabled, and a second click writes nothing.
+    expect(box(host, 'T29').disabled).toBe(false);
+    expect(box(host, 'T29').getAttribute('aria-disabled')).toBe('true');
+    box(host, 'T29').click();
+    await detect();
+    expect(sent.length).toBe(1);
+    expect(box(host, 'T29').checked).toBe(true);
     answer({ kind: 'ok', body: { task: 'T29', checked: true, hash: 'h1', lockSource: 'none', line: { number: 47, text: '- [x] T29 · ISC-76 · web — done' } } });
     await detect();
     expect(sent.length).toBe(1);
