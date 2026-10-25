@@ -1828,13 +1828,13 @@ var GOAL_HEADINGS = ["Goal", "Ziel"];
 var TASK_BOX = /^\s*- \[([ xX])\]\s*T\d+\b/gm;
 var escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function levelTwoSection(text, headings) {
-  const names2 = headings.map(escapeRegExp).join("|");
-  const section2 = new RegExp(String.raw`^##\s+(?:${names2})\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))`, "m");
-  return section2.exec(text.replace(/\r\n?/g, `
+  const names = headings.map(escapeRegExp).join("|");
+  const section = new RegExp(String.raw`^##\s+(?:${names})\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))`, "m");
+  return section.exec(text.replace(/\r\n?/g, `
 `))?.[1] ?? null;
 }
-function firstParagraph(section2) {
-  return section2.split(/\n\s*\n/).map((p) => p.trim()).find((p) => p !== "" && !p.startsWith("```") && !p.startsWith("~~~") && !p.startsWith("<!--") && !p.startsWith("|")) ?? null;
+function firstParagraph(section) {
+  return section.split(/\n\s*\n/).map((p) => p.trim()).find((p) => p !== "" && !p.startsWith("```") && !p.startsWith("~~~") && !p.startsWith("<!--") && !p.startsWith("|")) ?? null;
 }
 function goalOf(spec) {
   return (firstParagraph(levelTwoSection(spec, GOAL_HEADINGS) ?? "") ?? "").replace(/\s+/g, " ");
@@ -1923,8 +1923,8 @@ var stringOrNull = (value) => typeof value === "string" ? value : null;
 var count = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 function readGateMark(gate, text) {
   const diagnostics = [];
-  const fail = (code2, message) => ({ mark: null, diagnostics: [...diagnostics, { severity: "error", code: code2, message }] });
-  const warn = (code2, message) => diagnostics.push({ severity: "warning", code: code2, message });
+  const fail = (code, message) => ({ mark: null, diagnostics: [...diagnostics, { severity: "error", code, message }] });
+  const warn = (code, message) => diagnostics.push({ severity: "warning", code, message });
   let data;
   try {
     data = JSON.parse(text);
@@ -2097,13 +2097,13 @@ function treeIdOf(entries) {
   for (const entry of entries) {
     if (!MODES.has(entry.mode))
       throw new RangeError(`treeIdOf: unsupported mode ${entry.mode} for ${entry.path}`);
-    const segments2 = entry.path.split("/");
-    if (segments2.some((s) => s === "" || s === "." || s === ".." || s.includes("\x00"))) {
+    const segments = entry.path.split("/");
+    if (segments.some((s) => s === "" || s === "." || s === ".." || s.includes("\x00"))) {
       throw new RangeError(`treeIdOf: invalid path ${JSON.stringify(entry.path)}`);
     }
-    const name = segments2.pop() ?? "";
+    const name = segments.pop() ?? "";
     let dir = root;
-    for (const segment of segments2) {
+    for (const segment of segments) {
       if (dir.files.has(segment))
         throw new RangeError(`treeIdOf: ${entry.path} lies under a file`);
       let sub = dir.dirs.get(segment);
@@ -2283,7 +2283,7 @@ function specAsset(src, folders) {
   }
   const asResolved = lexical(src, true);
   const asDecoded = decoded === null ? null : lexical(decoded, false);
-  const inFolder = (segments2) => segments2 !== null && segments2.length > 0 && (anywhere || folders.includes(segments2[0] ?? ""));
+  const inFolder = (segments) => segments !== null && segments.length > 0 && (anywhere || folders.includes(segments[0] ?? ""));
   if (!inFolder(asResolved) && !inFolder(asDecoded))
     return null;
   if (decoded === null || !inFolder(asDecoded) || asDecoded.length < (anywhere ? 1 : 2) || /%[0-9A-Fa-f]{2}|[\u0000-\u001f\u007f\\]/.test(decoded)) {
@@ -2292,15 +2292,15 @@ function specAsset(src, folders) {
   return asDecoded.join("/");
 }
 function renderParagraph(lines) {
-  const segments2 = [[]];
+  const segments = [[]];
   lines.forEach((raw, k) => {
     const hard = k < lines.length - 1 && / {2,}$|\\$/.test(raw);
     const text = raw.trim();
-    segments2[segments2.length - 1]?.push(hard ? text.replace(/\\$/, "").trimEnd() : text);
+    segments[segments.length - 1]?.push(hard ? text.replace(/\\$/, "").trimEnd() : text);
     if (hard)
-      segments2.push([]);
+      segments.push([]);
   });
-  return segments2.map((segment) => renderInline(segment.join(" "))).join("<br>");
+  return segments.map((segment) => renderInline(segment.join(" "))).join("<br>");
 }
 function renderBlocks(md, ctx) {
   const lines = md.split(`
@@ -2452,7 +2452,7 @@ function sectionLines(body, heading) {
   let comment = false;
   for (const raw of lines.slice(start + 1)) {
     let line = raw.trim();
-    const blank2 = line === "";
+    const blank = line === "";
     if (comment) {
       const end = line.indexOf("-->");
       if (end < 0)
@@ -2471,7 +2471,7 @@ function sectionLines(body, heading) {
       }
       line = line.slice(end + 3).trim();
     }
-    if (line !== "" || blank2)
+    if (line !== "" || blank)
       out.push(line);
   }
   return out;
@@ -2542,8 +2542,8 @@ function checkIndex(index, slugs) {
 function readIdeas(files) {
   const ideas = [];
   const diagnostics = [];
-  const names2 = Object.keys(files).filter((name) => name !== INDEX && STORY_FILE.test(name)).sort();
-  for (const name of names2) {
+  const names = Object.keys(files).filter((name) => name !== INDEX && STORY_FILE.test(name)).sort();
+  for (const name of names) {
     const slug = name.slice(0, -".md".length);
     const path = `${IDEAS_DIR}${name}`;
     const fm = parseFrontmatter(files[name] ?? "");
@@ -2750,8 +2750,8 @@ function countsOf(input) {
   const p = input.partition;
   if (p) {
     const open = p.takeable + p.open;
-    const total2 = open + p.closed + p.dropped;
-    return { total: total2, takeable: p.takeable, open, allClosed: total2 > 0 && open === 0 };
+    const total = open + p.closed + p.dropped;
+    return { total, takeable: p.takeable, open, allClosed: total > 0 && open === 0 };
   }
   const { closed, total } = input.claims;
   return { total, takeable: input.takeable.length, open: total - closed, allClosed: total > 0 && closed === total };
@@ -2764,10 +2764,10 @@ function fullHoldOf(input) {
 }
 var needs = (input, file) => input.type ? TYPE_NEEDS[input.type][file] : false;
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-function takeableIds(input, count2) {
+function takeableIds(input, count) {
   const ids = input.takeable;
   if (ids.length === 0)
-    return plural(count2, "claim");
+    return plural(count, "claim");
   if (ids.length === 1)
     return ids[0] ?? "";
   if (ids.length === 2)
@@ -2911,9 +2911,9 @@ var SPEC_RULES = [
     next: commandFor("implement", SPEC_ARG),
     reasons: ["{ids} {is} takeable"],
     explain: (input) => {
-      const count2 = countsOf(input).takeable;
-      const many = input.takeable.length === 0 ? count2 !== 1 : input.takeable.length > 1;
-      return { values: { ids: takeableIds(input, count2), is: many ? "are" : "is" } };
+      const count = countsOf(input).takeable;
+      const many = input.takeable.length === 0 ? count !== 1 : input.takeable.length > 1;
+      return { values: { ids: takeableIds(input, count), is: many ? "are" : "is" } };
     }
   },
   {
@@ -3050,15 +3050,15 @@ var defaultCodeReview = (type) => type === "chore" ? "none" : "spec";
 var CODE_REVIEW_STAGES = new Set(["code-review", "close"]);
 var DETOURS = new Set(["blocked", "close-pending"]);
 function defaultStages(type) {
-  const needs2 = type === null ? { plan: false, tasks: false } : TYPE_NEEDS[type];
+  const needs = type === null ? { plan: false, tasks: false } : TYPE_NEEDS[type];
   const codeReview = defaultCodeReview(type);
   const keep = (stage) => {
     if (DETOURS.has(stage) || stage === "done")
       return false;
     if (stage === "plan")
-      return needs2.plan;
+      return needs.plan;
     if (stage === "tasks")
-      return needs2.tasks;
+      return needs.tasks;
     return codeReview !== "none" || !CODE_REVIEW_STAGES.has(stage);
   };
   return [...new Set(SPEC_RULES.map((rule) => rule.stage))].filter(keep).concat("done");
@@ -3102,11 +3102,11 @@ function isAllocationEntry(stage, row) {
   return stage === "plan" && !row.includes("plan");
 }
 function placeOf(stage, row) {
-  const build2 = row.indexOf("build");
+  const build = row.indexOf("build");
   if (stage === "blocked")
-    return build2;
+    return build;
   if (stage === "close-pending")
-    return build2 < 0 ? -1 : build2 + 0.5;
+    return build < 0 ? -1 : build + 0.5;
   if (isAllocationEntry(stage, row))
     return -0.5;
   return row.indexOf(stage);
@@ -3441,10 +3441,10 @@ function driftReport(input) {
   const { frontmatter, spec, master } = input;
   const heldElsewhere = input.heldElsewhere ?? new Set;
   const fm = frontmatter.data;
-  const byId2 = new Map(spec.claims.map((c) => [c.id, c]));
+  const byId = new Map(spec.claims.map((c) => [c.id, c]));
   const evidence = new Set(spec.verification.map((v) => v.id));
   const evidenceWithoutClose = [...evidence].filter((id) => {
-    const c = byId2.get(id);
+    const c = byId.get(id);
     return c !== undefined && !c.checked && !c.dropped;
   });
   const feature = mainFeatureOf(fm.isaFeature);
@@ -3453,7 +3453,7 @@ function driftReport(input) {
     const masterById = new Map(master.claims.map((c) => [c.id, c]));
     const block = master.features.find((f) => f.id === feature);
     for (const id of block?.claims ?? []) {
-      if (byId2.has(id) || heldElsewhere.has(id) || masterById.get(id)?.dropped)
+      if (byId.has(id) || heldElsewhere.has(id) || masterById.get(id)?.dropped)
         continue;
       missingInSpec.push(id);
     }
@@ -3535,7 +3535,7 @@ function takeableSet(input) {
   const taken = new Map(partition.taken.map((t) => [t.id, t.session]));
   const gated = new Set(partition.gated);
   const units = unitsOf(input);
-  const byId2 = new Map(units.map((u) => [u.id, u]));
+  const byId = new Map(units.map((u) => [u.id, u]));
   const dispatch = [];
   const held = [];
   const filesThisRound = new Set;
@@ -3557,9 +3557,9 @@ function takeableSet(input) {
       return `spec not reviewed \u2014 the reviewed mark is ${partition.reviewed}`;
     if (!takeable.has(u.claim))
       return "claim unknown to the spec";
-    const openAfter = u.after.filter((a) => byId2.get(a)?.done !== true);
+    const openAfter = u.after.filter((a) => byId.get(a)?.done !== true);
     if (openAfter.length > 0) {
-      const seams = openAfter.filter((a) => byId2.get(a)?.seam === true);
+      const seams = openAfter.filter((a) => byId.get(a)?.seam === true);
       return seams.length > 0 ? `behind open seam ${seams.join(", ")}` : `after ${openAfter.join(", ")} still open`;
     }
     const collision = u.paths.find((p) => filesThisRound.has(p));
@@ -3683,17 +3683,17 @@ function splitItems(s) {
 function takeEdges(s) {
   const mask = codeMask(s);
   const tokens = [];
-  let text2 = "";
+  let text = "";
   let last = 0;
   for (const m of s.matchAll(AFTER)) {
     if (mask[m.index])
       continue;
     tokens.push(...(m[1] ?? "").split(/\s*,\s*/).map((t) => t.trim()).filter((t) => t !== ""));
-    text2 += s.slice(last, m.index);
+    text += s.slice(last, m.index);
     last = m.index + m[0].length;
   }
-  text2 += s.slice(last);
-  return { text: text2.replace(/\s{2,}/g, " ").trim(), tokens };
+  text += s.slice(last);
+  return { text: text.replace(/\s{2,}/g, " ").trim(), tokens };
 }
 function taskIds(tokens) {
   const ids = [];
@@ -3767,35 +3767,35 @@ function parseBody(rest, warn) {
   const body = rest.replace(/^\s*\u00B7\s*/, "");
   const mask = codeMask(body);
   const dash = indexesOutside(body, " \u2014 ", mask)[0];
-  let segments2;
+  let segments;
   let textPart;
   if (dash === undefined) {
     warn("task-malformed", "The task line has no ` \u2014 ` between its head (claim, flags, lane) and its text.");
     const parts = body.split(" \xB7 ");
     const first = (parts[0] ?? "").trim();
-    segments2 = CLAIM_ID2.test(first) ? [first] : [];
+    segments = CLAIM_ID2.test(first) ? [first] : [];
     textPart = CLAIM_ID2.test(first) ? parts.slice(1).join(" \xB7 ") : body;
   } else {
-    segments2 = body.slice(0, dash).split("\xB7").map((s) => s.trim()).filter((s) => s !== "");
+    segments = body.slice(0, dash).split("\xB7").map((s) => s.trim()).filter((s) => s !== "");
     textPart = body.slice(dash + 3);
   }
   let claim = "";
-  if (segments2.length > 0 && CLAIM_ID2.test(segments2[0] ?? ""))
-    claim = segments2.shift() ?? "";
+  if (segments.length > 0 && CLAIM_ID2.test(segments[0] ?? ""))
+    claim = segments.shift() ?? "";
   else if (dash !== undefined) {
-    warn("task-no-claim", `The task line names no claim ID: "${segments2[0] ?? ""}".`);
-    if (segments2.length > 1)
-      segments2.shift();
+    warn("task-no-claim", `The task line names no claim ID: "${segments[0] ?? ""}".`);
+    if (segments.length > 1)
+      segments.shift();
   }
   let parallel = false;
   let seam = false;
   let lane = "";
-  const last = segments2[segments2.length - 1];
+  const last = segments[segments.length - 1];
   if (last !== undefined && !FLAG.test(last) && LANE_TOKEN.test(last))
-    lane = segments2.pop() ?? "";
+    lane = segments.pop() ?? "";
   else if (dash !== undefined)
     warn("task-no-lane", "The task line has no lane token before ` \u2014 `.");
-  for (const seg of segments2) {
+  for (const seg of segments) {
     if (seg === "[P]")
       parallel = true;
     else if (seg === "[seam]")
@@ -3806,22 +3806,22 @@ function parseBody(rest, warn) {
       warn("task-malformed", `Unexpected head segment "${seg}" between the claim and the lane.`);
   }
   const { text: noEdges, tokens } = takeEdges(textPart.trim());
-  let text2 = noEdges;
+  let text = noEdges;
   let paths = [];
   let pathNote = null;
   const sep = indexesOutside(noEdges, " \xB7 ").at(-1);
   if (sep !== undefined) {
-    const column2 = pathColumn(noEdges.slice(sep + 3).trim());
-    if (column2 !== null) {
-      text2 = noEdges.slice(0, sep).trim();
-      paths = column2.paths;
-      pathNote = column2.note;
+    const column = pathColumn(noEdges.slice(sep + 3).trim());
+    if (column !== null) {
+      text = noEdges.slice(0, sep).trim();
+      paths = column.paths;
+      pathNote = column.note;
     }
   }
-  return { claim, parallel, seam, lane, text: text2, edgeTokens: tokens, paths, pathNote };
+  return { claim, parallel, seam, lane, text, edgeTokens: tokens, paths, pathNote };
 }
-function comparable(text2) {
-  const { text: noEdges } = takeEdges(text2);
+function comparable(text) {
+  const { text: noEdges } = takeEdges(text);
   const sep = indexesOutside(noEdges, " \xB7 ").at(-1);
   if (sep !== undefined && pathColumn(noEdges.slice(sep + 3).trim()) !== null)
     return noEdges.slice(0, sep).trim();
@@ -3956,8 +3956,8 @@ class TaskTextError extends Error {
     this.code = code;
   }
 }
-function tickTaskText(text2, id) {
-  const parts = text2.split(/(\r\n|\n|\r)/);
+function tickTaskText(text, id) {
+  const parts = text.split(/(\r\n|\n|\r)/);
   let fenced = false;
   for (let i = 0;i < parts.length; i += 2) {
     const raw = parts[i] ?? "";
@@ -3969,7 +3969,7 @@ function tickTaskText(text2, id) {
     if (box?.[2] !== id)
       continue;
     if (box[1] !== " ")
-      return { text: text2, changed: false };
+      return { text, changed: false };
     const at = raw.indexOf("- [") + 3;
     parts[i] = `${raw.slice(0, at)}x${raw.slice(at + 1)}`;
     return { text: parts.join(""), changed: true };
@@ -3984,7 +3984,7 @@ function parseMapping(lines, tasks, diagnostics) {
   const warn = (code, message, line) => {
     diagnostics.push({ severity: "warning", code, message, line });
   };
-  const byId2 = new Map(tasks.map((t) => [t.id, t]));
+  const byId = new Map(tasks.map((t) => [t.id, t]));
   const rows = [];
   for (const row of table) {
     const [first = "", claim = "", ...rest] = cells(row.text);
@@ -3996,7 +3996,7 @@ function parseMapping(lines, tasks, diagnostics) {
     const id = claim.replace(/`/g, "").trim();
     rows.push({ tasks: ids, claim: id, probe: rest.join(" | ").trim(), line: row.line });
     for (const t of ids) {
-      const task = byId2.get(t);
+      const task = byId.get(t);
       if (task === undefined)
         warn("mapping-unknown-task", `Probe mapping names ${t}, which no task line carries.`, row.line);
       else if (task.state === "struck")
@@ -4136,8 +4136,8 @@ function tabCounts(spec, specEdges) {
     ...rounds === undefined ? {} : { rounds },
     specEdges
   });
-  const count2 = (name) => tab.counts.byStatus.find((c) => c.name === name)?.count ?? 0;
-  return { held: count2("held"), open: count2("open") };
+  const count = (name) => tab.counts.byStatus.find((c) => c.name === name)?.count ?? 0;
+  return { held: count("held"), open: count("open") };
 }
 function findCycles(specs) {
   const next = new Map;
@@ -4162,12 +4162,12 @@ function findCycles(specs) {
     counter += 1;
     stack.push(v);
     onStack.add(v);
-    for (const w2 of next.get(v) ?? []) {
-      if (!index.has(w2)) {
-        visit(w2);
-        low.set(v, Math.min(low.get(v) ?? 0, low.get(w2) ?? 0));
-      } else if (onStack.has(w2)) {
-        low.set(v, Math.min(low.get(v) ?? 0, index.get(w2) ?? 0));
+    for (const w of next.get(v) ?? []) {
+      if (!index.has(w)) {
+        visit(w);
+        low.set(v, Math.min(low.get(v) ?? 0, low.get(w) ?? 0));
+      } else if (onStack.has(w)) {
+        low.set(v, Math.min(low.get(v) ?? 0, index.get(w) ?? 0));
       }
     }
     if (low.get(v) !== index.get(v))
@@ -4264,16 +4264,16 @@ function edgeDiagnostics(model, specs, cycles) {
 // core/src/tldr.ts
 var TLDR_SECTIONS = ["overview", "try", "per-spec", "risks", "next"];
 var MARKER = /<!--\s*section:\s*([\w-]+)\s*-->/;
-function names2(text2, number) {
-  return new RegExp(String.raw`\b${number.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\b`).test(text2);
+function names2(text, number) {
+  return new RegExp(String.raw`\b${number.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\b`).test(text);
 }
 var LANG_TAG = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/;
 function langOf(value) {
   const lang = value?.trim() ?? "";
   return LANG_TAG.test(lang) ? lang : null;
 }
-function parseTldr(text2) {
-  const fm = parseFrontmatter(text2);
+function parseTldr(text) {
+  const fm = parseFrontmatter(text);
   const diagnostics = [...fm.diagnostics];
   const generated = fm.values.generated ?? null;
   if (generated === null || generated === "") {
@@ -4307,13 +4307,13 @@ function tldrState(input) {
     return { present: false, stale: false, missingSections: [], unnamedSpecs: [] };
   const at = tldr.generated === null ? Number.NaN : Date.parse(tldr.generated);
   const stale = Number.isNaN(at) || specs.some((s) => [s.updated, s.lastRound ?? null].some((ts) => ts !== null && Date.parse(ts) > at));
-  const text2 = Object.values(tldr.sections).join(`
+  const text = Object.values(tldr.sections).join(`
 `);
   return {
     present: true,
     stale,
     missingSections: TLDR_SECTIONS.filter((k) => !Object.hasOwn(tldr.sections, k)),
-    unnamedSpecs: specs.filter((s) => s.phase !== "complete" && !names2(text2, s.number)).map((s) => s.number)
+    unnamedSpecs: specs.filter((s) => s.phase !== "complete" && !names2(text, s.number)).map((s) => s.number)
   };
 }
 
@@ -4343,13 +4343,13 @@ function devServiceLabels(constitution) {
   }
   return labels;
 }
-function readMark(gate, text2) {
-  return text2 === undefined ? null : readGateMark(gate, text2);
+function readMark(gate, text) {
+  return text === undefined ? null : readGateMark(gate, text);
 }
-function newestRound(text2) {
+function newestRound(text) {
   const diagnostics = [];
   let ts = null;
-  (text2 ?? "").split(/\r?\n/).forEach((line, i) => {
+  (text ?? "").split(/\r?\n/).forEach((line, i) => {
     if (line.trim() === "")
       return;
     let value;
@@ -4520,9 +4520,9 @@ function specRow(f, ctx, diagnostics) {
   note("gateCodeReviewed", codeMark?.diagnostics ?? []);
   const { specType: type, phase } = fm.data;
   const next = nextCommandWithReason(stageInput);
-  const mismatch2 = stageMismatchOf(stageInput, fm.keyLines.stage);
-  if (mismatch2 !== null)
-    note("spec", [mismatch2]);
+  const mismatch = stageMismatchOf(stageInput, fm.keyLines.stage);
+  if (mismatch !== null)
+    note("spec", [mismatch]);
   const drift = ctx.master === null ? null : driftReport({ frontmatter: fm, spec: doc, master: ctx.master, heldElsewhere: heldElsewhere(ctx, f.folder) });
   const diagrams = diagramVerdict({ type, phase, spec, plan });
   const fog = doc.fog.length;
@@ -4536,8 +4536,8 @@ function specRow(f, ctx, diagnostics) {
   }
   if (phase !== "complete") {
     if (reviewed.state !== "fresh") {
-      const text2 = reviewed.state === "stale" ? `reviewed mark is stale (${reviewed.changed.join(", ") || "unreadable"})` : "no reviewed mark yet";
-      warnings.push({ kind: "review", text: text2, command: commandFor("review", id) });
+      const text = reviewed.state === "stale" ? `reviewed mark is stale (${reviewed.changed.join(", ") || "unreadable"})` : "no reviewed mark yet";
+      warnings.push({ kind: "review", text, command: commandFor("review", id) });
     }
     const missing = diagrams.missing.filter((file) => file === "spec.md" || plan !== null);
     if (diagrams.level === "fail" && missing.length > 0) {
@@ -4723,7 +4723,7 @@ function specOverlaps(specs, edges, sharedFiles) {
 var baseName = (file) => file.slice(file.lastIndexOf("/") + 1);
 function edgeWarnings(rows, active, edges, constitution) {
   const out = new Map;
-  const add = (id, warning3) => void out.set(id, [...out.get(id) ?? [], warning3]);
+  const add = (id, warning) => void out.set(id, [...out.get(id) ?? [], warning]);
   const idOf = new Map(rows.map((r) => [r.slug, r.id]));
   for (const { file, diagnostic } of edges.diagnostics) {
     const id = idOf.get(file.split("/")[1] ?? "");
@@ -4757,10 +4757,10 @@ function buildDashboard(input) {
     master = parseClaims(input.master);
     masterFog = master.fog.length;
     note(MASTER_FILE, [...fm.diagnostics, ...master.diagnostics]);
-    const mismatch2 = fm.present && master.section !== null ? masterProgressMismatch(fm, master, MASTER_FILE) : null;
-    if (mismatch2) {
+    const mismatch = fm.present && master.section !== null ? masterProgressMismatch(fm, master, MASTER_FILE) : null;
+    if (mismatch) {
       note(MASTER_FILE, [
-        { severity: "warning", code: "master-progress-mismatch", message: `progress ${mismatch2.declared ?? "(none)"} disagrees with the recount ${mismatch2.counted}.` }
+        { severity: "warning", code: "master-progress-mismatch", message: `progress ${mismatch.declared ?? "(none)"} disagrees with the recount ${mismatch.counted}.` }
       ]);
     }
   }
@@ -4863,7 +4863,7 @@ function buildDashboard(input) {
   };
   const warningGroups = WARNING_ORDER.map((kind) => ({
     kind,
-    items: rows.flatMap((r) => r.warnings.filter((w) => w.kind === kind).map((warning3) => ({ spec: r.id, warning: warning3 })))
+    items: rows.flatMap((r) => r.warnings.filter((w) => w.kind === kind).map((warning) => ({ spec: r.id, warning })))
   })).filter((g) => g.items.length > 0);
   const services = [...input.services ?? []].sort((a, b) => a.port - b.port).map((s) => s.label === null && labels.has(s.port) ? { ...s, label: labels.get(s.port) ?? null } : s);
   diagnostics.push(...input.sourceDiagnostics ?? []);
@@ -4900,9 +4900,9 @@ function resolveSpec(workspaceRoot, ref) {
   if (SPEC_ID.test(ref))
     return single(ref, specs.filter((s) => specIdOf(s.slug) === ref), "unknown-id");
   if (SPEC_FOLDER.test(ref)) {
-    const byFolder2 = specs.filter((s) => s.slug === ref);
-    if (byFolder2.length > 0)
-      return single(ref, byFolder2, "unknown-slug");
+    const byFolder = specs.filter((s) => s.slug === ref);
+    if (byFolder.length > 0)
+      return single(ref, byFolder, "unknown-slug");
   }
   return single(ref, specs.filter((s) => ref !== "" && specSlugOf(s.slug) === ref), "unknown-slug");
 }
@@ -4924,9 +4924,9 @@ function scan(workspaceRoot) {
   const archiveDir = join6(specsDir, "archive");
   return [...refs(specsDir, active, false), ...refs(archiveDir, folders(archiveDir) ?? [], true)];
 }
-function refs(parent, names3, archived) {
+function refs(parent, names, archived) {
   const out = [];
-  for (const name of names3) {
+  for (const name of names) {
     const match = SPEC_FOLDER.exec(name);
     if (match?.[1] === undefined)
       continue;
@@ -4950,17 +4950,17 @@ function folders(dir) {
 // core/src/markdown-docs.ts
 var ENTITIES = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
 function countWords(html) {
-  const text2 = html.replace(/<figure\b[\s\S]*?<\/figure>/g, " ").replace(/<pre\b[\s\S]*?<\/pre>/g, " ").replace(/<[^>]*>/g, " ").replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e] ?? " ");
-  return text2.match(/[\p{L}\p{N}]+(?:[-'\u2019][\p{L}\p{N}]+)*/gu)?.length ?? 0;
+  const text = html.replace(/<figure\b[\s\S]*?<\/figure>/g, " ").replace(/<pre\b[\s\S]*?<\/pre>/g, " ").replace(/<[^>]*>/g, " ").replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e] ?? " ");
+  return text.match(/[\p{L}\p{N}]+(?:[-'\u2019][\p{L}\p{N}]+)*/gu)?.length ?? 0;
 }
 var isSignal = (value) => Number.isInteger(value) && value >= 1 && value <= 4;
-function renderDocsMarkdown(markdown, options2) {
+function renderDocsMarkdown(markdown, options) {
   const fm = parseFrontmatter(markdown);
   const rendered = renderMarkdown(fm.body, {
     document: true,
-    ...options2?.idPrefix === undefined ? {} : { idPrefix: options2.idPrefix },
-    ...options2?.assetExists === undefined ? {} : { assetExists: options2.assetExists },
-    ...options2?.specAssets === undefined ? {} : { specAssets: options2.specAssets }
+    ...options?.idPrefix === undefined ? {} : { idPrefix: options.idPrefix },
+    ...options?.assetExists === undefined ? {} : { assetExists: options.assetExists },
+    ...options?.specAssets === undefined ? {} : { specAssets: options.specAssets }
   });
   return {
     frontmatter: fm.present ? { ...fm.values } : null,
@@ -4969,9 +4969,9 @@ function renderDocsMarkdown(markdown, options2) {
     figures: rendered.figures,
     sections: rendered.toc.map((entry) => ({ id: entry.anchor, heading: entry.text, level: entry.level })),
     wordCount: countWords(rendered.html),
-    ...options2?.doc === "decisions" ? { decisions: parseDecisionLog(fm.body) } : {},
-    ...options2?.doc === "decisions" && isSignal(options2.goalSignal) ? { goalSignal: options2.goalSignal } : {},
-    ...options2?.doc === "constitution" ? { constitution: parseConstitutionView(fm.body) } : {}
+    ...options?.doc === "decisions" ? { decisions: parseDecisionLog(fm.body) } : {},
+    ...options?.doc === "decisions" && isSignal(options.goalSignal) ? { goalSignal: options.goalSignal } : {},
+    ...options?.doc === "constitution" ? { constitution: parseConstitutionView(fm.body) } : {}
   };
 }
 var DESIGN_TYPES = new Set(["feature", "project"]);
@@ -4979,8 +4979,8 @@ var DESIGN_TYPES = new Set(["feature", "project"]);
 // core/src/tech.ts
 var TECH_FILE = "specs/tech.md";
 var APPROACH_HEADINGS = ["Approach"];
-var proseOrNull = (text2) => {
-  const trimmed = text2?.trim() ?? "";
+var proseOrNull = (text) => {
+  const trimmed = text?.trim() ?? "";
   return trimmed === "" ? null : trimmed;
 };
 function techSourcesOf(spec, plan) {
@@ -5023,7 +5023,7 @@ function techOptions(page, input) {
 }
 function techSections(body, diagnostics) {
   const found = sectionsByMarker(body);
-  const text2 = (key) => {
+  const text = (key) => {
     if (Object.hasOwn(found, key))
       return found[key] ?? "";
     const diagnostic = {
@@ -5035,11 +5035,11 @@ function techSections(body, diagnostics) {
     diagnostics.push({ file: TECH_FILE, diagnostic });
     return "";
   };
-  return { overview: text2("overview"), stack: text2("stack"), architecture: text2("architecture"), risks: text2("risks") };
+  return { overview: text("overview"), stack: text("stack"), architecture: text("architecture"), risks: text("risks") };
 }
 function pageOf(markdown, idPrefix) {
-  const text2 = markdown?.trim() ?? "";
-  return text2 === "" ? null : renderDocsMarkdown(text2, { idPrefix });
+  const text = markdown?.trim() ?? "";
+  return text === "" ? null : renderDocsMarkdown(text, { idPrefix });
 }
 function techSpec(f) {
   const spec = f.texts.spec;
@@ -5071,11 +5071,11 @@ function readTech(input) {
     for (const diagnostic of fm.diagnostics)
       diagnostics.push({ file: TECH_FILE, diagnostic });
     const s = techSections(fm.body, diagnostics);
-    const join7 = [s.overview, s.stack].filter((part) => part !== "").join(`
+    const join = [s.overview, s.stack].filter((part) => part !== "").join(`
 
 `);
     pages = {
-      overview: renderDocsMarkdown(join7, techOptions("overview", input)),
+      overview: renderDocsMarkdown(join, techOptions("overview", input)),
       architecture: renderDocsMarkdown(s.architecture, techOptions("architecture", input)),
       risks: renderDocsMarkdown(s.risks, techOptions("risks", input))
     };
@@ -5098,9 +5098,9 @@ function tldrFacts(input) {
     ...input.workflow === undefined ? {} : { workflow: input.workflow },
     ...input.locks === undefined ? {} : { locks: input.locks }
   });
-  const byFolder2 = new Map(active.map((s) => [s.folder, s]));
+  const byFolder = new Map(active.map((s) => [s.folder, s]));
   const specs = model.specs.filter((row) => row.phase !== "complete").map((row) => {
-    const files = byFolder2.get(row.slug);
+    const files = byFolder.get(row.slug);
     return {
       number: row.id,
       title: row.title,
@@ -5152,14 +5152,14 @@ function gateViolation(stages) {
 var HEADER = ["type", "stages", "code_review"];
 var FENCE5 = /^\s*(```|~~~)/;
 var plain = (cell) => cell.replace(/`/g, "").trim();
-function parseWorkflow(text2) {
-  if (text2 === null)
+function parseWorkflow(text) {
+  if (text === null)
     return { rows: DEFAULT_WORKFLOW, source: "default", diagnostics: [] };
   const diagnostics = [];
   const warn = (code, message, line, subject) => {
     diagnostics.push(subject === undefined ? { severity: "warning", code, message, line } : { severity: "warning", code, message, line, subject });
   };
-  const lines = text2.replace(/\r\n?/g, `
+  const lines = text.replace(/\r\n?/g, `
 `).split(`
 `);
   const header = findHeader(lines);
@@ -5203,13 +5203,13 @@ function findHeader(lines) {
   }
   return null;
 }
-function parseRow(text2, line, warn) {
-  const cells2 = tableCells2(text2).map(plain);
-  if (cells2.length !== HEADER.length) {
-    warn("workflow-row", `a workflow row needs the three cells type, stages and code_review; it has ${cells2.length}.`, line);
+function parseRow(text, line, warn) {
+  const cells = tableCells2(text).map(plain);
+  if (cells.length !== HEADER.length) {
+    warn("workflow-row", `a workflow row needs the three cells type, stages and code_review; it has ${cells.length}.`, line);
     return null;
   }
-  const [typeCell = "", stagesCell = "", modeCell = ""] = cells2;
+  const [typeCell = "", stagesCell = "", modeCell = ""] = cells;
   const type = WORKFLOW_TYPES.find((t) => t === typeCell);
   if (!type) {
     warn("workflow-type", `type ${typeCell} is none of ${WORKFLOW_TYPES.join(", ")}; the row is ignored.`, line, typeCell);
@@ -5234,8 +5234,8 @@ var TECH_PREVIOUS = "specs/tech.prev.md";
 var TLDR_TARGET = "specs/tldr.md";
 var readIfExists3 = (path) => existsSync2(path) ? readFileSync4(path, "utf8") : undefined;
 var missingFile = (file) => ({ code: "missing-file", subject: file, message: `${file} does not exist.` });
-function docTarget(root, options2 = {}) {
-  const keep = options2.keep ?? false;
+function docTarget(root, options = {}) {
+  const keep = options.keep ?? false;
   const source = join7(root, TECH_TARGET);
   if (keep || !existsSync2(source))
     return { target: TECH_TARGET, previous: null, keep };
@@ -5255,9 +5255,9 @@ function tldrTarget() {
 function specFolders(root) {
   const main = listSpecs(root);
   const porcelain = worktreeListing(root);
-  const refs2 = withWorktreeOnly(main, worktreeOnlyRefs(root, main, porcelain));
-  const dirs = specReadDirs(root, refs2, porcelain);
-  return refs2.map((ref) => {
+  const refs = withWorktreeOnly(main, worktreeOnlyRefs(root, main, porcelain));
+  const dirs = specReadDirs(root, refs, porcelain);
+  return refs.map((ref) => {
     const dir = ref.archived ? undefined : dirs.get(ref.slug);
     return dir === undefined ? ref : { ...ref, dir };
   });
@@ -5267,9 +5267,9 @@ function tldrSpecs(root) {
   const specs = specFolders(root).filter((ref) => !ref.archived).map(({ dir, slug: folder }) => {
     const texts = {};
     for (const kind of TLDR_KINDS) {
-      const text2 = readIfExists3(join7(dir, FILE_KINDS[kind].path));
-      if (text2 !== undefined)
-        texts[kind] = text2;
+      const text = readIfExists3(join7(dir, FILE_KINDS[kind].path));
+      if (text !== undefined)
+        texts[kind] = text;
     }
     return { folder, texts };
   });
@@ -5277,10 +5277,10 @@ function tldrSpecs(root) {
   return model.specs.map((row) => ({ number: row.id, updated: row.updated, phase: row.phase, lastRound: row.lastRound }));
 }
 function tldrCheck(root) {
-  const text2 = readIfExists3(join7(root, TLDR_TARGET));
-  if (text2 === undefined)
+  const text = readIfExists3(join7(root, TLDR_TARGET));
+  if (text === undefined)
     return { ok: false, stale: false, findings: [missingFile(TLDR_TARGET)] };
-  const tldr = parseTldr(text2);
+  const tldr = parseTldr(text);
   const state = tldrState({ tldr, specs: tldrSpecs(root) });
   const findings = [
     ...state.missingSections.map((key) => ({
@@ -5328,8 +5328,8 @@ async function tldrFacts2(root) {
 }
 
 // core/src/allocate.ts
-function specNumbersOf(folders2) {
-  return folders2.flatMap((name) => {
+function specNumbersOf(folders) {
+  return folders.flatMap((name) => {
     const id = SPEC_FOLDER.exec(name)?.[1];
     return id === undefined ? [] : [Number(id)];
   });
@@ -5377,15 +5377,15 @@ function fromRuns(runs, ctx) {
   return { state: running.length > 0 ? "running" : "aborted", run, ...diagnostic === undefined ? {} : { diagnostic } };
 }
 var specNumberOf = (ref) => specIdOf(ref) ?? ref;
-function runLockOf(openRuns, target, options2) {
+function runLockOf(openRuns, target, options) {
   const runs = "spec" in target ? openRuns.filter((r) => r.spec !== undefined && specNumberOf(r.spec) === specNumberOf(target.spec)) : openRuns.filter((r) => r.idea === target.idea);
-  const live = fromRuns(runs, runContext(openRuns, options2));
+  const live = fromRuns(runs, runContext(openRuns, options));
   return live?.state === "running" && live.run !== undefined ? live.run : null;
 }
-function runContext(openRuns, options2) {
+function runContext(openRuns, options) {
   return {
-    now: typeof options2.now === "number" ? options2.now : options2.now.getTime(),
-    abortAfterMs: options2.abortAfterMs ?? DEFAULT_ABORT_AFTER_MS,
+    now: typeof options.now === "number" ? options.now : options.now.getTime(),
+    abortAfterMs: options.abortAfterMs ?? DEFAULT_ABORT_AFTER_MS,
     staleAfterMs: DEFAULT_CLAIM_STALE_MS,
     openRuns,
     locks: [],
@@ -5411,14 +5411,14 @@ class PackError extends Error {
 var unticked2 = (cell) => cell.replace(/`/g, "").trim();
 var KIND_PREFIX2 = { normal: "", anti: "Anti: ", antecedent: "Antecedent: " };
 var BULLET = /^[-*+]\s+(.*)$/;
-function decisionRows(text2) {
-  const section3 = levelTwoSection(text2, ["Decisions"]);
-  if (section3 === null)
+function decisionRows(text) {
+  const section = levelTwoSection(text, ["Decisions"]);
+  if (section === null)
     return [];
   const rows = [];
   let row = null;
   let gap = false;
-  for (const line of section3.split(`
+  for (const line of section.split(`
 `).map((l) => l.trimEnd())) {
     const bullet = BULLET.exec(line);
     if (bullet !== null) {
@@ -5441,8 +5441,8 @@ var escapeRegExp2 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function mentions(row, claimId, taskId) {
   return [claimId, taskId].some((id) => id !== "" && new RegExp(String.raw`(?<![\w-])${escapeRegExp2(id)}(?!\w)`).test(row));
 }
-function decisionsOf(source, text2, claimId, taskId) {
-  return decisionRows(text2).filter((r) => mentions(r, claimId, taskId)).map((r) => ({ source, text: r }));
+function decisionsOf(source, text, claimId, taskId) {
+  return decisionRows(text).filter((r) => mentions(r, claimId, taskId)).map((r) => ({ source, text: r }));
 }
 function buildPack(input) {
   const tab = parseTaskLines({ tasks: input.tasks, ...input.constitution === null ? {} : { constitution: input.constitution } });
@@ -5521,12 +5521,12 @@ var HEADING_UP_TO_THREE = /^#{1,3}\s/;
 var FENCE6 = /^\s*(```|~~~)/;
 var ISC_NUMBER = /^ISC-(\d+)/;
 var DATED = /^\d{4}-\d{2}-\d{2}\b/;
-function linesOf(text2) {
-  const eol = text2.includes(`\r
+function linesOf(text) {
+  const eol = text.includes(`\r
 `) ? `\r
 ` : `
 `;
-  const lines = text2.split(/\r\n|\r|\n/);
+  const lines = text.split(/\r\n|\r|\n/);
   const fenced = [];
   let open = null;
   for (const line of lines) {
@@ -5627,16 +5627,16 @@ function cell(value, what) {
   return oneLine2(value, what).trim().replace(/(?<!\\)\|/g, "\\|");
 }
 function claimLine2(id, claim) {
-  const text2 = oneLine2(claim.text, `the text of ${id}`).trim();
-  if (text2 === "")
+  const text = oneLine2(claim.text, `the text of ${id}`).trim();
+  if (text === "")
     throw new SpecTextError("bad-input", `${id} has no text`);
   const after = claim.after ?? [];
-  return `- [ ] ${id}: ${text2}${after.length > 0 ? ` (after: ${after.join(", ")})` : ""}`;
+  return `- [ ] ${id}: ${text}${after.length > 0 ? ` (after: ${after.join(", ")})` : ""}`;
 }
 function rowLine(id, row) {
-  const cells2 = [id, row.type, row.check, row.threshold, row.tool, row.anchorsTo].map((v) => cell(v, `a Test Strategy cell of ${id}`));
+  const cells = [id, row.type, row.check, row.threshold, row.tool, row.anchorsTo].map((v) => cell(v, `a Test Strategy cell of ${id}`));
   const severity = cell(row.severity ?? "", `the severity of ${id}`);
-  return `| ${[...cells2, severity].join(" | ")} |`;
+  return `| ${[...cells, severity].join(" | ")} |`;
 }
 function rowLines(ids, rows) {
   if (rows.length > ids.length)
@@ -5706,22 +5706,22 @@ function mintClaimsText(master, feature, claims, rows, opts = {}) {
   const block = claims.map((c, i) => claimLine2(ids[i] ?? "", c));
   const newRows = rowLines(ids, rows);
   const doc = linesOf(master);
-  const section3 = claimSectionRange(doc, parsed);
-  if (!section3)
+  const section = claimSectionRange(doc, parsed);
+  if (!section)
     throw new SpecTextError("no-claim-section", "the master has no claim section (## Features or ## Claims)");
   const target = parsed.features.find((f) => f.id === feature);
   if (target) {
     const head = target.line - 1;
     let end = doc.lines.findIndex((l, i) => i > head && !doc.fenced[i] && HEADING_UP_TO_THREE.test(l));
-    if (end < 0 || end > section3[1])
-      end = section3[1];
+    if (end < 0 || end > section[1])
+      end = section[1];
     insertClaims(doc, parsed, [head, end], block, feature);
   } else if (parsed.features.length === 0) {
-    insertClaims(doc, parsed, section3, block, null);
+    insertClaims(doc, parsed, section, block, null);
   } else if (opts.featureName !== undefined) {
     const heading = `### ${feature} \xB7 ${oneLine2(opts.featureName, "the feature name").trim()}`;
     const why = opts.why === undefined ? [] : [`Why: ${oneLine2(opts.why, "the Why line").trim()}`];
-    appendToSection(doc, section3, [heading, ...why, "", ...block], false);
+    appendToSection(doc, section, [heading, ...why, "", ...block], false);
   } else {
     throw new SpecTextError("unknown-feature", `the master has no feature block ${feature}`);
   }
@@ -5743,28 +5743,28 @@ function projectClaimsText(spec, claims, rows) {
   const block = claims.map((c) => claimLine2(c.id, c));
   const newRows = rowLines(ids, rows);
   const doc = linesOf(spec);
-  const section3 = claimSectionRange(doc, parsed);
-  if (section3)
-    insertClaims(doc, parsed, section3, block, null);
+  const section = claimSectionRange(doc, parsed);
+  if (section)
+    insertClaims(doc, parsed, section, block, null);
   else
     insertBlock(doc, newSectionAt(doc, ["Test Strategy", "Decisions", "Changelog", "Verification"]), ["## Claims", "", ...block]);
   insertRows(doc, newRows, claimSectionRange(doc, parseClaims(textOf(doc))));
   recount(doc, true);
   return textOf(doc);
 }
-function appendVerificationText(text2, id, type, stub, now) {
+function appendVerificationText(text, id, type, stub, now) {
   oneLine2(stub, "the verification stub");
   oneLine2(type, "the verification type");
   if (stub.trim() === "")
     throw new SpecTextError("bad-input", "the verification stub is empty");
   const updated = validDate(now);
-  const parsed = parseClaims(text2);
+  const parsed = parseClaims(text);
   const claim = parsed.claims.find((c) => c.id === id);
   if (!claim)
     throw new SpecTextError("unknown-id", `no claim line carries ${id}`);
   if (claim.dropped)
     throw new SpecTextError("dropped-claim", `${id} is dropped and takes no evidence`);
-  const doc = linesOf(text2);
+  const doc = linesOf(text);
   const entry = `- ${id}: ${type.trim()} \u2014 ${stub.trim()}`;
   const range = sectionRange(doc, "Verification");
   if (range)
@@ -5778,13 +5778,13 @@ function appendVerificationText(text2, id, type, stub, now) {
   setKey(doc, "updated", updated, true);
   return textOf(doc);
 }
-function appendDecisionText(text2, line, now) {
+function appendDecisionText(text, line, now) {
   const body = oneLine2(line, "the decision").trim();
   if (body === "")
     throw new SpecTextError("bad-input", "the decision is empty");
   const updated = validDate(now);
   const entry = `- ${DATED.test(body) ? body : `${updated.slice(0, 10)}: ${body}`}`;
-  const doc = linesOf(text2);
+  const doc = linesOf(text);
   const range = sectionRange(doc, "Decisions");
   if (range)
     appendToSection(doc, range, [entry], true);
@@ -5963,8 +5963,8 @@ function stageInputOf(input, fm, number) {
     edgeHeld: input.edgeHeld ?? []
   };
 }
-function withStage(text2, stage, fm) {
-  const lines = text2.split(`
+function withStage(text, stage, fm) {
+  const lines = text.split(`
 `);
   const close = fm.bodyLine - 2;
   const cr = (line) => line?.endsWith("\r") ? "\r" : "";
@@ -6152,21 +6152,21 @@ function git2(cwd, args) {
 }
 var LISTED = new WeakMap;
 function listedOf(ctx) {
-  let listed2 = LISTED.get(ctx);
-  if (listed2 === undefined) {
+  let listed = LISTED.get(ctx);
+  if (listed === undefined) {
     const main = listSpecs(ctx.root);
     const porcelain = worktreeListing(ctx.root);
-    listed2 = { refs: withWorktreeOnly(main, worktreeOnlyRefs(ctx.root, main, porcelain)), porcelain };
-    LISTED.set(ctx, listed2);
+    listed = { refs: withWorktreeOnly(main, worktreeOnlyRefs(ctx.root, main, porcelain)), porcelain };
+    LISTED.set(ctx, listed);
   }
-  return listed2;
+  return listed;
 }
 var READ_DIRS = new WeakMap;
 function readDirs(ctx) {
   let dirs = READ_DIRS.get(ctx);
   if (dirs === undefined) {
-    const { refs: refs2, porcelain } = listedOf(ctx);
-    dirs = specReadDirs(ctx.root, refs2, porcelain);
+    const { refs, porcelain } = listedOf(ctx);
+    dirs = specReadDirs(ctx.root, refs, porcelain);
     READ_DIRS.set(ctx, dirs);
   }
   return dirs;
@@ -6189,10 +6189,10 @@ function specRef(ctx, arg) {
 }
 var rel = (ctx, path) => relative2(ctx.root, path).split(sep3).join("/");
 function specText(ctx, ref) {
-  const text2 = readIfExists2(join8(ref.dir, "spec.md"));
-  if (text2 === null)
+  const text = readIfExists2(join8(ref.dir, "spec.md"));
+  if (text === null)
     throw bad(`${rel(ctx, ref.dir)} has no spec.md`, "missing-file");
-  return text2;
+  return text;
 }
 var masterPath = (ctx) => join8(ctx.root, "ISA.md");
 function holderOf2(ctx, ref) {
@@ -6205,8 +6205,8 @@ function treeHolderOf(ctx, ref) {
     return ctx.root;
   let dirs = TREE_DIRS.get(ctx);
   if (dirs === undefined) {
-    const { refs: refs2, porcelain } = listedOf(ctx);
-    dirs = specTreeDirs(ctx.root, refs2, porcelain);
+    const { refs, porcelain } = listedOf(ctx);
+    dirs = specTreeDirs(ctx.root, refs, porcelain);
     TREE_DIRS.set(ctx, dirs);
   }
   return dirs.get(ref.slug) ?? ctx.root;
@@ -6234,9 +6234,9 @@ function titleOf(slug) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 function branchNumbers(root) {
-  const names3 = (git2(root, ["branch", "-a", "--format=%(refname:short)"]) ?? "").split(`
+  const names = (git2(root, ["branch", "-a", "--format=%(refname:short)"]) ?? "").split(`
 `);
-  return specNumbersOf(names3.flatMap((name) => name.trim().split("/").slice(1)));
+  return specNumbersOf(names.flatMap((name) => name.trim().split("/").slice(1)));
 }
 function specFoldersIn(dir) {
   try {
@@ -6260,12 +6260,12 @@ function allocate(ctx, args) {
   const slug = required(args, 1, "the slug");
   if (!SPEC_TYPES.includes(type))
     throw bad(`"${type}" is no spec type (${SPEC_TYPES.join(", ")})`);
-  const listed2 = listSpecs(ctx.root);
-  const clash = listed2.find((s) => specSlugOf(s.slug) === slug);
+  const listed = listSpecs(ctx.root);
+  const clash = listed.find((s) => specSlugOf(s.slug) === slug);
   if (clash)
     throw bad(`a spec folder for "${slug}" exists already: ${rel(ctx, clash.dir)}`);
   const site = allocationSite(ctx);
-  const number = nextSpecNumber([...specNumbersOf([...listed2.map((s) => s.slug), ...site.taken]), ...branchNumbers(ctx.root)]);
+  const number = nextSpecNumber([...specNumbersOf([...listed.map((s) => s.slug), ...site.taken]), ...branchNumbers(ctx.root)]);
   const title = args.values.get("title") ?? titleOf(slug);
   const goal = args.values.get("goal");
   const feature = args.values.get("feature");
@@ -6295,12 +6295,12 @@ function allocate(ctx, args) {
 var isRecord5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var isString = (v) => typeof v === "string";
 function claimInputs(path) {
-  const text2 = readIfExists2(path);
-  if (text2 === null)
+  const text = readIfExists2(path);
+  if (text === null)
     throw bad(`the claims file ${basename2(path)} does not exist`);
   let data;
   try {
-    data = JSON.parse(text2);
+    data = JSON.parse(text);
   } catch {
     throw bad(`the claims file ${basename2(path)} is not valid JSON`);
   }
@@ -6338,10 +6338,10 @@ var ISC_NUMBER2 = /^ISC-(\d+)/u;
 function nextIdAcrossSpecs(ctx) {
   let highest = 0;
   for (const ref of specsOf(ctx)) {
-    const text2 = readIfExists2(join8(ref.dir, "spec.md"));
-    if (text2 === null)
+    const text = readIfExists2(join8(ref.dir, "spec.md"));
+    if (text === null)
       continue;
-    for (const c of parseClaims(text2).claims)
+    for (const c of parseClaims(text).claims)
       highest = Math.max(highest, Number(ISC_NUMBER2.exec(c.id)?.[1] ?? 0));
   }
   return highest + 1;
@@ -6423,15 +6423,15 @@ function decisionFile(ctx, arg) {
 function decide(ctx, args) {
   const path = decisionFile(ctx, required(args, 0, "the file"));
   const line = required(args, 1, "the decision line");
-  const text2 = readIfExists2(path);
-  if (text2 === null)
+  const text = readIfExists2(path);
+  if (text === null)
     throw bad(`${rel(ctx, path)} does not exist`);
-  writeFileSync2(path, appendDecisionText(text2, line, ctx.now));
+  writeFileSync2(path, appendDecisionText(text, line, ctx.now));
   emit(ctx, args, { file: rel(ctx, path) }, [`decision added to ${rel(ctx, path)}`]);
   return EXIT.ok;
 }
-function idsOf(text2) {
-  return new Set(text2 === null ? [] : parseClaims(text2).claims.map((c) => c.id));
+function idsOf(text) {
+  return new Set(text === null ? [] : parseClaims(text).claims.map((c) => c.id));
 }
 function driftLines(slug, report) {
   const lines = [];
@@ -6446,19 +6446,19 @@ function driftLines(slug, report) {
   return lines.length === 0 ? [] : [`${slug}:`, ...lines];
 }
 function drift(ctx, args) {
-  const listed2 = specsOf(ctx);
+  const listed = specsOf(ctx);
   const one = args.positional[0];
-  const targets = one === undefined ? listed2.filter((s) => !s.archived) : [specRef(ctx, one)];
+  const targets = one === undefined ? listed.filter((s) => !s.archived) : [specRef(ctx, one)];
   const master = readIfExists2(one === undefined || targets[0] === undefined ? masterPath(ctx) : masterPathFor(ctx, targets[0]));
   const masterDoc = master === null ? null : parseClaims(master);
-  const held = new Map(listed2.map((s) => [s.slug, idsOf(readIfExists2(join8(s.dir, "spec.md")))]));
+  const held = new Map(listed.map((s) => [s.slug, idsOf(readIfExists2(join8(s.dir, "spec.md")))]));
   const specs = [];
   for (const ref of targets) {
-    const text2 = readIfExists2(join8(ref.dir, "spec.md"));
-    if (text2 === null)
+    const text = readIfExists2(join8(ref.dir, "spec.md"));
+    if (text === null)
       continue;
-    const heldElsewhere2 = new Set([...held].filter(([slug]) => slug !== ref.slug).flatMap(([, ids]) => [...ids]));
-    const report = driftReport({ frontmatter: parseFrontmatter(text2), spec: parseClaims(text2), master: masterDoc, heldElsewhere: heldElsewhere2 });
+    const heldElsewhere = new Set([...held].filter(([slug]) => slug !== ref.slug).flatMap(([, ids]) => [...ids]));
+    const report = driftReport({ frontmatter: parseFrontmatter(text), spec: parseClaims(text), master: masterDoc, heldElsewhere });
     specs.push({ id: ref.id, slug: ref.slug, drift: hasDrift(report), report });
   }
   const masterProgress = master === null || masterDoc === null || one !== undefined ? null : masterProgressMismatch(parseFrontmatter(master), masterDoc);
@@ -6482,9 +6482,9 @@ function worktreeTreeOf(ctx, specs, at = ctx.root) {
     return null;
   return checkoutOf(at)?.tree ?? null;
 }
-function perSpecTrees(ctx, refs2, specs) {
+function perSpecTrees(ctx, refs, specs) {
   const perSpec = {};
-  for (const ref of refs2) {
+  for (const ref of refs) {
     const files = specs.find((f) => f.folder === ref.slug);
     if (files?.texts.gateCodeReviewed === undefined)
       continue;
@@ -6498,8 +6498,8 @@ function perSpecTrees(ctx, refs2, specs) {
   return perSpec;
 }
 function dashboardInput(ctx, locks) {
-  const listed2 = specsOf(ctx);
-  const active = listed2.filter((s) => !s.archived);
+  const listed = specsOf(ctx);
+  const active = listed.filter((s) => !s.archived);
   const specs = active.map(specFiles);
   const perSpec = perSpecTrees(ctx, active, specs);
   return {
@@ -6507,7 +6507,7 @@ function dashboardInput(ctx, locks) {
     constitution: readIfExists2(join8(ctx.root, "specs", "constitution.md")),
     tldr: readIfExists2(join8(ctx.root, "specs", "tldr.md")),
     specs,
-    archived: listed2.filter((s) => s.archived).map(specFiles),
+    archived: listed.filter((s) => s.archived).map(specFiles),
     worktreeTree: worktreeTreeOf(ctx, specs.filter((f) => perSpec[f.folder] === undefined)),
     ...Object.keys(perSpec).length === 0 ? {} : { perSpec },
     locks,
@@ -6549,10 +6549,10 @@ async function status(ctx, args) {
 async function frontier(ctx, args) {
   const ref = specRef(ctx, required(args, 0, "the spec"));
   const files = specFiles(ref);
-  const text2 = files.texts.spec;
-  if (text2 === undefined)
+  const text = files.texts.spec;
+  if (text === undefined)
     throw bad(`${rel(ctx, ref.dir)} has no spec.md`);
-  const claims = [...parseClaims(text2).claims];
+  const claims = [...parseClaims(text).claims];
   const reviewed = reviewedGate(files.texts).check.state;
   const locks = (await locksOf(ctx)).locks;
   const constitution = readIfExists2(join8(ctx.root, "specs", "constitution.md"));
@@ -6562,7 +6562,7 @@ async function frontier(ctx, args) {
     ...files.texts.rounds === undefined ? {} : { rounds: files.texts.rounds }
   });
   const partition = partitionClaims(claims, locks, reviewed);
-  const set = takeableSet({ specType: parseFrontmatter(text2).data.specType, claims, tasks, locks, reviewed, partition });
+  const set = takeableSet({ specType: parseFrontmatter(text).data.specType, claims, tasks, locks, reviewed, partition });
   const value = {
     spec: ref.slug,
     reviewed,
@@ -6605,9 +6605,9 @@ function holdsFeatureOpen2(files) {
   return parseFrontmatter(spec).data.phase !== "complete" && parseClaims(spec).claims.some((c) => !c.checked && !c.dropped);
 }
 function transitionInput(ctx, ref, to, actor, locks) {
-  const listed2 = specsOf(ctx);
-  const active = listed2.filter((s) => !s.archived).map(specFiles);
-  const archived = listed2.filter((s) => s.archived).map(specFiles);
+  const listed = specsOf(ctx);
+  const active = listed.filter((s) => !s.archived).map(specFiles);
+  const archived = listed.filter((s) => s.archived).map(specFiles);
   const files = active.find((f) => f.folder === ref.slug) ?? specFiles(ref);
   const spec = files.texts.spec ?? "";
   const id = specIdOf(files.folder) ?? files.folder;
@@ -6681,9 +6681,9 @@ function requiredValue(args, name, what) {
     throw bad(`--${name} ${what} is required`);
   return value;
 }
-function startedRunIds(text2) {
+function startedRunIds(text) {
   const ids = new Set;
-  for (const raw of text2.split(`
+  for (const raw of text.split(`
 `)) {
     if (raw.trim() === "")
       continue;
@@ -6806,11 +6806,11 @@ var OPEN_ATTENTION = new Set(["question", "concerns", "fail"]);
 var ROUND_MODES = ["agent", "workflow", "cockpit"];
 var records = (value) => Array.isArray(value) ? value.filter(isRecord5) : [];
 function readJsonFile(ctx, file, flag) {
-  const text2 = readIfExists2(resolve5(ctx.cwd, file));
-  if (text2 === null)
+  const text = readIfExists2(resolve5(ctx.cwd, file));
+  if (text === null)
     throw bad(`${flag} ${basename2(file)} does not exist`);
   try {
-    return JSON.parse(text2);
+    return JSON.parse(text);
   } catch {
     throw bad(`${flag} ${basename2(file)} is not valid JSON`);
   }
@@ -6894,8 +6894,8 @@ function pairs(args, name) {
 function roundUnits(ref, claims) {
   const tasks = readIfExists2(join8(ref.dir, "tasks.md"));
   if (tasks === null) {
-    const units2 = claims.filter((c) => !c.dropped).map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
-    return { units: units2, hasTasks: false };
+    const units = claims.filter((c) => !c.dropped).map((c) => ({ id: c.id, claim: c.id, lane: null, seam: false, parallel: false, text: c.text, paths: [], done: c.checked }));
+    return { units, hasTasks: false };
   }
   const units = parseTaskLines({ tasks }).tasks.filter((t) => t.state !== "struck").map((t) => ({
     id: t.id,
@@ -7092,19 +7092,19 @@ function ensureGatesIgnored(ref) {
 }
 function treeEntry(root, path) {
   const absolute = join8(root, path);
-  let stat2;
+  let stat;
   try {
-    stat2 = lstatSync2(absolute);
+    stat = lstatSync2(absolute);
   } catch (error) {
     if (error.code === "ENOENT")
       return null;
     throw error;
   }
-  if (stat2.isSymbolicLink())
+  if (stat.isSymbolicLink())
     return { path, mode: "120000", bytes: readlinkSync(absolute, { encoding: "buffer" }) };
-  if (!stat2.isFile())
+  if (!stat.isFile())
     return null;
-  const mode = (stat2.mode & 64) === 0 ? "100644" : "100755";
+  const mode = (stat.mode & 64) === 0 ? "100644" : "100755";
   return { path, mode, bytes: readFileSync5(absolute) };
 }
 var listedPaths = (out) => [...new Set((out ?? "").split("\x00"))].filter((p) => p !== "" && !p.endsWith("/"));
@@ -7137,8 +7137,8 @@ function changedSince(checkout, head) {
   return [...new Set([...listedPaths(tracked), ...listedPaths(untracked)])].sort();
 }
 function gateCheckOf(ctx, ref, gate) {
-  const text2 = readIfExists2(gatePath(ref, gate));
-  const reading = text2 === null ? null : readGateMark(gate, text2);
+  const text = readIfExists2(gatePath(ref, gate));
+  const reading = text === null ? null : readGateMark(gate, text);
   const problems = reading !== null && reading.mark === null ? reading.diagnostics.map((d) => d.message) : [];
   if (gate === "reviewed")
     return { check: reviewedGate(specFiles(ref).texts).check, problems };
@@ -7190,11 +7190,11 @@ function gateReviewed(ctx, args, ref) {
     throw new CliError(EXIT.drift, `${ref.slug}: run-locked by ${locked.run} (${locked.session}, ${locked.command ?? "no command"}, since ${locked.since}); nothing written`, "run-locked");
   }
   const texts = specFiles(ref).texts;
-  const textOf2 = { "spec.md": texts.spec, "plan.md": texts.plan, "tasks.md": texts.tasks };
+  const textOf = { "spec.md": texts.spec, "plan.md": texts.plan, "tasks.md": texts.tasks };
   const files = {};
   for (const f of REVIEWED_FILES) {
-    const text2 = textOf2[f];
-    files[f] = text2 === undefined ? null : hashForGate(f, text2);
+    const text = textOf[f];
+    files[f] = text === undefined ? null : hashForGate(f, text);
   }
   const at = ctx.now.toISOString();
   const event = { ts: at, from: "review", to: "build", command: args.values.get("command") ?? nextFor(ref, "reviewed"), actor };
@@ -7265,9 +7265,9 @@ function pickFolder(pool, arg) {
   const name = basename2(arg.replace(/[\\/]+$/u, ""));
   return pool.find((s) => s.id === name || s.slug === name || specSlugOf(s.slug) === name);
 }
-function shiftedText(text2, down) {
-  const fm = parseFrontmatter(text2);
-  const lines = text2.split(`
+function shiftedText(text, down) {
+  const fm = parseFrontmatter(text);
+  const lines = text.split(`
 `);
   const shift = (path) => down ? `../${path}` : path.replace(/^\.\.\//u, "");
   if (fm.present) {
@@ -7312,12 +7312,12 @@ function plannedTexts(ctx, ref, down, date, reason) {
   }
   return texts;
 }
-function archiveBlockers(text2, ref, listed2, master, locks) {
+function archiveBlockers(text, ref, listed, master, locks) {
   const blockers = [];
-  const fm = parseFrontmatter(text2);
-  const spec = parseClaims(text2);
-  const heldElsewhere2 = new Set(listed2.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join8(s.dir, "spec.md")))]));
-  const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere: heldElsewhere2 });
+  const fm = parseFrontmatter(text);
+  const spec = parseClaims(text);
+  const heldElsewhere = new Set(listed.filter((s) => s.slug !== ref.slug).flatMap((s) => [...idsOf(readIfExists2(join8(s.dir, "spec.md")))]));
+  const report = driftReport({ frontmatter: fm, spec, master: master === null ? null : parseClaims(master), heldElsewhere });
   if (hasDrift(report))
     blockers.push({ kind: "drift", hard: true, detail: `drift against the master: run spec-check drift ${ref.id} and repair it first` });
   const ids = new Set(spec.claims.map((c) => c.id));
@@ -7335,12 +7335,12 @@ function archiveReferences(ctx, ref, at) {
   const slug = ref.slug;
   const needle = new RegExp(`(?<!archive/)specs/${slug.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?![\\w-])`, "u");
   const out = [];
-  const add = (file, line, text2) => {
-    if (needle.test(text2))
-      out.push({ file, line, text: text2.trim().slice(0, 160) });
+  const add = (file, line, text) => {
+    if (needle.test(text))
+      out.push({ file, line, text: text.trim().slice(0, 160) });
   };
   (readIfExists2(masterPathFor(ctx, ref)) ?? "").split(`
-`).forEach((text2, i) => add("ISA.md", i + 1, text2));
+`).forEach((text, i) => add("ISA.md", i + 1, text));
   const grep = git2(at, ["grep", "-n", "-I", "-F", "-e", `specs/${slug}`, "--", ".", ":!specs", ":!ISA.md"]) ?? "";
   for (const hit of grep.split(`
 `)) {
@@ -7359,8 +7359,8 @@ function performMove(move) {
   } else {
     renameSync2(join8(move.at, move.from), join8(move.at, move.to));
   }
-  for (const [name, text2] of move.texts)
-    writeFileSync2(join8(move.at, move.to, name), text2);
+  for (const [name, text] of move.texts)
+    writeFileSync2(join8(move.at, move.to, name), text);
 }
 async function archive(ctx, args) {
   const restore = args.positional[0] === "restore";
@@ -7373,11 +7373,11 @@ async function archive(ctx, args) {
     throw bad("--reason needs one line of text");
   if (restore && reason !== null)
     throw bad("archive restore takes no --reason");
-  const listed2 = specsOf(ctx);
-  const active = listed2.filter((s) => !s.archived);
-  const archived = listed2.filter((s) => s.archived);
+  const listed = specsOf(ctx);
+  const active = listed.filter((s) => !s.archived);
+  const archived = listed.filter((s) => s.archived);
   const pool = restore ? archived : active;
-  const refs2 = [];
+  const refs = [];
   for (const target of targets) {
     const hit = pickFolder(pool, target);
     if (hit === undefined) {
@@ -7386,14 +7386,14 @@ async function archive(ctx, args) {
     }
     if (restore && active.some((s) => s.id === hit.id))
       throw bad(`an active folder holds ${hit.id} already; restoring ${hit.slug} would collide`);
-    if (!refs2.includes(hit))
-      refs2.push(hit);
+    if (!refs.includes(hit))
+      refs.push(hit);
   }
   if (restore)
-    return archiveRestore(ctx, args, refs2, dry);
+    return archiveRestore(ctx, args, refs, dry);
   const locks = await locksOf(ctx);
-  const verdicts = refs2.map((ref) => {
-    const blockers = archiveBlockers(specText(ctx, ref), ref, listed2, readIfExists2(masterPathFor(ctx, ref)), locks);
+  const verdicts = refs.map((ref) => {
+    const blockers = archiveBlockers(specText(ctx, ref), ref, listed, readIfExists2(masterPathFor(ctx, ref)), locks);
     const ok = blockers.every((b) => !b.hard) && (blockers.length === 0 || reason !== null);
     return { spec: ref.slug, from: rel(ctx, ref.dir), to: `specs/archive/${ref.slug}`, ok, blockers, ref };
   });
@@ -7433,9 +7433,9 @@ async function archive(ctx, args) {
   emit(ctx, args, { dryRun: dry, reason, moved: !dry, verdicts: verdictView, archived: report }, lines);
   return EXIT.ok;
 }
-function archiveRestore(ctx, args, refs2, dry) {
-  const rows = listArchive(refs2.map(specFiles));
-  const moves = refs2.map((ref) => ({ ref, at: ctx.root, from: rel(ctx, ref.dir), to: `specs/${ref.slug}`, texts: plannedTexts(ctx, ref, false, null, null) }));
+function archiveRestore(ctx, args, refs, dry) {
+  const rows = listArchive(refs.map(specFiles));
+  const moves = refs.map((ref) => ({ ref, at: ctx.root, from: rel(ctx, ref.dir), to: `specs/${ref.slug}`, texts: plannedTexts(ctx, ref, false, null, null) }));
   for (const move of moves)
     if (!dry)
       performMove(move);
@@ -7489,10 +7489,10 @@ function tick(ctx, args) {
   const ref = specRef(ctx, required(args, 0, "spec"));
   const task = required(args, 1, "task (T<k>)");
   const path = join8(ref.dir, "tasks.md");
-  const text2 = readIfExists2(path);
-  if (text2 === null)
+  const text = readIfExists2(path);
+  if (text === null)
     throw bad(`${rel(ctx, ref.dir)} has no tasks.md`, "missing-file");
-  const planned = tickTaskText(text2, task);
+  const planned = tickTaskText(text, task);
   if (planned.changed)
     writeFileSync2(path, planned.text);
   const result = planned.changed ? "ticked" : "already-ticked";
@@ -7679,7 +7679,7 @@ function help() {
 `);
 }
 async function main(argv, cwd = process.cwd(), now = new Date) {
-  const out = (text2) => process.stdout.write(`${text2}
+  const out = (text) => process.stdout.write(`${text}
 `);
   const [name, ...rest] = argv;
   const json = rest.includes("--json");
@@ -7725,7 +7725,7 @@ ${command.summary}`);
 if (import.meta.main)
   process.exit(await main(process.argv.slice(2)));
 export {
-  main,
+  ERROR_CODES,
   EXIT,
-  ERROR_CODES
+  main
 };

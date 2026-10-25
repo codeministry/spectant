@@ -274,7 +274,7 @@ SOFTWARE.
 ## Lucide icons
 
 - **Package:** `lucide-static`
-- **Version:** 1.48.0
+- **Version:** 1.61.0
 - **Licence:** ISC; the icons derived from the Feather project are also under MIT (both notices below)
 - **Upstream:** https://github.com/lucide-icons/lucide
 - **How it is bundled:** only the icons named in `web/src/app/shared/icons/icon-names.ts` are inlined. A build-time
@@ -386,7 +386,7 @@ This Font Software is licensed under the SIL Open Font License, Version 1.1.
 ## Bun runtime
 
 - **Tool:** Bun
-- **Version:** 1.3.12 (`packageManager` in `package.json`)
+- **Version:** 1.4.4 (`packageManager` in `package.json`)
 - **Licence:** MIT for Bun's own code; the runtime includes third-party libraries under their own licences, among them
   JavaScriptCore from WebKit (LGPL-2) and SQLite (public domain)
 - **Upstream:** https://github.com/oven-sh/bun, licensing overview at https://bun.com/docs/project/licensing
@@ -431,7 +431,7 @@ Used to build, lint and test Spectant; none of them is shipped in the binary or 
 | `angular-eslint` | 22.5.0 | MIT |
 | `stylelint` | 17.15.0 | MIT |
 | `stylelint-config-standard` | 40.0.0 | MIT |
-| `bun-types` | 1.3.12 | MIT |
+| `bun-types` | 1.4.4 | MIT |
 | `jscpd` (and its platform binary package `jscpd-<os>-<cpu>`) | 5.4.0 | MIT |
 
 Their transitive dependencies are pinned in `bun.lock`.

@@ -1,9 +1,10 @@
-// Icon guard for ISC-18.2 (T22): every icon the app renders comes from the pinned `lucide-static` version the old
-// pages used (1.48.0, spec.md Decisions 2026-09-28). The app may use icons the old pages did not, from that same
-// version; it may not use any other source.
+// Icon guard for ISC-18.2 (T22): every icon the app renders comes from the one pinned `lucide-static` version. The pin
+// started at the version the old pages used (1.48.0, spec.md Decisions 2026-09-28); since the app is the reference of
+// its own look (spec 063), it moves on purpose: `PINNED`, `web/package.json` and a regenerated `icons.ts` change in one
+// commit. The app may use any icon of that version; it may not use any other source.
 //
 // Four checks hold the claim:
-//   1. `web/package.json` pins `lucide-static` to exactly 1.48.0, and that is the version installed.
+//   1. `web/package.json` pins `lucide-static` to exactly `PINNED`, and that is the version installed.
 //   2. Every name in `ICON_NAMES` exists in the pinned package's `icons/` folder.
 //   3. The committed `icons.ts` is byte-identical to a fresh in-process generation, so a hand edit, a stale file or an
 //      icon pasted from elsewhere fails.
@@ -17,7 +18,7 @@ import { join, relative } from "node:path";
 import { ICON_NAMES } from "../src/app/shared/icons/icon-names.ts";
 import { generate, ICONS_PATH, lucideDir, renderIconsModule } from "../src/app/shared/icons/generate-icons.ts";
 
-const PINNED = "1.48.0";
+const PINNED = "1.61.0";
 const WEB = join(import.meta.dir, "..");
 const SRC = join(WEB, "src");
 
@@ -51,7 +52,7 @@ function unexemptSvgs(text: string): string[] {
 }
 
 describe("ISC-18.2 pinned Lucide version", () => {
-  test("web/package.json pins lucide-static to exactly 1.48.0 as a devDependency", () => {
+  test(`web/package.json pins lucide-static to exactly ${PINNED} as a devDependency`, () => {
     const pkg = readJson(join(WEB, "package.json"));
     expect(pkg.devDependencies?.["lucide-static"]).toBe(PINNED);
     expect(pkg.dependencies?.["lucide-static"]).toBeUndefined();
