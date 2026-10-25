@@ -108,9 +108,24 @@ export class SidebarTasks {
     return ids.filter((id) => id !== null).join(' ') || null;
   }
 
-  /** A locked box stays focusable (`aria-disabled`), so its click is stopped before it toggles or writes. */
-  protected guardRun(event: Event): void {
-    if (this.run()) event.preventDefault();
+  /** A box in flight: it keeps the focus the tick gave it (ISC-537), so it is `aria-disabled`, never `disabled`. */
+  protected saving(row: TaskRow): boolean {
+    return this.tasks.checks.block(row)?.kind === 'saving';
+  }
+
+  /**
+   * Natively disabled only under a lock or without a hash. A box disabled while its write is in flight loses the focus:
+   * Chromium's focus fixup moves it to the body at the first frame that renders the box disabled, so a write answered
+   * slower than one frame left the keyboard user nowhere (spec 067, T36, ISC-537).
+   */
+  protected disabled(row: TaskRow): boolean {
+    const block = this.tasks.checks.block(row);
+    return block !== null && block.kind !== 'saving';
+  }
+
+  /** A locked or in-flight box stays focusable (`aria-disabled`), so its click is stopped before it toggles or writes. */
+  protected guard(event: Event, row: TaskRow): void {
+    if (this.run() || this.saving(row)) event.preventDefault();
   }
 
   protected tick(row: TaskRow, checked: boolean): void {
