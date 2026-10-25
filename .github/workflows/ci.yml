@@ -23,9 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     container:
-      # Tag and digest equal `web/e2e/Dockerfile`. The image ships Node 24.20.0 (>= 22.22.3, the Angular CLI's
+      # Tag and digest equal `web/e2e/Dockerfile`. The image ships Node 24.22.1 (>= 22.22.3, the Angular CLI's
       # floor, plan 001 § Risks) and the browsers under /ms-playwright.
-      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
       options: --ipc=host --init # as container.ts runs it: Chromium needs the host IPC namespace for shared memory
     env:
       SPECTANT_E2E_CONTAINER: "1" # what the Dockerfile sets; playwright.config.ts reads it
@@ -73,7 +73,7 @@ jobs:
       # The linux-x64 build runs the Angular CLI, which refuses Bun's Node shim; same Node as the Playwright image.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24.20.0
+          node-version: 24.22.1
       - run: bun install --frozen-lockfile
       # Exit 2 (Docker unavailable) is a skip and fails the step on purpose: a skip is never a pass.
       - run: bun run test:offline:server

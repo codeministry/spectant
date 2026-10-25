@@ -421,7 +421,7 @@ Used to build, lint and test Spectant; none of them is shipped in the binary or 
 | `@angular/build`, `@angular/cli`, `@angular/compiler-cli` | 22.2.0 | MIT |
 | `@tailwindcss/postcss` | 4.3.3 | MIT |
 | `postcss` | 8.5.28 | MIT |
-| `@playwright/test` (and `playwright`, `playwright-core`) | 1.63.0 | Apache-2.0 |
+| `@playwright/test` (and `playwright`, `playwright-core`) | 1.64.1 | Apache-2.0 |
 | `vitest` | 5.0.2 | MIT |
 | `jsdom` | 30.1.1 | MIT |
 | `typescript` | 6.0.3 | Apache-2.0 |

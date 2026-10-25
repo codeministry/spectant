@@ -196,7 +196,7 @@ suite must keep the goldens.
 `bun install` does not download browsers. Once per machine, for local e2e runs: `bunx playwright install chromium webkit`
 (from `web/`).
 
-Baselines are recorded and compared only inside `mcr.microsoft.com/playwright:v1.63.0-noble` (tag and digest in
+Baselines are recorded and compared only inside `mcr.microsoft.com/playwright:v1.64.1-noble` (tag and digest in
 `Dockerfile`, equal to the `@playwright/test` devDependency; `container.ts` refuses a mismatch). The config refuses
 `-u` outside it.
 
