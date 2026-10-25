@@ -93,9 +93,10 @@ export const DIAGRAM_CSS = [
 
 /**
  * Mermaid's configuration for one theme: strict security (no HTML labels, no click handlers), never auto-start. The
- * layout and look are named, not left to mermaid's defaults: mermaid 12 lays flowcharts out with ELK and draws them
- * in its `neo` look unless told otherwise, and the figures here are drawn and styled for dagre and the classic look
- * (the accent edge of `accentMermaidNodes`, `DIAGRAM_CSS`, the visual baselines).
+ * layout, look and flowchart label width are named, not left to mermaid's defaults: mermaid 12 lays flowcharts out
+ * with ELK, draws them in its `neo` look, wraps labels at 120 px and widens every node to 120 px unless told
+ * otherwise, and the figures here are drawn and styled for dagre, the classic look and labels wrapped at 200 px with
+ * no minimum node width (the accent edge of `accentMermaidNodes`, `DIAGRAM_CSS`, the visual baselines).
  */
 export function mermaidConfig(theme: ResolvedTheme, variables: Record<string, string>): Record<string, unknown> {
   return {
@@ -104,6 +105,7 @@ export function mermaidConfig(theme: ResolvedTheme, variables: Record<string, st
     theme: 'base',
     layout: 'dagre',
     look: 'classic',
+    flowchart: { wrappingWidth: 200, minNodeWidth: 0 },
     darkMode: theme === 'dark',
     fontFamily: 'inherit',
     themeCSS: DIAGRAM_CSS,
