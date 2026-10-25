@@ -91,12 +91,19 @@ export const DIAGRAM_CSS = [
   '@media (forced-colors: active) { .node .node-accent rect { fill: CanvasText; } }',
 ].join(' ');
 
-/** Mermaid's configuration for one theme: strict security (no HTML labels, no click handlers), never auto-start. */
+/**
+ * Mermaid's configuration for one theme: strict security (no HTML labels, no click handlers), never auto-start. The
+ * layout and look are named, not left to mermaid's defaults: mermaid 12 lays flowcharts out with ELK and draws them
+ * in its `neo` look unless told otherwise, and the figures here are drawn and styled for dagre and the classic look
+ * (the accent edge of `accentMermaidNodes`, `DIAGRAM_CSS`, the visual baselines).
+ */
 export function mermaidConfig(theme: ResolvedTheme, variables: Record<string, string>): Record<string, unknown> {
   return {
     startOnLoad: false,
     securityLevel: 'strict',
     theme: 'base',
+    layout: 'dagre',
+    look: 'classic',
     darkMode: theme === 'dark',
     fontFamily: 'inherit',
     themeCSS: DIAGRAM_CSS,
