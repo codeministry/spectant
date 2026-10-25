@@ -20,10 +20,10 @@
               class="checkbox checkbox-sm"
               data-task-check
               [checked]="tasks.checks.checked(row)"
-              [disabled]="tasks.checks.block(row) !== null"
-              [attr.aria-disabled]="run() ? 'true' : null"
+              [disabled]="disabled(row)"
+              [attr.aria-disabled]="run() || saving(row) ? 'true' : null"
               [attr.aria-describedby]="describedBy(row)"
-              (click)="guardRun($event)"
+              (click)="guard($event, row)"
               (change)="tick(row, box.checked)"
             />
             <span class="text"><span class="tid">{{ row.id }}</span> · {{ row.text }}</span>

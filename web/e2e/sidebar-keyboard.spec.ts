@@ -7,8 +7,8 @@
  *
  * harbor 002 is selected from the Specs list with the keyboard. Tab runs forward from the title (head before it:
  * Shift+Tab) and records each stop with its box; then each action is operated: the star (Enter, Space), the next-step
- * copy chip (Enter), the first open task (Space ticks it through the tick route; the live refresh leaves the focus on
- * its box) and a link row
+ * copy chip (Enter), the first open task (Space ticks it through the tick route, held for `SLOW_TICK_MS`; neither the
+ * in-flight state nor the live refresh moves the focus off its box) and a link row
  * (Enter selects its object). The release case runs on beacon 003 under the `runs` fixture at 1440. The coarse-pointer
  * case measures without Tab, in a context of its own: Chromium's touch emulation changes the Tab order.
  *
@@ -21,6 +21,8 @@ import { LOCKS_HEADER, RESET_PATH, SESSION_HEADER, STUB_NOW, STUB_RUN } from './
 const WS = 'harbor';
 const SPEC = '002';
 const TASK = 'T28';
+/** How long the tick route is held: well over one frame, so the in-flight state is rendered before the answer. */
+const SLOW_TICK_MS = 600;
 
 /** One focus stop: what it is, the height of its target box (a checkbox's row label), and whether it is in the panel. */
 interface Stop {
@@ -125,6 +127,12 @@ for (const { width, presentation, min } of CASES) {
     test.use({ ...atWidth(width), permissions: ['clipboard-read', 'clipboard-write'] });
 
     test(`sidebar keyboard: every action of spec ${SPEC} is reachable and operable, ${String(min)} px boxes, Escape closes the ${presentation} (T37, ISC-537)`, async ({ page }) => {
+      // The tick's answer arrives after several frames, as on a loaded runner: a box disabled while in flight lost the
+      // focus to Chromium's focus fixup at the first such frame, and the test only failed when CI happened to be slow.
+      await page.route(`**/tasks/${TASK}/check`, async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, SLOW_TICK_MS));
+        await route.continue();
+      });
       await page.goto(`/w/${WS}/specs`);
       const panel = sidebar(page);
       const title = await chooseWithKeyboard(page, SPEC, presentation);
