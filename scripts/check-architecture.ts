@@ -88,7 +88,7 @@ async function loadConfig(path: string): Promise<ArchitectureConfig> {
 }
 
 function assertRoot(entry: LaneEntry): void {
-  let isDir = false;
+  let isDir: boolean;
   try {
     isDir = statSync(join(REPO_ROOT, entry.root)).isDirectory();
   } catch {

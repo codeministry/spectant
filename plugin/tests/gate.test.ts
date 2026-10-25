@@ -57,7 +57,7 @@ function repoWithSpec(): string {
 function markReviewed(root: string): void {
   const files: Record<string, string | null> = {};
   for (const file of REVIEWED_FILES) {
-    let text: string | null = null;
+    let text: string | null;
     try {
       text = read(root, `${DIR}/${file}`);
     } catch {
