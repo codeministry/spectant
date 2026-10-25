@@ -2,21 +2,27 @@
  * Why `server/src/main.ts` could not load the generated manifest, `server/embedded.gen.ts`, and the hint it prints.
  * Kept apart from `main.ts`, whose import runs the CLI, so the selection is testable (tests/embed.test.ts).
  *
- * Bun reports a failed resolution as a `ResolveMessage`, which is not an `Error` subclass, hence `String()`:
- *   missing: Cannot find module '../embedded.gen.ts' from '…/server/src/main.ts'
- *   stale:   Cannot find module '../web/dist/browser/chunk-X.js' from '…/server/embedded.gen.ts'
+ * Bun reports a failed resolution as a `ResolveMessage` (not an `Error` subclass) with `code` `ERR_MODULE_NOT_FOUND`,
+ * the `specifier` it could not resolve and the `referrer` that imported it:
+ *   missing: specifier `../embedded.gen.ts`, referrer `…/server/src/main.ts`
+ *   stale:   specifier `../web/dist/browser/chunk-X.js`, referrer `…/server/embedded.gen.ts`
  * The stale case follows a web build after the last embed, which replaced the hashed chunks the manifest imports.
+ * The selection reads those fields, never the message: its wording is Bun's to change (1.4 turned
+ * `… from '<referrer>'` into `… imported from <referrer>`), the fields stayed.
  */
 export type ManifestFailure = "missing" | "stale";
 
-const MISSING = /Cannot find module ["'][^"']*embedded\.gen\.ts["']/;
-const STALE = /Cannot find module ["'][^"']+["'] from ["'][^"']*embedded\.gen\.ts["']/;
+const GENERATED = /(?:^|[\\/])embedded\.gen\.ts$/;
+
+type ResolveFailure = { code?: unknown; specifier?: unknown; referrer?: unknown };
 
 /** `missing` or `stale` for the two resolution failures above; `undefined` for anything else, which is a real bug. */
 export function manifestFailure(error: unknown): ManifestFailure | undefined {
-  const text = String(error);
-  if (MISSING.test(text)) return "missing";
-  if (STALE.test(text)) return "stale";
+  if (typeof error !== "object" || error === null) return undefined;
+  const { code, specifier, referrer } = error as ResolveFailure;
+  if (code !== "ERR_MODULE_NOT_FOUND" || typeof specifier !== "string") return undefined;
+  if (GENERATED.test(specifier)) return "missing";
+  if (typeof referrer === "string" && GENERATED.test(referrer)) return "stale";
   return undefined;
 }
 
