@@ -58,6 +58,16 @@
   justify-content: flex-start;
 }
 
+/*
+ * Spec 069 T34 (ISC-598) under spec 021's budget (ISC-250): the star's 28 px box holds a 16 px glyph, 6 px clear on
+ * each side. Pulling the trailing 6 px in leaves glyph and type chip the row's 8 px apart, like any two chips, and keeps
+ * star, type, stage, priority, milestone and feature on one line at 390; wrapped, the second line put the head at
+ * 200 px.
+ */
+:host([data-tier='compact']) .head-star {
+  margin-inline-end: -6px;
+}
+
 /* Spec 021 T70: the title takes the row beside the gate button's square. */
 :host([data-tier='compact']) h1 {
   display: -webkit-box;
