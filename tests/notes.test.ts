@@ -379,8 +379,8 @@ describe("notes persist", () => {
     expect((await cli(["add", repo], env)).code).toBe(0);
     const anchor = { kind: "claim", spec: "002", id: "ISC-52" };
     const first = await serve(env);
-    let before = "";
-    let id = "";
+    let before: string;
+    let id: string;
     try {
       const created = await send(`${first.url}${noteRoutes.create(WS)}`, "POST", { anchor, title: "Persist", body: "first draft" });
       expect(created.status).toBe(201);

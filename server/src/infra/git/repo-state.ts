@@ -54,7 +54,7 @@ function walk(dir: string, out: string[]): void {
   }
   for (const name of names) {
     const path = join(dir, name);
-    let isDir = false;
+    let isDir: boolean;
     try {
       isDir = lstatSync(path).isDirectory();
     } catch {

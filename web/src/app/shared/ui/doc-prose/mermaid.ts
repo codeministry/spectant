@@ -55,7 +55,7 @@ export function themeVariables(host: Element): Record<string, string> {
   const canvas = host.ownerDocument.createElement('canvas');
   canvas.width = 1;
   canvas.height = 1;
-  let context: CanvasRenderingContext2D | null = null;
+  let context: CanvasRenderingContext2D | null;
   try {
     context = canvas.getContext('2d', { willReadFrequently: true });
   } catch {

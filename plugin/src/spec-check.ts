@@ -1005,7 +1005,7 @@ function activity(ctx: Context, args: Args): number {
  * whatever happened, nothing on stdout, diagnostics on stderr only.
  */
 async function hook(ctx: Context): Promise<number> {
-  let stdin = '';
+  let stdin: string;
   try {
     stdin = await Bun.stdin.text();
   } catch {

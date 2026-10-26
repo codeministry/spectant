@@ -425,7 +425,8 @@ Used to build, lint and test Spectant; none of them is shipped in the binary or 
 | `vitest` | 5.0.2 | MIT |
 | `jsdom` | 30.1.1 | MIT |
 | `typescript` | 6.0.3 | Apache-2.0 |
-| `eslint`, `@eslint/js` | 9.39.5 | MIT |
+| `eslint` | 10.13.0 | MIT |
+| `@eslint/js` | 10.0.1 | MIT |
 | `typescript-eslint` | 8.70.1 | MIT |
 | `angular-eslint` | 22.5.0 | MIT |
 | `stylelint` | 17.15.0 | MIT |

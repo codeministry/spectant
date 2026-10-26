@@ -6791,7 +6791,7 @@ function activity(ctx, args) {
   return EXIT.ok;
 }
 async function hook(ctx) {
-  let stdin = "";
+  let stdin;
   try {
     stdin = await Bun.stdin.text();
   } catch {

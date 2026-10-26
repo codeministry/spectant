@@ -1057,7 +1057,7 @@ describe("ISC-255 density: KPIs, the brief's language, the Tasks tab, the sectio
     const stop = new AbortController();
     let model: DashboardModel;
     let tasks: TasksTab | null;
-    let dataChanged: string[] = [];
+    let dataChanged: string[];
     try {
       expect(await run(["add", copy], manifest(), { env })).toBe(0);
       const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
@@ -2238,7 +2238,7 @@ describe("ISC-308 workspace admin: add, rename, re-scan, upload and remove chang
     const slug = basename(copy);
     const before = snapshot(copy);
     const app = await serve(copy, "admin");
-    let dataDir = "";
+    let dataDir: string;
     try {
       const send = async (path: string, init: RequestInit): Promise<[number, unknown]> => {
         const res = await fetch(`${app.url}${path}`, init);
