@@ -217,6 +217,8 @@ describe("stale manifest after a web rebuild", () => {
     expect(manifestFailure(stale)).toBe("stale");
     expect(manifestFailure(new Error("SyntaxError in embedded.gen.ts"))).toBeUndefined();
     expect(manifestFailure("Cannot find module 'left-pad' from '/x/server/src/cli.ts'")).toBeUndefined();
+    // The selection reads the resolution's fields, not its wording: a failure outside the manifest stays a real bug.
+    expect(manifestFailure({ code: "ERR_MODULE_NOT_FOUND", specifier: "left-pad", referrer: "/x/server/src/cli.ts" })).toBeUndefined();
 
     const missingText = manifestHint("missing");
     const staleText = manifestHint("stale");
