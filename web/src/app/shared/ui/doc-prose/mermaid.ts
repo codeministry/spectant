@@ -92,20 +92,18 @@ export const DIAGRAM_CSS = [
 ].join(' ');
 
 /**
- * Mermaid's configuration for one theme: strict security (no HTML labels, no click handlers), never auto-start. The
- * layout, look and flowchart label width are named, not left to mermaid's defaults: mermaid 12 lays flowcharts out
- * with ELK, draws them in its `neo` look, wraps labels at 120 px and widens every node to 120 px unless told
- * otherwise, and the figures here are drawn and styled for dagre, the classic look and labels wrapped at 200 px with
- * no minimum node width (the accent edge of `accentMermaidNodes`, `DIAGRAM_CSS`, the visual baselines).
+ * Mermaid's configuration for one theme: strict security (no HTML labels, no click handlers), never auto-start. Mermaid
+ * 12's own drawing: the ELK layout and the `neo` look, named here so a later default change cannot swap them silently;
+ * labels wrap at mermaid's default width. `theme: 'base'` set in `initialize()` outranks the `redux-color` default of
+ * a diagram type, so every colour still comes from the app's tokens (`themeVariables`, `THEME_TOKENS`).
  */
 export function mermaidConfig(theme: ResolvedTheme, variables: Record<string, string>): Record<string, unknown> {
   return {
     startOnLoad: false,
     securityLevel: 'strict',
     theme: 'base',
-    layout: 'dagre',
-    look: 'classic',
-    flowchart: { wrappingWidth: 200, minNodeWidth: 0 },
+    layout: 'elk',
+    look: 'neo',
     darkMode: theme === 'dark',
     fontFamily: 'inherit',
     themeCSS: DIAGRAM_CSS,

@@ -214,8 +214,8 @@ SOFTWARE.
 - **Upstream:** https://github.com/kieler/elkjs (source code of the shipped version: the `0.9.3` tag there, or the
   `elkjs@0.9.3` package on the npm registry)
 - **How it is bundled:** a runtime dependency of Mermaid 12, unmodified, compiled into one lazy chunk of the web
-  build that Mermaid loads only for a diagram laid out with ELK. Spectant draws its diagrams with the dagre layout,
-  so the chunk ships but is not loaded.
+  build. Spectant lays its diagrams out with ELK, so Mermaid loads that chunk whenever a page draws a diagram, never
+  in the initial bundle.
 
 ```text
 # Eclipse Public License - v 2.0
