@@ -25,7 +25,7 @@ export const ICON_KEY_MAP: Readonly<Record<string, IconName>> = {
   external: 'external-link',
   eye: 'eye',
   file: 'file',
-  flag: 'flag', // low confidence: the older Lucide flag (pole plus waving cloth); 1.48 redraws the same symbol
+  flag: 'flag', // low confidence: the older Lucide flag (pole plus waving cloth); 1.48 and later redraw the same symbol
   flask: 'flask-conical', // proposal flask-round: the drawing is the conical flask with a fill line, as the demo chip
   folder: 'folder',
   git: 'git-commit-horizontal',

@@ -19,6 +19,8 @@ describe('palette Enter (ISC-60.2)', () => {
   it('leaves an Enter that commits an IME composition to the input method', () => {
     expect(isCommitEnter(key({ key: 'Enter', isComposing: true }))).toBe(false);
     // WebKit sends the committing Enter with isComposing already false but keyCode 229.
+    // keyCode is deprecated, but the test has to set it to reproduce WebKit's committing Enter.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     expect(isCommitEnter(key({ key: 'Enter', keyCode: 229 }))).toBe(false);
   });
 
