@@ -411,6 +411,11 @@ test.describe('planning: spec edges', () => {
       await openGraph(page, 'all');
       await expect(graphFrame(page).locator('path.flowchart-link').first()).toBeAttached();
       await expect(arrows(page)).toHaveCount(0);
+      // Flat (master decision 2026-09-29): no element of the drawn graph carries a shadow filter, neo look or not.
+      const filtered = await graphFrame(page).locator('svg *').evaluateAll((elements) =>
+        elements.filter((element) => getComputedStyle(element).filter !== 'none').map((element) => element.localName),
+      );
+      expect(filtered, 'no shadow filter in the graph').toEqual([]);
     });
   });
 });
