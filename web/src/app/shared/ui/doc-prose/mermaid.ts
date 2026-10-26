@@ -82,25 +82,36 @@ export function themeVariables(host: Element): Record<string, string> {
  * Help figure's role colour, plus what mermaid's theme variables cannot say: the Help figure's 600 label weight and its
  * 1.5 px edge (`.edge .line`). The rect sits in its own `g.node-accent`, so mermaid's class rules on a node's direct
  * children (`.default > *`, `!important`) land on the group, not on the edge. A `var()` here resolves against the
- * page, so it follows a theme switch like any token.
+ * page, so it follows a theme switch like any token. The last rule keeps every diagram flat (master decision
+ * 2026-09-29: flat surfaces, no drop shadow): `themeVariables.dropShadow` turns off the `neo` look's CSS shadow, but
+ * some shapes and diagram types set a shadow `filter` as an attribute or inline style, which only `!important` reaches.
  */
 export const DIAGRAM_CSS = [
   '.node .node-accent rect { fill: var(--color-primary); stroke: none; }',
   '.node .nodeLabel, .node text { font-weight: 600; }',
   '.edgePaths path, path.flowchart-link { stroke-width: 1.5px; }',
   '@media (forced-colors: active) { .node .node-accent rect { fill: CanvasText; } }',
+  '* { filter: none !important; }',
 ].join(' ');
 
-/** Mermaid's configuration for one theme: strict security (no HTML labels, no click handlers), never auto-start. */
+/**
+ * Mermaid's configuration for one theme: strict security (no HTML labels, no click handlers), never auto-start. Mermaid
+ * 12's own drawing: the ELK layout and the `neo` look, named here so a later default change cannot swap them silently;
+ * labels wrap at mermaid's default width. `theme: 'base'` set in `initialize()` outranks the `redux-color` default of
+ * a diagram type, so every colour still comes from the app's tokens (`themeVariables`, `THEME_TOKENS`).
+ */
 export function mermaidConfig(theme: ResolvedTheme, variables: Record<string, string>): Record<string, unknown> {
   return {
     startOnLoad: false,
     securityLevel: 'strict',
     theme: 'base',
+    layout: 'elk',
+    look: 'neo',
     darkMode: theme === 'dark',
     fontFamily: 'inherit',
     themeCSS: DIAGRAM_CSS,
-    themeVariables: { ...variables, fontSize: `${String(DIAGRAM_FONT_PX)}px`, darkMode: theme === 'dark' },
+    // Flat, no drop shadow (master decision 2026-09-29); `DIAGRAM_CSS` catches the shadows this switch does not.
+    themeVariables: { ...variables, fontSize: `${String(DIAGRAM_FONT_PX)}px`, darkMode: theme === 'dark', dropShadow: 'none' },
   };
 }
 

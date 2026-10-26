@@ -16,7 +16,9 @@
  * - node label: `font-family` of `--font-sans` (Manrope), `font-size` 13px, `font-weight` 600, colour
  *   `--color-base-content`;
  * - edges: `stroke` `--track`, `stroke-width` 1.5px; arrowheads (every `marker` path): `fill` `--track`;
- * - clusters: `fill` `--lane`.
+ * - clusters: `fill` `--lane`;
+ * - flat: no element of the drawn SVG carries a computed `filter` (master decision 2026-09-29, no drop shadow; mermaid
+ *   12's `neo` look would add one).
  * Every deviation is reported as `<page> <part> <property>: <actual> ≠ <expected>`; the threshold is zero.
  */
 import type { Page } from '@playwright/test';
@@ -171,6 +173,10 @@ async function anatomy(page: Page, scope: string, name: string): Promise<Report>
         for (const cluster of svg.querySelectorAll<SVGRectElement>('g.cluster > rect')) {
           clusters += 1;
           check(`cluster ${cluster.parentElement?.id ?? '?'}`, 'fill', rgb(getComputedStyle(cluster).fill), expected.lane);
+        }
+        for (const element of svg.querySelectorAll<SVGElement>('*')) {
+          const filter = getComputedStyle(element).filter;
+          if (filter !== 'none') check(`${element.localName}${element.id ? `#${element.id}` : ''}`, 'filter', filter, 'none');
         }
       }
       return { deviations, nodes, edges, markers, clusters };

@@ -132,6 +132,8 @@ export const GRAPH_CSS = [
   '.flowchart-link { stroke: var(--track); stroke-width: 1px; }',
   // Spec edges (spec 025, ISC-170.1), marked by the view (`data-spec-edge`): open in the waits chip's violet, dashed;
   // met muted and solid. Each points at its own copy of mermaid's arrowhead in the same colour (`data-spec-edge-marker`).
+  // Under mermaid 12's `neo` look the path carries its own inline dash pattern (dotted for `-.->`, an end trim that
+  // leaves the arrowhead room for `-->`), which outranks the dash here; colour and width still come from these rules.
   '.flowchart-link[data-spec-edge="open"] { stroke: var(--color-secondary); stroke-width: 2px; stroke-dasharray: 6 4; }',
   '.flowchart-link[data-spec-edge="met"] { stroke: var(--muted); stroke-width: 1.5px; stroke-dasharray: none; }',
   'marker[data-spec-edge-marker="open"] path { fill: var(--color-secondary); stroke: var(--color-secondary); stroke-dasharray: none; }',

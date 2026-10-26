@@ -327,6 +327,17 @@ async function openGraph(page: Page, m: string): Promise<void> {
 /** The computed `stroke-dasharray` of every spec-edge arrow, in document order. */
 const dashes = (page: Page): Promise<string[]> => arrows(page).evaluateAll((paths) => paths.map((p) => getComputedStyle(p).strokeDasharray));
 
+/**
+ * Whether a dash pattern draws one unbroken line: `none`, or mermaid 12's `neo` trim `0 <start> <length> <end>`, which
+ * only leaves the arrowheads' room free at both ends (its gaps are the marker offsets, a few px against the line).
+ */
+function isSolid(dash: string): boolean {
+  if (dash === 'none') return true;
+  const [lead, start, length, end, ...rest] = dash.split(/[\s,]+/).map((part) => Number.parseFloat(part));
+  if (rest.length > 0 || lead !== 0 || start === undefined || length === undefined || end === undefined) return false;
+  return length > 10 * (start + end);
+}
+
 test.describe('planning: spec edges', () => {
   test.use(atWidth(WIDTHS.desktop));
 
@@ -351,7 +362,7 @@ test.describe('planning: spec edges', () => {
       for (const [from, to] of EDGE_PAIRS) {
         await expect(graphFrame(page).locator(`path[data-spec-edge="open"][aria-label="${from} waits on ${to}, Spec edge open"]`)).toHaveCount(1);
       }
-      for (const dash of await dashes(page)) expect(dash, 'an open arrow is dashed').not.toBe('none');
+      for (const dash of await dashes(page)) expect(isSolid(dash), `an open arrow is dashed: ${dash}`).toBe(false);
 
       const chip = page.locator('[data-filter="edges"]');
       await expect(chip).toHaveAttribute('aria-pressed', 'true');
@@ -375,7 +386,7 @@ test.describe('planning: spec edges', () => {
         await expect(graphFrame(page).locator(`path[data-spec-edge="met"][aria-label="${from} waits on ${to}, Spec edge met"]`)).toHaveCount(1);
       }
       const met = await dashes(page);
-      for (const dash of met) expect(dash, 'a met arrow is solid').toBe('none');
+      for (const dash of met) expect(isSolid(dash), `a met arrow is solid: ${dash}`).toBe(true);
 
       // The same arrows served with the blockers unmerged draw open: their dash pattern is none of the met ones.
       await page.context().setExtraHTTPHeaders({ [EDGES_HEADER]: 'waiting', [SESSION_HEADER]: session });
@@ -400,6 +411,11 @@ test.describe('planning: spec edges', () => {
       await openGraph(page, 'all');
       await expect(graphFrame(page).locator('path.flowchart-link').first()).toBeAttached();
       await expect(arrows(page)).toHaveCount(0);
+      // Flat (master decision 2026-09-29): no element of the drawn graph carries a shadow filter, neo look or not.
+      const filtered = await graphFrame(page).locator('svg *').evaluateAll((elements) =>
+        elements.filter((element) => getComputedStyle(element).filter !== 'none').map((element) => element.localName),
+      );
+      expect(filtered, 'no shadow filter in the graph').toEqual([]);
     });
   });
 });
