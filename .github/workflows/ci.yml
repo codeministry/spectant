@@ -73,7 +73,7 @@ jobs:
       # The linux-x64 build runs the Angular CLI, which refuses Bun's Node shim; same Node as the Playwright image.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.22.1
+          node-version: 24.22.2
       - run: bun install --frozen-lockfile
       # Exit 2 (Docker unavailable) is a skip and fails the step on purpose: a skip is never a pass.
       - run: bun run test:offline:server
