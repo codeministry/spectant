@@ -18,7 +18,7 @@ import { join, relative } from "node:path";
 import { ICON_NAMES } from "../src/app/shared/icons/icon-names.ts";
 import { generate, ICONS_PATH, lucideDir, renderIconsModule } from "../src/app/shared/icons/generate-icons.ts";
 
-const PINNED = "1.61.0";
+const PINNED = "1.65.0";
 const WEB = join(import.meta.dir, "..");
 const SRC = join(WEB, "src");
 
