@@ -59,6 +59,8 @@ jobs:
             web/e2e/.report/
             web/e2e/.results/
           if-no-files-found: ignore
+          # Both folders start with a dot; without this the action skips them and uploads nothing.
+          include-hidden-files: true
           retention-days: 14
 
   offline:

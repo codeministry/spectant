@@ -266,6 +266,10 @@ test.describe('feature and milestone links land', () => {
   test('a "+n" list link selects the other block on the planning tree', async ({ page }) => {
     await servePlanningWithSpecInF3(page);
     await page.goto('/w/harbor/s/002');
+    // "+n" is clickable once the planning answer is in, before the spec answer. That one adds the type chip in front of
+    // the stage chip, the anchored popover moves with its trigger, and a press measured before the move lands outside
+    // the panel: a light dismiss, and the link is never visible again. Open it once the row is complete.
+    await expect(headChip(page, 'type')).toBeVisible();
     await page.locator(HEAD_MORE).click();
     await page.locator('.head-more-list a').first().click();
     await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `feature:${F3.id}`);
