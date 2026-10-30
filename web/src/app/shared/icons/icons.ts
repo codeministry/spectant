@@ -1,4 +1,4 @@
-// Generated from lucide-static 1.61.0 by generate-icons.ts. Do not edit by hand:
+// Generated from lucide-static 1.65.0 by generate-icons.ts. Do not edit by hand:
 // change icon-names.ts and run `bun run --cwd web icons:generate` (ISC-18.2).
 // Lucide icons: ISC License, Copyright (c) Lucide Contributors (https://lucide.dev).
 
