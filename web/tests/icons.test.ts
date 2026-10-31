@@ -1,10 +1,12 @@
 // Icon guard for ISC-18.2 (T22): every icon the app renders comes from the one pinned `lucide-static` version. The pin
 // started at the version the old pages used (1.48.0, spec.md Decisions 2026-09-28); since the app is the reference of
-// its own look (spec 063), it moves on purpose: `PINNED`, `web/package.json` and a regenerated `icons.ts` change in one
-// commit. The app may use any icon of that version; it may not use any other source.
+// its own look (spec 063), it moves with dependency updates. The version is written down only in `web/package.json`:
+// a bump that leaves every inlined shape as it was needs no other change, and one that redraws an inlined icon fails
+// check 3 until `icons.ts` is regenerated. The app may use any icon of that version; it may not use any other source.
 //
 // Four checks hold the claim:
-//   1. `web/package.json` pins `lucide-static` to exactly `PINNED`, and that is the version installed.
+//   1. `web/package.json` pins `lucide-static` to one exact version (`bun install --frozen-lockfile` and `generate()`
+//      hold the installed copy to it).
 //   2. Every name in `ICON_NAMES` exists in the pinned package's `icons/` folder.
 //   3. The committed `icons.ts` is byte-identical to a fresh in-process generation, so a hand edit, a stale file or an
 //      icon pasted from elsewhere fails.
@@ -18,11 +20,10 @@ import { join, relative } from "node:path";
 import { ICON_NAMES } from "../src/app/shared/icons/icon-names.ts";
 import { generate, ICONS_PATH, lucideDir, renderIconsModule } from "../src/app/shared/icons/generate-icons.ts";
 
-const PINNED = "1.65.0";
 const WEB = join(import.meta.dir, "..");
 const SRC = join(WEB, "src");
 
-type PackageJson = { dependencies?: Record<string, string>; devDependencies?: Record<string, string>; version?: string };
+type PackageJson = { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
 const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8")) as PackageJson;
 
 // Files that may spell `<svg` without the exemption: the one renderer and the generator that strips the wrapper.
@@ -52,14 +53,11 @@ function unexemptSvgs(text: string): string[] {
 }
 
 describe("ISC-18.2 pinned Lucide version", () => {
-  test(`web/package.json pins lucide-static to exactly ${PINNED} as a devDependency`, () => {
+  // The version itself lives only in web/package.json; `bun install --frozen-lockfile` holds the installed copy to it.
+  test("web/package.json pins lucide-static to one exact version as a devDependency", () => {
     const pkg = readJson(join(WEB, "package.json"));
-    expect(pkg.devDependencies?.["lucide-static"]).toBe(PINNED);
+    expect(pkg.devDependencies?.["lucide-static"]).toMatch(/^\d+\.\d+\.\d+$/);
     expect(pkg.dependencies?.["lucide-static"]).toBeUndefined();
-  });
-
-  test("the installed lucide-static is the pinned version", () => {
-    expect(readJson(join(lucideDir(), "package.json")).version).toBe(PINNED);
   });
 
   test("every name in ICON_NAMES exists in the pinned package", () => {
@@ -74,31 +72,31 @@ describe("ISC-18.2 generated icon map", () => {
     expect(readFileSync(ICONS_PATH, "utf8")).toBe(generate());
   });
 
-  test("the header names the lucide-static version and says the file is generated", () => {
+  test("the header says the file is generated and names no version, so a bump alone leaves it unchanged", () => {
     const head = readFileSync(ICONS_PATH, "utf8").split("\n").slice(0, 4).join("\n");
-    expect(head).toContain(`lucide-static ${PINNED}`);
     expect(head).toMatch(/generated/i);
+    expect(head).not.toMatch(/\d+\.\d+\.\d+/);
   });
 
   test("the generator fails loudly on a name the pinned version does not have", () => {
-    expect(() => renderIconsModule(["check", "not-a-lucide-icon"], PINNED)).toThrow(/not-a-lucide-icon/);
+    expect(() => renderIconsModule(["check", "not-a-lucide-icon"])).toThrow(/not-a-lucide-icon/);
   });
 
   test("the generator rejects a wrapper that the renderer would draw differently", () => {
     const foreign = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h16v16H0z"/></svg>`;
-    expect(() => renderIconsModule(["check"], PINNED, () => foreign)).toThrow(/check/);
+    expect(() => renderIconsModule(["check"], () => foreign)).toThrow(/check/);
   });
 
   test("the generator output is independent of the list order", () => {
     const read = (n: string) => readFileSync(join(lucideDir(), "icons", `${n}.svg`), "utf8");
-    expect(renderIconsModule(["x", "check"], PINNED, read)).toBe(renderIconsModule(["check", "x"], PINNED, read));
+    expect(renderIconsModule(["x", "check"], read)).toBe(renderIconsModule(["check", "x"], read));
   });
 
   test("an entry whose path data reads as a dotted quad carries the leak allow marker, others do not", () => {
     const svg = (d: string) =>
       `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
     const read = (n: string) => svg(n === "check" ? "M6 3.5.7.7 1 1" : "M4 4h16"); // leak:allow synthetic path data
-    const lines = renderIconsModule(["check", "x"], PINNED, read).split("\n");
+    const lines = renderIconsModule(["check", "x"], read).split("\n");
     expect(lines.find((l) => l.startsWith("  check:"))).toEndWith("// leak:allow Lucide path data, not an address");
     expect(lines.find((l) => l.startsWith("  x:"))).toBe(`  x: '<path d="M4 4h16"/>',`);
   });
