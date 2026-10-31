@@ -553,7 +553,6 @@ SOFTWARE.
 ## Lucide icons
 
 - **Package:** `lucide-static`
-- **Version:** 1.66.0
 - **Licence:** ISC; the icons derived from the Feather project are also under MIT (both notices below)
 - **Upstream:** https://github.com/lucide-icons/lucide
 - **How it is bundled:** only the icons named in `web/src/app/shared/icons/icon-names.ts` are inlined. A build-time
