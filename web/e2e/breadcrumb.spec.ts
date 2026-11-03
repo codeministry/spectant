@@ -268,10 +268,16 @@ test.describe('feature and milestone links land', () => {
     await page.goto('/w/harbor/s/002');
     // "+n" is clickable once the planning answer is in, before the spec answer. That one adds the type chip in front of
     // the stage chip, the anchored popover moves with its trigger, and a press measured before the move lands outside
-    // the panel: a light dismiss, and the link is never visible again. Open it once the row is complete.
+    // the panel: a light dismiss, and the link is never visible again. Open it once the row is complete. The dashboard
+    // below the head still renders after that and can move the panel once more, so a press that lands outside it
+    // reopens the list and presses again.
     await expect(headChip(page, 'type')).toBeVisible();
-    await page.locator(HEAD_MORE).click();
-    await page.locator('.head-more-list a').first().click();
+    const more = page.locator(HEAD_MORE);
+    await expect(async () => {
+      if ((await more.count()) > 0 && (await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+      await page.locator('.head-more-list a').first().click({ timeout: 1000 });
+      await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree', { timeout: 1000 });
+    }).toPass();
     await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `feature:${F3.id}`);
     await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toHaveAttribute('data-ref', `feature:${F3.id}`);
   });
