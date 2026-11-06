@@ -25,7 +25,7 @@ jobs:
     container:
       # Tag and digest equal `web/e2e/Dockerfile`. The image ships Node 24.22.1 (>= 22.22.3, the Angular CLI's
       # floor, plan 001 § Risks) and the browsers under /ms-playwright.
-      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
       options: --ipc=host --init # as container.ts runs it: Chromium needs the host IPC namespace for shared memory
     env:
       SPECTANT_E2E_CONTAINER: "1" # what the Dockerfile sets; playwright.config.ts reads it
