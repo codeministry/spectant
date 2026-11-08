@@ -37,7 +37,8 @@
       }
     ],
     "hue-degree-notation": "number",
-    "alpha-value-notation": "number"
+    "alpha-value-notation": "number",
+    "selector-no-invalid": null
   },
   "overrides": [
     {

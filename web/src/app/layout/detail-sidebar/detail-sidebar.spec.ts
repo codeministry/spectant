@@ -468,9 +468,10 @@ describe('DetailSidebar', () => {
     const title = q(host, 'h2[data-part="title"]');
     expect(title?.getAttribute('style')).toBeNull();
     const style = title ? getComputedStyle(title) : null;
-    // `none` is the initial value; jsdom reports it for an unset property since 30.1.3, as a browser does.
-    expect(style?.getPropertyValue('-webkit-line-clamp')).toBe('none');
-    expect(style?.getPropertyValue('line-clamp')).toBe('none');
+    // No clamp: the initial value `none`, or `''` where jsdom computes no value for the property (it changed between
+    // 30.1.1, 30.1.3 and 31.0.0). A real clamp is a number; the browser tier measures the wrap itself.
+    expect(['', 'none']).toContain(style?.getPropertyValue('-webkit-line-clamp'));
+    expect(['', 'none']).toContain(style?.getPropertyValue('line-clamp'));
     expect(style?.getPropertyValue('text-overflow')).not.toBe('ellipsis');
     expect(style?.getPropertyValue('overflow-wrap')).toBe('anywhere');
     expect(style?.getPropertyValue('hyphens')).toBe('auto');
