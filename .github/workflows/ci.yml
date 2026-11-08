@@ -44,6 +44,12 @@ jobs:
       - name: Trust the checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: bun install --frozen-lockfile
+      # The web lane probe: the Vitest component specs through Angular's unit-test builder (web/CLAUDE.md § Testing).
+      # Neither `verify:quick` nor `verify` runs it, and root `bun test` skips `web/src`; without this step a
+      # dependency bump can turn it red unseen, as jsdom 30.1.3 did. Its own step, before the long ladder: about ten
+      # seconds, and a red one names the lane.
+      - name: Web component specs (Vitest)
+        run: bun run --cwd web test
       # static → quick → browser tier → e2e (stub API) → visual baselines → four-target build. Bun cross-compiles
       # the darwin targets on Linux; they stay unsigned here (build.ts prints the notice), signing happens on macOS.
       # Until the first visual spec lands (spec 001 T79/T81), `bun run verify` would fail on Playwright's "No tests
