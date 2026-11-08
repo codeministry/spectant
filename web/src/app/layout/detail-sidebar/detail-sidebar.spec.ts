@@ -468,8 +468,9 @@ describe('DetailSidebar', () => {
     const title = q(host, 'h2[data-part="title"]');
     expect(title?.getAttribute('style')).toBeNull();
     const style = title ? getComputedStyle(title) : null;
-    expect(style?.getPropertyValue('-webkit-line-clamp')).toBe('');
-    expect(style?.getPropertyValue('line-clamp')).toBe('');
+    // `none` is the initial value; jsdom reports it for an unset property since 30.1.3, as a browser does.
+    expect(style?.getPropertyValue('-webkit-line-clamp')).toBe('none');
+    expect(style?.getPropertyValue('line-clamp')).toBe('none');
     expect(style?.getPropertyValue('text-overflow')).not.toBe('ellipsis');
     expect(style?.getPropertyValue('overflow-wrap')).toBe('anywhere');
     expect(style?.getPropertyValue('hyphens')).toBe('auto');
