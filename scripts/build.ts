@@ -8,8 +8,8 @@
  *        bun scripts/build.ts --targets <list>    (comma-separated, e.g. `darwin-arm64,linux-x64`)
  *
  * Steps, each timed, each fatal on failure:
- *  1. the Angular build, `bun run --cwd web build`. The Angular CLI needs a real Node (>= 22.22.3); Bun's Node
- *     compatibility layer is refused by it, so a Node on PATH is checked up front (plan 001 § Risks, round 4);
+ *  1. the Angular build, `bun run --cwd web build`. The Angular CLI needs a real Node (>= 26.0.0, `.nvmrc`); Bun's
+ *     Node compatibility layer is refused by it, so a Node on PATH is checked up front (plan 001 § Risks, round 4);
  *  2. `bun scripts/embed.ts`, which writes `server/embedded.gen.ts` from the web output;
  *  3. `bun build --compile` of `server/src/main.ts` per target into `dist/spectant-<os>-<arch>`, with the root
  *     `package.json` version inlined through `--define SPECTANT_VERSION` (a binary has no package.json beside it);
@@ -25,7 +25,7 @@ import { join, resolve } from "node:path";
 const ROOT = resolve(import.meta.dir, "..");
 const DIST = "dist";
 const ENTRY = "server/src/main.ts";
-const MIN_NODE: readonly [number, number, number] = [22, 22, 3];
+const MIN_NODE: readonly [number, number, number] = [26, 0, 0];
 
 type Target = { name: string; bunTarget: string; os: "darwin" | "linux" };
 
@@ -118,7 +118,7 @@ function atLeast(version: readonly number[], minimum: readonly number[]): boolea
 /** Fails early and readably when no real Node >= MIN_NODE is on PATH; the Angular CLI would fail late and cryptically. */
 function checkNode(): void {
   const wanted = MIN_NODE.join(".");
-  const hint = `the Angular CLI needs Node >= ${wanted} on PATH (web/package.json engines); install it beside bun, or pass --skip-web to reuse an existing web/dist/browser`;
+  const hint = `the Angular CLI needs Node >= ${wanted} on PATH (web/package.json engines, .nvmrc); install it beside bun, or pass --skip-web to reuse an existing web/dist/browser`;
   // `bun run` puts a `node` shim that is Bun itself on PATH when no Node is installed; the Angular CLI refuses it.
   const probe = capture(["node", "-e", "process.stdout.write(process.version + ' ' + typeof Bun)"]);
   if (probe === undefined) throw new BuildError(`no node on PATH; ${hint}`);
