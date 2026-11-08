@@ -701,15 +701,15 @@ Used to build, lint and test Spectant; none of them is shipped in the binary or 
 | `postcss` | 8.5.28 | MIT |
 | `@playwright/test` (and `playwright`, `playwright-core`) | 1.65.0 | Apache-2.0 |
 | `vitest` | 5.0.2 | MIT |
-| `jsdom` | 30.1.1 | MIT |
+| `jsdom` | 31.0.0 | MIT |
 | `typescript` | 6.0.3 | Apache-2.0 |
 | `eslint` | 10.13.0 | MIT |
 | `@eslint/js` | 10.0.1 | MIT |
 | `typescript-eslint` | 8.70.1 | MIT |
 | `angular-eslint` | 22.5.0 | MIT |
-| `stylelint` | 17.15.0 | MIT |
-| `stylelint-config-standard` | 40.0.0 | MIT |
+| `stylelint` | 18.0.0 | MIT |
+| `stylelint-config-standard` | 41.0.0 | MIT |
 | `bun-types` | 1.4.4 | MIT |
-| `jscpd` (and its platform binary package `jscpd-<os>-<cpu>`) | 5.4.0 | MIT |
+| `jscpd` (and its platform binary package `jscpd-<os>-<cpu>`) | 5.4.3 | MIT |
 
 Their transitive dependencies are pinned in `bun.lock`.

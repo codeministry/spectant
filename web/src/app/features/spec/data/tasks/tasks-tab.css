@@ -59,7 +59,6 @@ h2 {
 }
 
 .columns {
-  padding-inline: 8px;
   color: var(--muted-ink);
   font-weight: 600;
   text-transform: uppercase;
