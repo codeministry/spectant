@@ -41,7 +41,7 @@
     "@playwright/test": "1.65.0",
     "@tailwindcss/postcss": "4.3.5",
     "daisyui": "5.7.50",
-    "jsdom": "31.0.0",
+    "jsdom": "31.0.1",
     "lucide-static": "1.70.0",
     "postcss": "8.5.32",
     "tailwindcss": "4.3.5",
