@@ -48,7 +48,7 @@
         "@tailwindcss/postcss": "4.3.5",
         "daisyui": "5.7.50",
         "jsdom": "31.0.0",
-        "lucide-static": "1.70.0",
+        "lucide-static": "1.73.0",
         "postcss": "8.5.32",
         "tailwindcss": "4.3.5",
         "typescript": "6.0.3",
@@ -1051,7 +1051,7 @@
 
     "lru-cache": ["lru-cache@11.5.3", "", {}, "sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg=="],
 
-    "lucide-static": ["lucide-static@1.70.0", "", {}, "sha512-A9UgY98g94IuHQY7rl7/AFwHX7T1qNpzryim+Kw5CGhdV2STobtBY+ib/Z44ohyqXEJB88gvXFAeJ87uOOHKLw=="],
+    "lucide-static": ["lucide-static@1.73.0", "", {}, "sha512-/FfzdRThAPnDVMk643pzENqYUnxudEON/fyOdh31ZiPiw/seE9VoYeIJPRDTCLDNtnF+5pK6CNwf6IkQMfrJ5w=="],
 
     "magic-string": ["magic-string@1.4.1", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.6.0" } }, "sha512-8lyCu36ErXR0J9uaGKlKQoiLZKmtI63YGLE8G2o9jyRPdr4X47LusSOwgOJOzcVtp81fTAAjxR7BwKz682Jhow=="],
 
