@@ -712,8 +712,8 @@ describe('board band reorder', () => {
     const pageGroup = harness.fixture.debugElement.query(By.css('app-board-page')).injector.get(CdkDropListGroup);
     expect((pageGroup as unknown as { _items: Set<unknown> })._items.has(bandList)).toBe(false);
     expect(bandList.connectedTo).toEqual([]);
-    expect(bandList.enterPredicate({ data: 'F0' } as CdkDrag, bandList)).toBe(true);
-    expect(bandList.enterPredicate({ data: { key: 'spec:006' } } as CdkDrag, bandList)).toBe(false);
+    expect(bandList.enterPredicate({ data: 'F0' } as unknown as CdkDrag, bandList)).toBe(true);
+    expect(bandList.enterPredicate({ data: { key: 'spec:006' } } as unknown as CdkDrag, bandList)).toBe(false);
     expect(page.querySelectorAll('.cell.cdk-drop-list').length).toBeGreaterThan(0);
   });
 });
