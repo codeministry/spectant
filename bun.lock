@@ -11,7 +11,7 @@
         "eslint": "10.15.0",
         "jscpd": "5.4.3",
         "stylelint": "18.0.0",
-        "stylelint-config-standard": "41.0.0",
+        "stylelint-config-standard": "41.1.0",
         "typescript": "6.0.3",
         "typescript-eslint": "8.73.0",
       },
@@ -1279,7 +1279,7 @@
 
     "stylelint-config-recommended": ["stylelint-config-recommended@19.0.0", "", { "peerDependencies": { "stylelint": "^18.0.0" } }, "sha512-Y15XB19RManqBOpbRC42tF8R/Hfe314xYLzedRlnnYxYzZ0777RakDQIGcqYfrz9jWGoVyjaGTdpSl9F+roOOw=="],
 
-    "stylelint-config-standard": ["stylelint-config-standard@41.0.0", "", { "dependencies": { "stylelint-config-recommended": "^19.0.0" }, "peerDependencies": { "stylelint": "^18.0.0" } }, "sha512-EJIvMOMARieBOLhw2yzN7BaVFiIY2Ex8CkbXahxP6tQZK41+N8OVUo57Uvx9iTr862h+thqDoDH7vQbeth1ryg=="],
+    "stylelint-config-standard": ["stylelint-config-standard@41.1.0", "", { "dependencies": { "stylelint-config-recommended": "^19.0.0" }, "peerDependencies": { "stylelint": "^18.0.0" } }, "sha512-Z7PiQpBffnqu7U5h/FeBWCYZsRsZXa1J8MjkpgcciphLJULysDcu2jKXuSrPgnQGow9x0T+pOfblqRA5cSE6aw=="],
 
     "stylis": ["stylis@4.4.0", "", {}, "sha512-5Z9ZpRzfuH6l/UAvCPAPUo3665Nk2wLaZU3x+TLHKVzIz33+sbJqbtrYoC3KD4/uVOr2Zp+L0LySezP9OHV9yA=="],
 
