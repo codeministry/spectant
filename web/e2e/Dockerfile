@@ -8,7 +8,7 @@
 
 FROM oven/bun:1.4.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d AS bun
 
-FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
+FROM mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
 
 # The image carries Node (for the Angular CLI and the Playwright runner) and the browsers under /ms-playwright;
 # bun is the repository's package manager and script runner, at the version root package.json pins.

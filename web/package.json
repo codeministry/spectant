@@ -38,7 +38,7 @@
     "@angular/build": "22.3.0",
     "@angular/cli": "22.3.0",
     "@angular/compiler-cli": "22.3.0",
-    "@playwright/test": "1.65.0",
+    "@playwright/test": "1.65.1",
     "@tailwindcss/postcss": "4.3.5",
     "daisyui": "5.8.1",
     "jsdom": "31.0.1",
