@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "angular-eslint": "22.6.0",
+    "angular-eslint": "22.8.0",
     "bun-types": "1.4.4",
     "eslint": "10.14.0",
     "jscpd": "5.4.3",
