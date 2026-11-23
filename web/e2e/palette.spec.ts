@@ -507,10 +507,12 @@ test.describe('palette enter', () => {
 
     // What an input method sends when Enter commits the composed text: `isComposing` set, keyCode 229. The palette
     // must leave it to the input method: not consumed (dispatchEvent answers true), nothing followed.
+    // keyCode is deprecated, but the test has to set it to reproduce the committing Enter.
     const passedOn = await paletteOf(page)
       .getByRole('combobox')
       .evaluate((input) =>
         input.dispatchEvent(
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229, isComposing: true, bubbles: true, cancelable: true }),
         ),
       );
