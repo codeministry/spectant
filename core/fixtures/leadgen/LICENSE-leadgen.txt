@@ -1,4 +1,4 @@
-The files under core/fixtures/leadgen/ are copied from https://github.com/codeministry/leadgen (Apache-2.0). See the licence text below.
+The files under core/fixtures/leadgen/ are copied from https://github.com/codeministry-io/leadgen (Apache-2.0). See the licence text below.
 
 NOTICE of that repository (Apache-2.0 § 4(d) attribution), reproduced on the principal's decision of 2026-09-29:
 
@@ -7,7 +7,7 @@ NOTICE of that repository (Apache-2.0 § 4(d) attribution), reproduced on the pr
 
     This product includes software developed at codeministry (https://codeministry.de).
 
-Full NOTICE: https://github.com/codeministry/leadgen/blob/main/NOTICE
+Full NOTICE: https://github.com/codeministry-io/leadgen/blob/main/NOTICE
 
 --------------------------------------------------------------------------------
 

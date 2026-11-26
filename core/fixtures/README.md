@@ -139,7 +139,7 @@ not edited after the freeze: a parse diagnostic on it is a finding for `FORMAT.m
 | Tree | Source | Licence | Frozen at | Refresh rule |
 |------|--------|---------|-----------|--------------|
 | `spectant-001/` | this repository, spec 001 | Apache-2.0, as this repository | the commit named in its `COMMIT` file | only on `/spec-complete 001` |
-| `leadgen/` | github.com/codeministry/leadgen | Apache-2.0 | the commit named in its `README.md` | only by a deliberate re-freeze, recorded in a Decisions row |
+| `leadgen/` | github.com/codeministry-io/leadgen | Apache-2.0 | the commit named in its `README.md` | only by a deliberate re-freeze, recorded in a Decisions row |
 
 A refresh rewrites the tree from the named source commit, updates the commit it names, and regenerates the golden
 snapshot through the golden test in the same change.

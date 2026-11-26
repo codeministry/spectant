@@ -35,7 +35,7 @@ origin when parity breaks.
 - A copy of a private repository is never allowed, not even in part. Reason: the repository is public and private
   trees carry private names.
 - The two frozen corpora are `spectant-001/` (this repository's own spec 001, refreshed only on
-  `/spec-complete 001`) and `leadgen/` (github.com/codeministry/leadgen, Apache-2.0). Reason: a frozen copy moves
+  `/spec-complete 001`) and `leadgen/` (github.com/codeministry-io/leadgen, Apache-2.0). Reason: a frozen copy moves
   only when someone decides it should, so its golden snapshot fails for parser reasons only.
 - Private spec trees are read only through `SPECTANT_PRIVATE_CORPUS`, local to the principal's machine; the private
   corpus test reports skipped, never passed, when the variable is unset (ISC-70). Reason: the private corpus proves

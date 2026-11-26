@@ -676,7 +676,7 @@ This Font Software is licensed under the SIL Open Font License, Version 1.1.
 
 - **Path:** `core/fixtures/leadgen/`
 - **Licence:** Apache-2.0
-- **Upstream:** https://github.com/codeministry/leadgen
+- **Upstream:** https://github.com/codeministry-io/leadgen
 - **How it is included:** a frozen copy of that repository's spec files, used as a parser fixture by the tests; it is
   not part of the binary.
 - **Notice:** `core/fixtures/leadgen/LICENSE-leadgen.txt` carries the upstream NOTICE attribution (Apache-2.0 § 4(d))
