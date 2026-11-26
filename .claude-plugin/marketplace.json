@@ -2,7 +2,7 @@
   "name": "spectant",
   "owner": {
     "name": "codeministry",
-    "url": "https://github.com/codeministry"
+    "url": "https://github.com/codeministry-io"
   },
   "metadata": {
     "description": "Spec-driven development for Claude Code: the Spec plugin that ships with Spectant.",
@@ -16,11 +16,11 @@
       "version": "0.1.0",
       "author": {
         "name": "codeministry",
-        "url": "https://github.com/codeministry"
+        "url": "https://github.com/codeministry-io"
       },
       "license": "Apache-2.0",
-      "homepage": "https://github.com/codeministry/spectant",
-      "repository": "https://github.com/codeministry/spectant"
+      "homepage": "https://github.com/codeministry-io/spectant",
+      "repository": "https://github.com/codeministry-io/spectant"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # core/fixtures/leadgen
 
-A frozen copy of three public specs from [codeministry/leadgen](https://github.com/codeministry/leadgen), under
+A frozen copy of three public specs from [codeministry-io/leadgen](https://github.com/codeministry-io/leadgen), under
 Apache-2.0 (`LICENSE-leadgen.txt`). Unlike `harbor/`, `lantern/` and `empty-master/`, this tree is real: it pins the
 parser against specs a working repository wrote, not against specs written to fit the parser.
 
